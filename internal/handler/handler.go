@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/PrometheRus/metricscollector/internal/repository"
 )
 
@@ -31,14 +32,20 @@ func (h *MetricsHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
 	// При попытке передать запрос с некорректным типом метрики возвращать http.StatusBadRequest
 	mType := segments[1]
-	if mType != "gauge" && mType != "counter" {
+	if mType != model.Gauge && mType != model.Counter {
 		http.Error(res, "Запрос с некорректным типом метрики", http.StatusBadRequest)
 		return
 	}
 
 	// При попытке передать запрос без имени метрики возвращать http.StatusNotFound
-	if len(segments) == 2 {
+	if len(segments) == 2 || segments[2] == "" {
 		http.Error(res, "Значение имени метрики не передано", http.StatusNotFound)
+		return
+	}
+
+	// При попытке передать запрос без значения метрики возвращать http.StatusNotFound
+	if len(segments) == 3 {
+		http.Error(res, "Значение метрики не передано", http.StatusBadRequest)
 		return
 	}
 
@@ -81,5 +88,6 @@ func (h *MetricsHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		// io.WriteString(res, "Запрос обновления Counter выполнен!")
 	}
 	// Никаких ошибок не получили, HTTP запрос успешно обработан
+	// В постановке задачи нет требований по записи в body
 	res.WriteHeader(http.StatusOK)
 }
