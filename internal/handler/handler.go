@@ -49,12 +49,6 @@ func (h *MetricsHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// При попытке передать запрос без значения метрики возвращать http.StatusNotFound
-	if len(segments) == 3 {
-		http.Error(res, "Значение метрики не передано", http.StatusBadRequest)
-		return
-	}
-
 	mName := segments[2]
 
 	switch mType {
