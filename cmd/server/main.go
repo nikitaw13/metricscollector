@@ -6,12 +6,15 @@ import (
 	"time"
 
 	"github.com/PrometheRus/metricscollector/internal/handler"
+	"github.com/PrometheRus/metricscollector/internal/repository"
 )
 
 func main() {
-	var h handler.MetricsHandler
+	var r = repository.NewMemStorage()
+	var h = handler.MetricsHandler{Repo: r}
+
 	mux := http.NewServeMux()
-	mux.Handle("/update/", h)
+	mux.Handle("/update/", &h)
 
 	srv := &http.Server{
 		Addr:         ":8080",

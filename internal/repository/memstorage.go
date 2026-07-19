@@ -6,4 +6,19 @@ type MemStorage struct {
 	counter map[string]int64
 }
 
-// TODO: Кто инициализирует map'ы? Пустая структура — это nil-мапы. Нужен конструктор.
+func NewMemStorage() *MemStorage {
+	return &MemStorage{
+		gauge:   map[string]float64{},
+		counter: map[string]int64{},
+	}
+}
+
+func (ms *MemStorage) UpdateGauge(name string, value float64) error {
+	ms.gauge[name] = value
+	return nil
+}
+
+func (ms *MemStorage) UpdateCounter(name string, value int64) error {
+	ms.counter[name] += value
+	return nil
+}

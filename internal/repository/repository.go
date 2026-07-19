@@ -2,6 +2,6 @@ package repository
 
 // Интерфейс для взаимодействия с хранилищем
 type Repository interface {
-	UpdateGauge(name string, value float64)
-	UpdateCounter(name string, value int64)
+	UpdateGauge(name string, value float64) error
+	UpdateCounter(name string, value int64) error
 }
