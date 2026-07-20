@@ -11,7 +11,7 @@ import (
 
 func main() {
 	var r = repository.NewMemStorage()
-	var h = handler.MetricsHandler{Repo: r}
+	var h = handler.MetricsHandler{Storage: r}
 
 	mux := http.NewServeMux()
 	mux.Handle("/update/", &h)
