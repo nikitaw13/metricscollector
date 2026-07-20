@@ -10,7 +10,7 @@ import (
 )
 
 type MetricsHandler struct {
-	Repo repository.Repository
+	Storage repository.Repository
 }
 
 func (h *MetricsHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
@@ -61,7 +61,7 @@ func (h *MetricsHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		}
 
 		// При ошибке обработки запроса обновления Gauge возвращать http.StatusInternalServerError
-		if err := h.Repo.UpdateGauge(mName, mGaugeValue); err != nil {
+		if err := h.Storage.UpdateGauge(mName, mGaugeValue); err != nil {
 			http.Error(res, "Ошибка при обновлении Gauge", http.StatusInternalServerError)
 			return
 		}
@@ -75,7 +75,7 @@ func (h *MetricsHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		// При ошибке обработки запроса обновления Counter возвращать http.StatusInternalServerError
-		if err := h.Repo.UpdateCounter(mName, mCounterValue); err != nil {
+		if err := h.Storage.UpdateCounter(mName, mCounterValue); err != nil {
 			http.Error(res, "Ошибка при обновлении Counter", http.StatusInternalServerError)
 			return
 		}
