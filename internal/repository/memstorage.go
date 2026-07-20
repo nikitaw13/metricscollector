@@ -6,6 +6,8 @@ type MemStorage struct {
 	counter map[string]int64
 }
 
+var _ Repository = (*MemStorage)(nil)
+
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		gauge:   map[string]float64{},
