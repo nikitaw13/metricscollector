@@ -5,21 +5,20 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 type Sender struct {
 	Storage Storage
+	Client  http.Client
 }
 
 // One-shot run
 func (s *Sender) Run() {
-
-	client := http.Client{Timeout: 5 * time.Second}
+	baseurl := "http://localhost:8080/update"
 
 	// Send all gauges
 	for metric, value := range s.Storage.GetAllGauges() {
-		fullpath := fmt.Sprintf("http://localhost:8080/update/gauge/%s/%s", metric, strconv.FormatFloat(value, 'f', -1, 64))
+		fullpath := fmt.Sprintf("%s/gauge/%s/%s", baseurl, metric, strconv.FormatFloat(value, 'f', -1, 64))
 
 		request, err := http.NewRequest(http.MethodPost, fullpath, nil)
 		request.Header.Add("Content-Type", "text/plain")
@@ -29,19 +28,19 @@ func (s *Sender) Run() {
 			continue
 		}
 
-		res, err := client.Do(request)
+		res, err := s.Client.Do(request)
 
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 		res.Body.Close()
-		log.Printf("The metric %s have been sent to %s", metric, fullpath)
+		log.Printf("The metric %s has been sent to %s", metric, fullpath)
 	}
 
 	// Send all counters
 	for metric, value := range s.Storage.GetAllCounters() {
-		fullpath := fmt.Sprintf("http://localhost:8080/update/counter/%s/%s", metric, strconv.FormatInt(value, 10))
+		fullpath := fmt.Sprintf("%s/update/counter/%s/%s", baseurl, metric, strconv.FormatInt(value, 10))
 
 		request, err := http.NewRequest(http.MethodPost, fullpath, nil)
 		request.Header.Add("Content-Type", "text/plain")
@@ -51,12 +50,12 @@ func (s *Sender) Run() {
 			continue
 		}
 
-		res, err := client.Do(request)
+		res, err := s.Client.Do(request)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 		res.Body.Close()
-		log.Printf("The metric '%s' have been sent to %s by sender", metric, fullpath)
+		log.Printf("The metric '%s' has been sent to %s by sender", metric, fullpath)
 	}
 }

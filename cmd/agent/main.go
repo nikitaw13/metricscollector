@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/PrometheRus/metricscollector/internal/agent"
@@ -16,17 +17,17 @@ const (
 func main() {
 	storage := agent.NewAgentStorage()
 	collector := &agent.Collector{Storage: storage}
-	sender := &agent.Sender{Storage: storage}
+	sender := &agent.Sender{Storage: storage, Client: http.Client{Timeout: 5 * time.Second}}
 
-	tick := 0
-	for {
-		time.Sleep(1 * time.Second)
-		tick++
-		if tick%pollInterval == 0 {
+	go func() {
+		for {
 			collector.Run()
+			time.Sleep(pollInterval * time.Second)
 		}
-		if tick%reportInterval == 0 {
-			sender.Run()
-		}
+	}()
+
+	for {
+		sender.Run()
+		time.Sleep(reportInterval * time.Second)
 	}
 }
