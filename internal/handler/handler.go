@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -82,9 +81,6 @@ func (h *MetricsHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 	// Никаких ошибок не получили, HTTP запрос успешно обработан
-	res.Header().Set("Content-Type", "text/plain")
-	res.WriteHeader(http.StatusOK)
-	body := fmt.Sprintf("Запрос по метрике %s обработан!\n", mName)
-	res.Write([]byte(body))
-	log.Printf("The handler received request: %s %s %s and the response is %d", req.RemoteAddr, req.Method, req.URL.Path, http.StatusOK)
+	// res.WriteHeader(http.StatusOK)
+	log.Printf("The handler recieved request: %s %s %s and the response is %d", req.RemoteAddr, req.Method, req.URL.Path, http.StatusOK)
 }

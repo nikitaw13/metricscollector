@@ -32,10 +32,11 @@ func (s *Sender) Run() {
 
 		if err != nil {
 			log.Println(err)
+			log.Println(err)
 			continue
 		}
 		res.Body.Close()
-		log.Printf("The metric %s has been sent to %s", metric, fullpath)
+		log.Printf("The metric %s have been sent to %s", metric, fullpath)
 	}
 
 	// Send all counters
@@ -47,6 +48,7 @@ func (s *Sender) Run() {
 
 		if err != nil {
 			log.Println(err)
+			log.Println(err)
 			continue
 		}
 
@@ -56,6 +58,6 @@ func (s *Sender) Run() {
 			continue
 		}
 		res.Body.Close()
-		log.Printf("The metric '%s' has been sent to %s by sender", metric, fullpath)
+		log.Printf("The metric '%s' have been sent to %s by sender", metric, fullpath)
 	}
 }
