@@ -22,12 +22,12 @@ func NewSenderMonitor(interval time.Duration) *SenderMonitor {
 	}
 }
 
-func (s *SenderMonitor) Run(c *Sender) {
+func (m *SenderMonitor) Run(s *Sender) {
 	for {
 		client := http.Client{Timeout: 5 * time.Second}
 
 		// Send all gauges
-		for metric, value := range c.Storage.GetAllGauges() {
+		for metric, value := range s.Storage.GetAllGauges() {
 			fullpath := fmt.Sprintf("http://localhost:8080/update/gauge/%s/%s", metric, strconv.FormatFloat(value, 'f', -1, 64))
 
 			request, err := http.NewRequest(http.MethodPost, fullpath, nil)
@@ -49,7 +49,7 @@ func (s *SenderMonitor) Run(c *Sender) {
 		}
 
 		// Send all counters
-		for metric, value := range c.Storage.GetAllCounters() {
+		for metric, value := range s.Storage.GetAllCounters() {
 			fullpath := fmt.Sprintf("http://localhost:8080/update/counter/%s/%s", metric, strconv.FormatInt(value, 10))
 
 			request, err := http.NewRequest(http.MethodPost, fullpath, nil)
@@ -70,6 +70,6 @@ func (s *SenderMonitor) Run(c *Sender) {
 			res.Write(os.Stdout)
 		}
 
-		time.Sleep(s.Interval)
+		time.Sleep(m.Interval)
 	}
 }
