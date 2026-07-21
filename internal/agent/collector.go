@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"log"
 	"math/rand/v2"
 	"runtime"
 )
@@ -44,4 +45,5 @@ func (c *Collector) Run() {
 	// Custom Metrics
 	c.Storage.UpdateCounter("PollCount", 1)                  //счётчик, увеличивающийся на 1 при каждом обновлении метрики из пакета runtime
 	c.Storage.UpdateGauge("RandomValue", rand.NormFloat64()) // обновляемое произвольное значение
+	log.Print("The metrics have been harvested by collector")
 }

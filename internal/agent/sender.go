@@ -2,8 +2,8 @@ package agent
 
 import (
 	"fmt"
+	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 )
@@ -25,18 +25,18 @@ func (s *Sender) Run() {
 		request.Header.Add("Content-Type", "text/plain")
 
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			continue
 		}
 
 		res, err := client.Do(request)
 
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			continue
 		}
 		res.Body.Close()
-		res.Write(os.Stdout)
+		log.Printf("The metric %s have been sent to %s", metric, fullpath)
 	}
 
 	// Send all counters
@@ -47,18 +47,16 @@ func (s *Sender) Run() {
 		request.Header.Add("Content-Type", "text/plain")
 
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			continue
 		}
 
 		res, err := client.Do(request)
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			continue
 		}
-
 		res.Body.Close()
-		res.Write(os.Stdout)
+		log.Printf("The metric '%s' have been sent to %s by sender", metric, fullpath)
 	}
-
 }
