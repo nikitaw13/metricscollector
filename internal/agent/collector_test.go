@@ -1,4 +1,3 @@
-Generated TestCollector_Run
 package agent
 
 import "testing"

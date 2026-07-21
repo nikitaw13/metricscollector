@@ -1,10 +1,3 @@
-Generated TestNewAgentStorage
-Generated TestAgentStorage_UpdateGauge
-Generated TestAgentStorage_UpdateCounter
-Generated TestAgentStorage_GetGauge
-Generated TestAgentStorage_GetCounter
-Generated TestAgentStorage_GetAllGauges
-Generated TestAgentStorage_GetAllCounters
 package agent
 
 import (

@@ -1,4 +1,3 @@
-Generated TestSender_Run
 package agent
 
 import "testing"
