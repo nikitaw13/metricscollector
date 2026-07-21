@@ -83,6 +83,6 @@ func (h *MetricsHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 		// io.WriteString(res, "Запрос обновления Counter выполнен!")
 	}
 	// Никаких ошибок не получили, HTTP запрос успешно обработан
-	// res.WriteHeader(http.StatusOK)
+	res.WriteHeader(http.StatusOK)
 	log.Printf("The handler recieved request: %s %s %s and the response is %d", req.RemoteAddr, req.Method, req.URL.Path, http.StatusOK)
 }
