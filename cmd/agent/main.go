@@ -15,13 +15,18 @@ const (
 
 func main() {
 	storage := agent.NewAgentStorage()
-
-	collectorMonitor := agent.NewCollectorMonitor(time.Second * pollInterval)
-	senderMonitor := agent.NewSenderMonitor(time.Second * reportInterval)
-
 	collector := &agent.Collector{Storage: storage}
 	sender := &agent.Sender{Storage: storage}
 
-	collectorMonitor.Run(collector)
-	senderMonitor.Run(sender)
+	tick := 0
+	for {
+		time.Sleep(1 * time.Second)
+		tick++
+		if tick%pollInterval == 0 {
+			collector.Run()
+		}
+		if tick%reportInterval == 0 {
+			sender.Run()
+		}
+	}
 }

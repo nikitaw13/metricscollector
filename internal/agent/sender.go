@@ -12,64 +12,53 @@ type Sender struct {
 	Storage Storage
 }
 
-type SenderMonitor struct {
-	Interval time.Duration
-}
+// One-shot run
+func (s *Sender) Run() {
 
-func NewSenderMonitor(interval time.Duration) *SenderMonitor {
-	return &SenderMonitor{
-		Interval: interval,
-	}
-}
+	client := http.Client{Timeout: 5 * time.Second}
 
-func (m *SenderMonitor) Run(s *Sender) {
-	for {
-		client := http.Client{Timeout: 5 * time.Second}
+	// Send all gauges
+	for metric, value := range s.Storage.GetAllGauges() {
+		fullpath := fmt.Sprintf("http://localhost:8080/update/gauge/%s/%s", metric, strconv.FormatFloat(value, 'f', -1, 64))
 
-		// Send all gauges
-		for metric, value := range s.Storage.GetAllGauges() {
-			fullpath := fmt.Sprintf("http://localhost:8080/update/gauge/%s/%s", metric, strconv.FormatFloat(value, 'f', -1, 64))
+		request, err := http.NewRequest(http.MethodPost, fullpath, nil)
+		request.Header.Add("Content-Type", "text/plain")
 
-			request, err := http.NewRequest(http.MethodPost, fullpath, nil)
-			request.Header.Add("Content-Type", "text/plain")
-
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-
-			res, err := client.Do(request)
-
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
-			res.Body.Close()
-			res.Write(os.Stdout)
+		if err != nil {
+			fmt.Println(err)
+			continue
 		}
 
-		// Send all counters
-		for metric, value := range s.Storage.GetAllCounters() {
-			fullpath := fmt.Sprintf("http://localhost:8080/update/counter/%s/%s", metric, strconv.FormatInt(value, 10))
+		res, err := client.Do(request)
 
-			request, err := http.NewRequest(http.MethodPost, fullpath, nil)
-			request.Header.Add("Content-Type", "text/plain")
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+		res.Body.Close()
+		res.Write(os.Stdout)
+	}
 
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
+	// Send all counters
+	for metric, value := range s.Storage.GetAllCounters() {
+		fullpath := fmt.Sprintf("http://localhost:8080/update/counter/%s/%s", metric, strconv.FormatInt(value, 10))
 
-			res, err := client.Do(request)
-			if err != nil {
-				fmt.Println(err)
-				continue
-			}
+		request, err := http.NewRequest(http.MethodPost, fullpath, nil)
+		request.Header.Add("Content-Type", "text/plain")
 
-			res.Body.Close()
-			res.Write(os.Stdout)
+		if err != nil {
+			fmt.Println(err)
+			continue
 		}
 
-		time.Sleep(m.Interval)
+		res, err := client.Do(request)
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		res.Body.Close()
+		res.Write(os.Stdout)
 	}
+
 }
