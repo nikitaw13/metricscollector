@@ -2,22 +2,28 @@ package agent
 
 import "testing"
 
-func TestCollector_Run(t *testing.T) {
-	type fields struct {
-		Storage Storage
+func TestGet_Run(t *testing.T) {
+	storage := NewAgentStorage()
+	c := &Collector{Storage: storage}
+	c.Run()
+
+	// Проверяй напрямую — ключ существует и значение разумное
+	val, _ := storage.GetGauge("Alloc")
+	if val == 0 {
+		t.Error("Alloc should be > 0")
 	}
-	tests := []struct {
-		name   string
-		fields fields
-	}{
-		// TODO: Add test cases.
+
+	// PollCount должен быть 1
+	pollCount, _ := storage.GetCounter("PollCount")
+	if pollCount != 1 {
+		t.Errorf("PollCount = %d, want 1", pollCount)
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			c := &Collector{
-				Storage: tt.fields.Storage,
-			}
-			c.Run()
-		})
+
+	c.Run()
+
+	// PollCount должен быть 2
+	pollCount, _ = storage.GetCounter("PollCount")
+	if pollCount != 2 {
+		t.Errorf("PollCount = %d, want 2", pollCount)
 	}
 }

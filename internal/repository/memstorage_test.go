@@ -10,7 +10,13 @@ func TestNewMemStorage(t *testing.T) {
 		name string
 		want *MemStorage
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Return NewMemStorage instance",
+			want: &MemStorage{
+				gauge:   map[string]float64{},
+				counter: map[string]int64{},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -36,7 +42,33 @@ func TestMemStorage_UpdateGauge(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Test mertric_gauge is 1.00",
+			fields: fields{
+				gauge:   map[string]float64{"mertric_gauge": 1.00},
+				counter: map[string]int64{"mertric_counter": 1},
+			},
+			args:    args{name: "mertric_gauge", value: 1.00},
+			wantErr: false,
+		},
+		{
+			name: "Test mertric_gauge is -1.00",
+			fields: fields{
+				gauge:   map[string]float64{"mertric_gauge": -1.00},
+				counter: map[string]int64{"mertric_counter": 1},
+			},
+			args:    args{name: "mertric_gauge", value: -1.00},
+			wantErr: false,
+		},
+		{
+			name: "Test mertric_gauge is 1111.50",
+			fields: fields{
+				gauge:   map[string]float64{"mertric_gauge": 1111.50},
+				counter: map[string]int64{"mertric_counter": 1},
+			},
+			args:    args{name: "mertric_gauge", value: 1111.50},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -66,7 +98,42 @@ func TestMemStorage_UpdateCounter(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Test mertric_counter is 1",
+			fields: fields{
+				gauge:   map[string]float64{"mertric_gauge": 1.00},
+				counter: map[string]int64{"mertric_counter": 1},
+			},
+			args:    args{name: "mertric_counter", value: 1},
+			wantErr: false,
+		},
+		{
+			name: "Test mertric_counter is -11111",
+			fields: fields{
+				gauge:   map[string]float64{"mertric_gauge": 1.00},
+				counter: map[string]int64{"mertric_counter": -1111},
+			},
+			args:    args{name: "mertric_counter", value: -1111},
+			wantErr: false,
+		},
+		{
+			name: "Test mertric_counter is 1111",
+			fields: fields{
+				gauge:   map[string]float64{"mertric_gauge": 1.00},
+				counter: map[string]int64{"mertric_counter": 1},
+			},
+			args:    args{name: "mertric_counter", value: 1111},
+			wantErr: false,
+		},
+		{
+			name: "Test mertric_counter is 0",
+			fields: fields{
+				gauge:   map[string]float64{"mertric_gauge": 1.00},
+				counter: map[string]int64{"mertric_counter": 1},
+			},
+			args:    args{name: "mertric_counter", value: 0},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

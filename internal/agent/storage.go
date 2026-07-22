@@ -1,6 +1,7 @@
 package agent
 
 // Интерфейс для взаимодействия с хранилищем
+// Единственный потребитель — тесты
 type Storage interface {
 	UpdateGauge(name string, value float64) error
 	UpdateCounter(name string, value int64) error
