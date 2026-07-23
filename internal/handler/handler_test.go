@@ -29,7 +29,7 @@ func TestMethods_ServeHTTP(t *testing.T) {
 			target: "http://localhost:8080/update/counter/test/1",
 			want: response{
 				code:        http.StatusOK,
-				response:    "Запрос обновления Counter выполнен!\n",
+				response:    "Запрос по метрике test обработан!\n",
 				contenttype: "text/plain",
 			},
 		},
@@ -143,7 +143,7 @@ func TestMetricTypes_ServeHTTP(t *testing.T) {
 			target: "http://localhost:8080/update/gauge/test/1.00",
 			want: response{
 				code:        http.StatusOK,
-				response:    "Запрос обновления Gauge выполнен!\n",
+				response:    "Запрос по метрике test обработан!\n",
 				contenttype: "text/plain",
 			},
 		},
@@ -153,7 +153,7 @@ func TestMetricTypes_ServeHTTP(t *testing.T) {
 			target: "http://localhost:8080/update/counter/test/100",
 			want: response{
 				code:        http.StatusOK,
-				response:    "Запрос обновления Counter выполнен!\n",
+				response:    "Запрос по метрике test обработан!\n",
 				contenttype: "text/plain",
 			},
 		},
@@ -291,7 +291,7 @@ func TestMetricValues_ServeHTTP(t *testing.T) {
 			target: "http://localhost:8080/update/gauge/name/1.00",
 			want: response{
 				code:        http.StatusOK,
-				response:    "Запрос обновления Gauge выполнен!\n",
+				response:    "Запрос по метрике name обработан!\n",
 				contenttype: "text/plain",
 			},
 		},
@@ -301,7 +301,7 @@ func TestMetricValues_ServeHTTP(t *testing.T) {
 			target: "http://localhost:8080/update/gauge/name/-1000.00",
 			want: response{
 				code:        http.StatusOK,
-				response:    "Запрос обновления Gauge выполнен!\n",
+				response:    "Запрос по метрике name обработан!\n",
 				contenttype: "text/plain",
 			},
 		},
@@ -311,7 +311,7 @@ func TestMetricValues_ServeHTTP(t *testing.T) {
 			target: "http://localhost:8080/update/gauge/name/1000",
 			want: response{
 				code:        http.StatusOK,
-				response:    "Запрос обновления Gauge выполнен!\n",
+				response:    "Запрос по метрике name обработан!\n",
 				contenttype: "text/plain",
 			},
 		},
@@ -321,7 +321,7 @@ func TestMetricValues_ServeHTTP(t *testing.T) {
 			target: "http://localhost:8080/update/gauge/name/-1000",
 			want: response{
 				code:        http.StatusOK,
-				response:    "Запрос обновления Gauge выполнен!\n",
+				response:    "Запрос по метрике name обработан!\n",
 				contenttype: "text/plain",
 			},
 		},
@@ -343,7 +343,7 @@ func TestMetricValues_ServeHTTP(t *testing.T) {
 			target: "http://localhost:8080/update/counter/name/1",
 			want: response{
 				code:        http.StatusOK,
-				response:    "Запрос обновления Counter выполнен!\n",
+				response:    "Запрос по метрике name обработан!\n",
 				contenttype: "text/plain",
 			},
 		},
@@ -353,7 +353,7 @@ func TestMetricValues_ServeHTTP(t *testing.T) {
 			target: "http://localhost:8080/update/counter/name/-1001",
 			want: response{
 				code:        http.StatusOK,
-				response:    "Запрос обновления Counter выполнен!\n",
+				response:    "Запрос по метрике name обработан!\n",
 				contenttype: "text/plain",
 			},
 		},
