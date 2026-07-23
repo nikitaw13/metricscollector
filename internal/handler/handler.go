@@ -5,86 +5,100 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/PrometheRus/metricscollector/internal/repository"
+	"github.com/go-chi/chi"
 )
 
 type MetricsHandler struct {
 	Storage repository.Repository
 }
 
-func (h *MetricsHandler) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	// Если метод != POST - остальные проверки не имеют смысла
-	if req.Method != http.MethodPost {
-		http.Error(res, "Эндпоинт принимает метрики только по протоколу HTTP методом POST", http.StatusMethodNotAllowed)
-		return
+func TypeMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
+		t := chi.URLParam(req, "TYPE")
+		if t != model.Gauge && t != model.Counter {
+			http.Error(res, "Invalid metric type", http.StatusBadRequest)
+			return
+		}
+		next.ServeHTTP(res, req)
+	})
+}
+
+func (h *MetricsHandler) GetRootHandler(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Set("Content-Type", "text/html; charset=UTF-8")
+
+	for k, v := range h.Storage.GetAllCounters() {
+		fmt.Fprintf(rw, "The metric name is: '%v' and its value is: '%v'<br>", k, v)
 	}
-
-	// 0 - update, 1 - type, 2 - key, 3 - value
-	segments := strings.Split(strings.Trim(req.URL.Path, "/"), "/")
-
-	// При попытке передать запрос без типа метрики возвращать http.StatusNotFound
-	// !Отсутствует в постановке задачи!
-	if len(segments) == 1 {
-		http.Error(res, "Значение типа метрики не передано", http.StatusNotFound)
-		return
+	for k, v := range h.Storage.GetAllGauges() {
+		fmt.Fprintf(rw, "The metric name is: '%v' and its value is: '%v'<br>", k, v)
 	}
+}
 
-	// При попытке передать запрос с некорректным типом метрики возвращать http.StatusBadRequest
-	mType := segments[1]
-	if mType != model.Gauge && mType != model.Counter {
-		http.Error(res, "Запрос с некорректным типом метрики", http.StatusBadRequest)
-		return
+func (h *MetricsHandler) GetMetricHandler(res http.ResponseWriter, r *http.Request) {
+	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	switch chi.URLParam(r, "TYPE") {
+	case model.Gauge:
+		result, err := h.Storage.GetGauge(chi.URLParam(r, "METRIC"))
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusNotFound)
+			return
+		}
+		fmt.Fprintf(res, "%f\n", result)
+
+	case model.Counter:
+		result, err := h.Storage.GetCounter(chi.URLParam(r, "METRIC"))
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusNotFound)
+			return
+		}
+		fmt.Fprintf(res, "%d\n", result)
 	}
+}
 
-	// При попытке передать запрос без имени метрики возвращать http.StatusNotFound
-	if len(segments) == 2 || segments[2] == "" {
-		http.Error(res, "Значение имени метрики не передано", http.StatusNotFound)
-		return
-	}
+func (h *MetricsHandler) PostNoMetricHandler(res http.ResponseWriter, req *http.Request) {
+	http.Error(res, "Metric type is required", http.StatusNotFound)
+}
 
-	// При попытке передать запрос без значения метрики возвращать StatusBadRequest
-	if len(segments) == 3 {
-		http.Error(res, "Значение метрики не передано", http.StatusBadRequest)
-		return
-	}
+func (h *MetricsHandler) PostNoValueHandler(res http.ResponseWriter, req *http.Request) {
+	chi.URLParam(req, "VALUE")
+	http.Error(res, "Metric value is required", http.StatusBadRequest)
+}
 
-	mName := segments[2]
-
-	switch mType {
+func (h *MetricsHandler) PostFullHandler(res http.ResponseWriter, req *http.Request) {
+	switch chi.URLParam(req, "TYPE") {
 	case "gauge":
-		mGaugeValue, err := strconv.ParseFloat(segments[3], 64)
+		mGaugeValue, err := strconv.ParseFloat(chi.URLParam(req, "VALUE"), 64)
 		// При попытке передать запрос с некорректным значением метрики возвращать http.StatusBadRequest.
 		if err != nil {
-			http.Error(res, "Значение метрики некорректно", http.StatusBadRequest)
+			http.Error(res, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
 
 		// При ошибке обработки запроса обновления Gauge возвращать http.StatusInternalServerError
-		if err := h.Storage.UpdateGauge(mName, mGaugeValue); err != nil {
-			http.Error(res, "Ошибка при обновлении Gauge", http.StatusInternalServerError)
+		if err := h.Storage.UpdateGauge(chi.URLParam(req, "METRIC"), mGaugeValue); err != nil {
+			http.Error(res, "Failed to update Gauge", http.StatusInternalServerError)
 			return
 		}
 
 	case "counter":
-		mCounterValue, err := strconv.ParseInt(segments[3], 10, 64)
+		mCounterValue, err := strconv.ParseInt(chi.URLParam(req, "VALUE"), 10, 64)
 		// При попытке передать запрос с некорректным значением метрики возвращать http.StatusBadRequest.
 		if err != nil {
-			http.Error(res, "Значение метрики некорректно", http.StatusBadRequest)
+			http.Error(res, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
 		// При ошибке обработки запроса обновления Counter возвращать http.StatusInternalServerError
-		if err := h.Storage.UpdateCounter(mName, mCounterValue); err != nil {
-			http.Error(res, "Ошибка при обновлении Counter", http.StatusInternalServerError)
+		if err := h.Storage.UpdateCounter(chi.URLParam(req, "METRIC"), mCounterValue); err != nil {
+			http.Error(res, "Failed to update Counter", http.StatusInternalServerError)
 			return
 		}
 	}
-	// Никаких ошибок не получили, HTTP запрос успешно обработан
+
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusOK)
-	body := fmt.Sprintf("Запрос по метрике %s обработан!\n", mName)
-	res.Write([]byte(body))
+	fmt.Fprintf(res, "Metric '%s' updated✅\n", chi.URLParam(req, "METRIC"))
 	log.Printf("The handler received request: %s %s %s and the response is %d", req.RemoteAddr, req.Method, req.URL.Path, http.StatusOK)
 }

@@ -6,414 +6,287 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/PrometheRus/metricscollector/internal/repository"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestMethods_ServeHTTP(t *testing.T) {
-	type response struct {
-		code        int
-		response    string
-		contenttype string
-	}
-	tests := []struct {
-		name   string
-		method string
-		target string
-		want   response
-	}{
-		// Methods
-		{
-			name:   "200 if POST",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/counter/test/1",
-			want: response{
-				code:        http.StatusOK,
-				response:    "Запрос по метрике test обработан!\n",
-				contenttype: "text/plain",
-			},
-		},
-		{
-			name:   "405 if GET",
-			method: http.MethodGet,
-			target: "http://localhost:8080/update/counter/test/1",
-			want: response{
-				code:        http.StatusMethodNotAllowed,
-				response:    "Эндпоинт принимает метрики только по протоколу HTTP методом POST\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
-		},
-		{
-			name:   "405 if PUT",
-			method: http.MethodPut,
-			target: "http://localhost:8080/update/counter/test/1",
-			want: response{
-				code:        http.StatusMethodNotAllowed,
-				response:    "Эндпоинт принимает метрики только по протоколу HTTP методом POST\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
-		},
-		{
-			name:   "405 if HEAD",
-			method: http.MethodHead,
-			target: "http://localhost:8080/update/counter/test/1",
-			want: response{
-				code:        http.StatusMethodNotAllowed,
-				response:    "Эндпоинт принимает метрики только по протоколу HTTP методом POST\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
-		},
-	}
-
-	for _, test := range tests {
-		var r = repository.NewMemStorage()
-		h := &MetricsHandler{Storage: r}
-
-		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(test.method, test.target, nil)
-			// создаём новый Recorder
-			w := httptest.NewRecorder()
-
-			h.ServeHTTP(w, request)
-
-			res := w.Result()
-			// проверяем код ответа
-			assert.Equal(t, test.want.code, res.StatusCode)
-
-			// проверяем Content-Type
-			assert.Equal(t, test.want.contenttype, res.Header.Get("Content-Type"))
-
-			// получаем и проверяем тело запроса
-			defer res.Body.Close()
-
-			resBody, err := io.ReadAll(res.Body)
-			assert.NoError(t, err)
-
-			assert.Equal(t, test.want.response, string(resBody))
-		})
-	}
+var testTable = []struct {
+	name   string
+	method string
+	path   string
+	want   string
+	status int
+}{
+	{"405 GET", "GET", "/update/counter/test/1", "...", 405},
+	{"400 invalid type", "POST", "/update/random/test/1", "...", 400},
+	{"404 no metric name", "POST", "/update/gauge", "...", 404},
+	{"400 no value", "POST", "/update/gauge/name", "...", 400},
+	{"200 ok gauge", "POST", "/update/gauge/name/1.00", "...", 200},
+	// ...
 }
 
-func TestMetricTypes_ServeHTTP(t *testing.T) {
-	type response struct {
-		code        int
-		response    string
-		contenttype string
-	}
-	tests := []struct {
-		name   string
-		method string
-		target string
-		want   response
-	}{
-		{
-			name:   "404 if POST without metric type",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/",
-			want: response{
-				code:        http.StatusNotFound,
-				response:    "Значение типа метрики не передано\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
-		},
-		{
-			name:   "400 if POST with 'random' type",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/random",
-			want: response{
-				code:        http.StatusBadRequest,
-				response:    "Запрос с некорректным типом метрики\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
-		},
-		// Returns 301 (redirect)
-		// {
-		// 	name:   "404 if POST with empty type",
-		// 	method: http.MethodPost,
-		// 	target: "http://localhost:8080/update//",
-		// 	want: response{
-		// 		code:        http.StatusNotFound,
-		// 		response:    "Значение типа метрики не передано\n",
-		// 		contenttype: "text/plain; charset=utf-8",
-		// 	},
-		// },
-		{
-			name:   "200 if POST with 'gauge' type",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/gauge/test/1.00",
-			want: response{
-				code:        http.StatusOK,
-				response:    "Запрос по метрике test обработан!\n",
-				contenttype: "text/plain",
-			},
-		},
-		{
-			name:   "200 if POST 'counter' type",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/counter/test/100",
-			want: response{
-				code:        http.StatusOK,
-				response:    "Запрос по метрике test обработан!\n",
-				contenttype: "text/plain",
-			},
-		},
-	}
+func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
+	req, err := http.NewRequest(method, ts.URL+path, nil)
+	require.NoError(t, err)
 
-	for _, test := range tests {
-		var r = repository.NewMemStorage()
-		h := &MetricsHandler{Storage: r}
+	resp, err := ts.Client().Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
 
-		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(test.method, test.target, nil)
-			// создаём новый Recorder
-			w := httptest.NewRecorder()
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
 
-			h.ServeHTTP(w, request)
-
-			res := w.Result()
-			// проверяем код ответа
-			assert.Equal(t, test.want.code, res.StatusCode)
-
-			// проверяем Content-Type
-			assert.Equal(t, test.want.contenttype, res.Header.Get("Content-Type"))
-
-			// получаем и проверяем тело запроса
-			defer res.Body.Close()
-
-			resBody, err := io.ReadAll(res.Body)
-			assert.NoError(t, err)
-
-			assert.Equal(t, test.want.response, string(resBody))
-		})
-	}
+	return resp, string(respBody)
 }
 
-func TestMetricNames_ServeHTTP(t *testing.T) {
-	type response struct {
-		code        int
-		response    string
-		contenttype string
-	}
-	tests := []struct {
-		name   string
-		method string
-		target string
-		want   response
-	}{
-		{
-			name:   "404 if POST without gauge metric name",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/gauge",
-			want: response{
-				code:        http.StatusNotFound,
-				response:    "Значение имени метрики не передано\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
-		},
-		{
-			name:   "404 if POST without counter metric name",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/counter",
-			want: response{
-				code:        http.StatusNotFound,
-				response:    "Значение имени метрики не передано\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
-		},
-	}
-
-	for _, test := range tests {
-		var r = repository.NewMemStorage()
-		h := &MetricsHandler{Storage: r}
-
-		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(test.method, test.target, nil)
-			// создаём новый Recorder
-			w := httptest.NewRecorder()
-
-			h.ServeHTTP(w, request)
-
-			res := w.Result()
-			// проверяем код ответа
-			assert.Equal(t, test.want.code, res.StatusCode)
-
-			// проверяем Content-Type
-			assert.Equal(t, test.want.contenttype, res.Header.Get("Content-Type"))
-
-			// получаем и проверяем тело запроса
-			defer res.Body.Close()
-
-			resBody, err := io.ReadAll(res.Body)
-			assert.NoError(t, err)
-
-			assert.Equal(t, test.want.response, string(resBody))
-		})
-	}
+type table_test_template struct {
+	name   string
+	method string
+	path   string
+	want   table_want_template
 }
 
-func TestMetricValues_ServeHTTP(t *testing.T) {
-	type response struct {
-		code        int
-		response    string
-		contenttype string
-	}
-	tests := []struct {
-		name   string
-		method string
-		target string
-		want   response
-	}{
-		// Empty value
-		{
-			name:   "400 if POST gauge value empty",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/gauge/name",
-			want: response{
-				code:        http.StatusBadRequest,
-				response:    "Значение метрики не передано\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
-		},
-		{
-			name:   "400 if POST counter value empty",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/counter/name",
-			want: response{
-				code:        http.StatusBadRequest,
-				response:    "Значение метрики не передано\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
-		},
-		// Parse Gauge values
-		{
-			name:   "200 if POST gauge value is positive float",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/gauge/name/1.00",
-			want: response{
-				code:        http.StatusOK,
-				response:    "Запрос по метрике name обработан!\n",
-				contenttype: "text/plain",
-			},
-		},
-		{
-			name:   "200 if POST gauge value is negative float",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/gauge/name/-1000.00",
-			want: response{
-				code:        http.StatusOK,
-				response:    "Запрос по метрике name обработан!\n",
-				contenttype: "text/plain",
-			},
-		},
-		{
-			name:   "200 if POST gauge value is positive int",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/gauge/name/1000",
-			want: response{
-				code:        http.StatusOK,
-				response:    "Запрос по метрике name обработан!\n",
-				contenttype: "text/plain",
-			},
-		},
-		{
-			name:   "200 if POST gauge value is negative int",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/gauge/name/-1000",
-			want: response{
-				code:        http.StatusOK,
-				response:    "Запрос по метрике name обработан!\n",
-				contenttype: "text/plain",
-			},
-		},
-		{
-			name:   "400 if POST gauge value is latin",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/gauge/name/value",
-			want: response{
-				code:        http.StatusBadRequest,
-				response:    "Значение метрики некорректно\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
-		},
+type table_want_template struct {
+	code        int
+	response    string
+	contenttype string
+}
 
-		// Parse Counter values
-		{
-			name:   "200 if POST counter value is positive int",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/counter/name/1",
-			want: response{
-				code:        http.StatusOK,
-				response:    "Запрос по метрике name обработан!\n",
-				contenttype: "text/plain",
-			},
+var table_test_methods = []table_test_template{
+	{
+		name:   "200 if proper POST",
+		method: http.MethodPost,
+		path:   "/update/counter/test/1",
+		want: table_want_template{
+			code:        http.StatusOK,
+			response:    "Metric 'test' updated✅\n",
+			contenttype: "text/plain; charset=utf-8",
 		},
-		{
-			name:   "200 if POST counter value is negative int",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/counter/name/-1001",
-			want: response{
-				code:        http.StatusOK,
-				response:    "Запрос по метрике name обработан!\n",
-				contenttype: "text/plain",
-			},
+	},
+	{
+		name:   "405 if GET /update",
+		method: http.MethodGet,
+		path:   "/update/counter/test/1",
+		want: table_want_template{
+			code:        http.StatusMethodNotAllowed,
+			response:    "",
+			contenttype: "text/plain; charset=utf-8",
 		},
-		{
-			name:   "400 if POST counter value is positive float",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/counter/name/1000.00",
-			want: response{
-				code:        http.StatusBadRequest,
-				response:    "Значение метрики некорректно\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
+	},
+	{
+		name:   "405 if PUT /update",
+		method: http.MethodPut,
+		path:   "/update/counter/test/1",
+		want: table_want_template{
+			code:        http.StatusMethodNotAllowed,
+			response:    "",
+			contenttype: "text/plain; charset=utf-8",
 		},
-		{
-			name:   "400 if POST counter value is negative float",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/counter/name/-1001,00",
-			want: response{
-				code:        http.StatusBadRequest,
-				response:    "Значение метрики некорректно\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
+	},
+	{
+		name:   "405 if HEAD /update",
+		method: http.MethodHead,
+		path:   "/update/counter/test/1",
+		want: table_want_template{
+			code:        http.StatusMethodNotAllowed,
+			response:    "",
+			contenttype: "text/plain; charset=utf-8",
 		},
-		{
-			name:   "400 if POST counter value is latin",
-			method: http.MethodPost,
-			target: "http://localhost:8080/update/counter/name/value",
-			want: response{
-				code:        http.StatusBadRequest,
-				response:    "Значение метрики некорректно\n",
-				contenttype: "text/plain; charset=utf-8",
-			},
+	},
+}
+
+var table_test_types = []table_test_template{
+	{
+		name:   "404 if POST without metric type",
+		method: http.MethodPost,
+		path:   "/update/",
+		want: table_want_template{
+			code:        http.StatusNotFound,
+			response:    "Metric type is required\n",
+			contenttype: "text/plain; charset=utf-8",
 		},
-	}
+	},
+	{
+		name:   "400 if POST with 'random' type",
+		method: http.MethodPost,
+		path:   "/update/random/",
+		want: table_want_template{
+			code:        http.StatusBadRequest,
+			response:    "Invalid metric type\n",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
+	{
+		name:   "200 if POST with 'gauge' type",
+		method: http.MethodPost,
+		path:   "/update/gauge/test/1.00",
+		want: table_want_template{
+			code:        http.StatusOK,
+			response:    "Metric 'test' updated✅\n",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
+	{
+		name:   "200 if POST with 'counter' type",
+		method: http.MethodPost,
+		path:   "/update/counter/test/1.00",
+		want: table_want_template{
+			code:        http.StatusOK,
+			response:    "Metric 'test' updated✅\n",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
+}
 
-	for _, test := range tests {
-		var r = repository.NewMemStorage()
-		h := &MetricsHandler{Storage: r}
+var table_test_metrics = []table_test_template{
+	{
+		name:   "404 if POST without gauge metric name",
+		method: http.MethodPost,
+		path:   "/update/gauge",
+		want: table_want_template{
+			code:        http.StatusNotFound,
+			response:    "Invalid metric value",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
+	{
+		name:   "404 if POST without counter metric name",
+		method: http.MethodPost,
+		path:   "/update/counter",
+		want: table_want_template{
+			code:        http.StatusNotFound,
+			response:    "Invalid metric value",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
+}
 
-		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(test.method, test.target, nil)
-			// создаём новый Recorder
-			w := httptest.NewRecorder()
+var table_test_values = []table_test_template{
+	// Empty value
+	{
+		name:   "400 if POST gauge value empty",
+		method: http.MethodPost,
+		path:   "/update/gauge/name",
+		want: table_want_template{
+			code:        http.StatusBadRequest,
+			response:    "Metric value is required\n",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
+	{
+		name:   "400 if counter gauge value empty",
+		method: http.MethodPost,
+		path:   "/update/counter/name",
+		want: table_want_template{
+			code:        http.StatusBadRequest,
+			response:    "Metric value is required\n",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
+	// Parse Gauge values
+	{
+		name:   "200 if POST gauge value is positive float",
+		method: http.MethodPost,
+		path:   "/update/gauge/name/1.00",
+		want: table_want_template{
+			code:        http.StatusOK,
+			response:    "Metric 'name' updated✅\n",
+			contenttype: "text/plain",
+		},
+	},
+	{
+		name:   "200 if POST gauge value is negative float",
+		method: http.MethodPost,
+		path:   "/update/gauge/name/-1000.00",
+		want: table_want_template{
+			code:        http.StatusOK,
+			response:    "Metric 'name' updated✅\n",
+			contenttype: "text/plain",
+		},
+	},
+	{
+		name:   "200 if POST gauge value is positive int",
+		method: http.MethodPost,
+		path:   "/update/gauge/name/1000",
+		want: table_want_template{
+			code:        http.StatusOK,
+			response:    "Metric 'name' updated✅\n",
+			contenttype: "text/plain",
+		},
+	},
+	{
+		name:   "200 if POST gauge value is negative int",
+		method: http.MethodPost,
+		path:   "/update/gauge/name/-1000",
+		want: table_want_template{
+			code:        http.StatusOK,
+			response:    "Metric 'name' updated✅\n",
+			contenttype: "text/plain",
+		},
+	},
+	{
+		name:   "400 if POST gauge value is latin",
+		method: http.MethodPost,
+		path:   "/update/gauge/name/value",
+		want: table_want_template{
+			code:        http.StatusBadRequest,
+			response:    "Invalid metric value\n",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
 
-			h.ServeHTTP(w, request)
+	// Parse Counter values
+	{
+		name:   "200 if POST counter value is positive int",
+		method: http.MethodPost,
+		path:   "/update/counter/name/1",
+		want: table_want_template{
+			code:        http.StatusOK,
+			response:    "Metric 'name' updated✅\n",
+			contenttype: "text/plain",
+		},
+	},
+	{
+		name:   "200 if POST counter value is negative int",
+		method: http.MethodPost,
+		path:   "/update/counter/name/-1001",
+		want: table_want_template{
+			code:        http.StatusOK,
+			response:    "Metric 'name' updated✅\n",
+			contenttype: "text/plain",
+		},
+	},
+	{
+		name:   "400 if POST counter value is positive float",
+		method: http.MethodPost,
+		path:   "/update/counter/name/1000.00",
+		want: table_want_template{
+			code:        http.StatusBadRequest,
+			response:    "Invalid metric value\n",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
+	{
+		name:   "400 if POST counter value is negative float",
+		method: http.MethodPost,
+		path:   "/update/counter/name/-1001,00",
+		want: table_want_template{
+			code:        http.StatusBadRequest,
+			response:    "Invalid metric value\n",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
+	{
+		name:   "400 if POST counter value is latin",
+		method: http.MethodPost,
+		path:   "/update/counter/name/value",
+		want: table_want_template{
+			code:        http.StatusBadRequest,
+			response:    "Invalid metric value\n",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
+}
 
-			res := w.Result()
-			// проверяем код ответа
-			assert.Equal(t, test.want.code, res.StatusCode)
-
-			// проверяем Content-Type
-			assert.Equal(t, test.want.contenttype, res.Header.Get("Content-Type"))
-
-			// получаем и проверяем тело запроса
-			defer res.Body.Close()
-
-			resBody, err := io.ReadAll(res.Body)
-			assert.NoError(t, err)
-
-			assert.Equal(t, test.want.response, string(resBody))
-		})
-	}
+func Test_ServeHTTP(t *testing.T) {
+	// TODO()
 }
