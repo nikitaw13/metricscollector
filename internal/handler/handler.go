@@ -45,7 +45,7 @@ func (h *MetricsHandler) GetMetricHandler(res http.ResponseWriter, r *http.Reque
 			http.Error(res, err.Error(), http.StatusNotFound)
 			return
 		}
-		fmt.Fprintf(res, "%f\n", result)
+		fmt.Fprintf(res, "%g\n", result)
 
 	case model.Counter:
 		result, err := h.Storage.GetCounter(chi.URLParam(r, "METRIC"))
