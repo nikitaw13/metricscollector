@@ -27,13 +27,17 @@ func TypeMiddleware(next http.Handler) http.Handler {
 
 func (h *MetricsHandler) GetRootHandler(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "text/html; charset=UTF-8")
-
+	// Start of the HTML page
+	fmt.Fprintln(rw, "<html><body>")
+	fmt.Fprintln(rw, "<h1>List of names and results of all currently known metrics</h1>")
 	for k, v := range h.Storage.GetAllCounters() {
-		fmt.Fprintf(rw, "The metric name is: '%v' and its value is: '%v'<br>", k, v)
+		fmt.Fprintf(rw, "<b>%v</b>:   <code>%v</code><br>", k, v)
 	}
 	for k, v := range h.Storage.GetAllGauges() {
-		fmt.Fprintf(rw, "The metric name is: '%v' and its value is: '%v'<br>", k, v)
+		fmt.Fprintf(rw, "<b>%v</b>:   <code>%v</code><br>", k, v)
 	}
+	// End of the HTML page
+	fmt.Fprintln(rw, "<hr></body></html>")
 }
 
 func (h *MetricsHandler) GetMetricHandler(res http.ResponseWriter, r *http.Request) {
