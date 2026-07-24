@@ -2,7 +2,6 @@ package handler
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 
@@ -55,15 +54,21 @@ func (h *MetricsHandler) GetMetricHandler(res http.ResponseWriter, r *http.Reque
 			return
 		}
 		fmt.Fprintf(res, "%d\n", result)
+	default:
+		http.Error(res, "Invalid metric type", http.StatusBadRequest)
+		return
 	}
 }
 
+func (h *MetricsHandler) PostNoTypeHandler(res http.ResponseWriter, req *http.Request) {
+	http.Error(res, "Metric type is required", http.StatusBadRequest)
+}
+
 func (h *MetricsHandler) PostNoMetricHandler(res http.ResponseWriter, req *http.Request) {
-	http.Error(res, "Metric type is required", http.StatusNotFound)
+	http.Error(res, "Metric is required", http.StatusNotFound)
 }
 
 func (h *MetricsHandler) PostNoValueHandler(res http.ResponseWriter, req *http.Request) {
-	chi.URLParam(req, "VALUE")
 	http.Error(res, "Metric value is required", http.StatusBadRequest)
 }
 
@@ -97,8 +102,8 @@ func (h *MetricsHandler) PostFullHandler(res http.ResponseWriter, req *http.Requ
 		}
 	}
 
-	res.Header().Set("Content-Type", "text/plain")
+	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.WriteHeader(http.StatusOK)
 	fmt.Fprintf(res, "Metric '%s' updated✅\n", chi.URLParam(req, "METRIC"))
-	log.Printf("The handler received request: %s %s %s and the response is %d", req.RemoteAddr, req.Method, req.URL.Path, http.StatusOK)
+	// log.Printf("The handler received request: %s %s %s and the response is %d", req.RemoteAddr, req.Method, req.URL.Path, http.StatusOK)
 }

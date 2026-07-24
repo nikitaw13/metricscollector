@@ -6,23 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/PrometheRus/metricscollector/internal/repository"
+	"github.com/go-chi/chi"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-var testTable = []struct {
-	name   string
-	method string
-	path   string
-	want   string
-	status int
-}{
-	{"405 GET", "GET", "/update/counter/test/1", "...", 405},
-	{"400 invalid type", "POST", "/update/random/test/1", "...", 400},
-	{"404 no metric name", "POST", "/update/gauge", "...", 404},
-	{"400 no value", "POST", "/update/gauge/name", "...", 400},
-	{"200 ok gauge", "POST", "/update/gauge/name/1.00", "...", 200},
-	// ...
-}
 
 func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, nil)
@@ -63,13 +51,13 @@ var table_test_methods = []table_test_template{
 		},
 	},
 	{
-		name:   "405 if GET /update",
+		name:   "405 if GET",
 		method: http.MethodGet,
 		path:   "/update/counter/test/1",
 		want: table_want_template{
 			code:        http.StatusMethodNotAllowed,
 			response:    "",
-			contenttype: "text/plain; charset=utf-8",
+			contenttype: "",
 		},
 	},
 	{
@@ -79,7 +67,7 @@ var table_test_methods = []table_test_template{
 		want: table_want_template{
 			code:        http.StatusMethodNotAllowed,
 			response:    "",
-			contenttype: "text/plain; charset=utf-8",
+			contenttype: "",
 		},
 	},
 	{
@@ -89,18 +77,18 @@ var table_test_methods = []table_test_template{
 		want: table_want_template{
 			code:        http.StatusMethodNotAllowed,
 			response:    "",
-			contenttype: "text/plain; charset=utf-8",
+			contenttype: "",
 		},
 	},
 }
 
 var table_test_types = []table_test_template{
 	{
-		name:   "404 if POST without metric type",
+		name:   "400 if POST without metric type",
 		method: http.MethodPost,
-		path:   "/update/",
+		path:   "/update",
 		want: table_want_template{
-			code:        http.StatusNotFound,
+			code:        http.StatusBadRequest,
 			response:    "Metric type is required\n",
 			contenttype: "text/plain; charset=utf-8",
 		},
@@ -128,7 +116,7 @@ var table_test_types = []table_test_template{
 	{
 		name:   "200 if POST with 'counter' type",
 		method: http.MethodPost,
-		path:   "/update/counter/test/1.00",
+		path:   "/update/counter/test/1",
 		want: table_want_template{
 			code:        http.StatusOK,
 			response:    "Metric 'test' updated✅\n",
@@ -144,7 +132,7 @@ var table_test_metrics = []table_test_template{
 		path:   "/update/gauge",
 		want: table_want_template{
 			code:        http.StatusNotFound,
-			response:    "Invalid metric value",
+			response:    "Metric is required\n",
 			contenttype: "text/plain; charset=utf-8",
 		},
 	},
@@ -154,7 +142,7 @@ var table_test_metrics = []table_test_template{
 		path:   "/update/counter",
 		want: table_want_template{
 			code:        http.StatusNotFound,
-			response:    "Invalid metric value",
+			response:    "Metric is required\n",
 			contenttype: "text/plain; charset=utf-8",
 		},
 	},
@@ -190,7 +178,7 @@ var table_test_values = []table_test_template{
 		want: table_want_template{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
-			contenttype: "text/plain",
+			contenttype: "text/plain; charset=utf-8",
 		},
 	},
 	{
@@ -200,7 +188,7 @@ var table_test_values = []table_test_template{
 		want: table_want_template{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
-			contenttype: "text/plain",
+			contenttype: "text/plain; charset=utf-8",
 		},
 	},
 	{
@@ -210,7 +198,7 @@ var table_test_values = []table_test_template{
 		want: table_want_template{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
-			contenttype: "text/plain",
+			contenttype: "text/plain; charset=utf-8",
 		},
 	},
 	{
@@ -220,7 +208,7 @@ var table_test_values = []table_test_template{
 		want: table_want_template{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
-			contenttype: "text/plain",
+			contenttype: "text/plain; charset=utf-8",
 		},
 	},
 	{
@@ -242,7 +230,7 @@ var table_test_values = []table_test_template{
 		want: table_want_template{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
-			contenttype: "text/plain",
+			contenttype: "text/plain; charset=utf-8",
 		},
 	},
 	{
@@ -252,7 +240,7 @@ var table_test_values = []table_test_template{
 		want: table_want_template{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
-			contenttype: "text/plain",
+			contenttype: "text/plain; charset=utf-8",
 		},
 	},
 	{
@@ -287,6 +275,154 @@ var table_test_values = []table_test_template{
 	},
 }
 
-func Test_ServeHTTP(t *testing.T) {
-	// TODO()
+func TestMethods(t *testing.T) {
+	var s = repository.NewMemStorage()
+	var h = MetricsHandler{Storage: s}
+
+	router := chi.NewRouter()
+
+	router.Get("/", h.GetRootHandler)
+	router.Get("/value/{TYPE}/{METRIC}", h.GetMetricHandler)
+
+	router.Post("/update", h.PostNoTypeHandler)
+	router.Route("/update/{TYPE}", func(r chi.Router) {
+		r.Use(TypeMiddleware)                     // проверит TYPE для всех трёх ниже
+		r.Post("/", h.PostNoMetricHandler)        // 404 — нет имени
+		r.Post("/{METRIC}", h.PostNoValueHandler) // 400 — нет значения
+		r.Post("/{METRIC}/{VALUE}", h.PostFullHandler)
+	})
+
+	ts := httptest.NewServer(router)
+
+	defer ts.Close()
+
+	for _, v := range table_test_methods {
+		t.Run(v.name, func(t *testing.T) {
+			resp, body := testRequest(t, ts, v.method, v.path)
+			// Check Status code
+			assert.Equal(t, v.want.code, resp.StatusCode)
+			// t.Logf("%v %v\n", v.want.code, resp.StatusCode)
+
+			// Check response
+			assert.Equal(t, v.want.response, body)
+
+			// Check Content-Type
+
+			assert.Equal(t, v.want.contenttype, resp.Header.Get("Content-Type"))
+		})
+	}
+}
+
+func TestTypes(t *testing.T) {
+	var s = repository.NewMemStorage()
+	var h = MetricsHandler{Storage: s}
+
+	router := chi.NewRouter()
+
+	router.Get("/", h.GetRootHandler)
+	router.Get("/value/{TYPE}/{METRIC}", h.GetMetricHandler)
+
+	router.Post("/update", h.PostNoTypeHandler)
+	router.Route("/update/{TYPE}", func(r chi.Router) {
+		r.Use(TypeMiddleware)                     // проверит TYPE для всех трёх ниже
+		r.Post("/", h.PostNoMetricHandler)        // 404 — нет имени
+		r.Post("/{METRIC}", h.PostNoValueHandler) // 400 — нет значения
+		r.Post("/{METRIC}/{VALUE}", h.PostFullHandler)
+	})
+
+	ts := httptest.NewServer(router)
+
+	defer ts.Close()
+
+	for _, v := range table_test_types {
+		t.Run(v.name, func(t *testing.T) {
+			resp, body := testRequest(t, ts, v.method, v.path)
+			// Check Status code
+			assert.Equal(t, v.want.code, resp.StatusCode)
+			// t.Logf("%v %v\n", v.want.code, resp.StatusCode)
+
+			// Check response
+			assert.Equal(t, v.want.response, body)
+
+			// Check Content-Type
+
+			assert.Equal(t, v.want.contenttype, resp.Header.Get("Content-Type"))
+		})
+	}
+}
+
+func TestMetrics(t *testing.T) {
+	var s = repository.NewMemStorage()
+	var h = MetricsHandler{Storage: s}
+
+	router := chi.NewRouter()
+
+	router.Get("/", h.GetRootHandler)
+	router.Get("/value/{TYPE}/{METRIC}", h.GetMetricHandler)
+
+	router.Post("/update", h.PostNoTypeHandler)
+	router.Route("/update/{TYPE}", func(r chi.Router) {
+		r.Use(TypeMiddleware)                     // проверит TYPE для всех трёх ниже
+		r.Post("/", h.PostNoMetricHandler)        // 404 — нет имени
+		r.Post("/{METRIC}", h.PostNoValueHandler) // 400 — нет значения
+		r.Post("/{METRIC}/{VALUE}", h.PostFullHandler)
+	})
+
+	ts := httptest.NewServer(router)
+
+	defer ts.Close()
+
+	for _, v := range table_test_metrics {
+		t.Run(v.name, func(t *testing.T) {
+			resp, body := testRequest(t, ts, v.method, v.path)
+			// Check Status code
+			assert.Equal(t, v.want.code, resp.StatusCode)
+			// t.Logf("%v %v\n", v.want.code, resp.StatusCode)
+
+			// Check response
+			assert.Equal(t, v.want.response, body)
+
+			// Check Content-Type
+
+			assert.Equal(t, v.want.contenttype, resp.Header.Get("Content-Type"))
+		})
+	}
+}
+
+func TestValues(t *testing.T) {
+	var s = repository.NewMemStorage()
+	var h = MetricsHandler{Storage: s}
+
+	router := chi.NewRouter()
+
+	router.Get("/", h.GetRootHandler)
+	router.Get("/value/{TYPE}/{METRIC}", h.GetMetricHandler)
+
+	router.Post("/update", h.PostNoTypeHandler)
+	router.Route("/update/{TYPE}", func(r chi.Router) {
+		r.Use(TypeMiddleware)                     // проверит TYPE для всех трёх ниже
+		r.Post("/", h.PostNoMetricHandler)        // 404 — нет имени
+		r.Post("/{METRIC}", h.PostNoValueHandler) // 400 — нет значения
+		r.Post("/{METRIC}/{VALUE}", h.PostFullHandler)
+	})
+
+	ts := httptest.NewServer(router)
+
+	defer ts.Close()
+
+	for _, v := range table_test_values {
+		t.Run(v.name, func(t *testing.T) {
+			resp, body := testRequest(t, ts, v.method, v.path)
+			// Check Status code
+			assert.Equal(t, v.want.code, resp.StatusCode)
+			// t.Logf("%v %v\n", v.want.code, resp.StatusCode)
+
+			// Check response
+			assert.Equal(t, v.want.response, body)
+
+			// Check Content-Type
+
+			assert.Equal(t, v.want.contenttype, resp.Header.Get("Content-Type"))
+		})
+	}
 }
