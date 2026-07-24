@@ -32,7 +32,6 @@ func (s *Sender) Run() {
 
 		if err != nil {
 			log.Println(err)
-			log.Println(err)
 			continue
 		}
 		res.Body.Close()
