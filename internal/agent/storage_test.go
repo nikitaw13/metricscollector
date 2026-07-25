@@ -1,206 +1,157 @@
 package agent
 
 import (
-	"reflect"
+	"fmt"
+	"math/rand/v2"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
-func TestNewAgentStorage(t *testing.T) {
-	tests := []struct {
-		name string
-		want *AgentStorage
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewAgentStorage(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewAgentStorage() = %v, want %v", got, tt.want)
-			}
+// Test verifies that SetGauge stores the value and overwrites on subsequent calls.
+func Test_SetGauge(t *testing.T) {
+	ms := NewAgentStorage()
+	for _, m := range GaugeMetrics {
+		t.Run(m, func(t *testing.T) {
+			firstRandomValue := rand.Float64()
+			ms.SetGauge(m, firstRandomValue)
+			firstGet, firstErr := ms.GetGauge(m)
+			require.NoError(t, firstErr)
+			require.Equal(t, firstRandomValue, firstGet)
+
+			secondRandomValue := rand.Float64()
+			ms.SetGauge(m, secondRandomValue)
+			secondGet, secondErr := ms.GetGauge(m)
+			require.NoError(t, secondErr)
+			require.Equal(t, secondRandomValue, secondGet)
 		})
 	}
 }
 
-func TestAgentStorage_UpdateGauge(t *testing.T) {
-	type fields struct {
-		gauge   map[string]float64
-		counter map[string]int64
-	}
-	type args struct {
-		name  string
-		value float64
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ms := &AgentStorage{
-				gauge:   tt.fields.gauge,
-				counter: tt.fields.counter,
-			}
-			if err := ms.UpdateGauge(tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
-				t.Errorf("AgentStorage.UpdateGauge() error = %v, wantErr %v", err, tt.wantErr)
-			}
+// Test verifies that SetCounter increments the value cumulatively.
+func Test_SetCounter(t *testing.T) {
+	ms := NewAgentStorage()
+	for _, m := range CounterMetrics {
+		t.Run(m, func(t *testing.T) {
+			firstRandomValue := rand.Int64N(10)
+			ms.SetCounter(m, firstRandomValue)
+			firstGet, firstErr := ms.GetCounter(m)
+			require.NoError(t, firstErr)
+			require.Equal(t, firstRandomValue, firstGet)
+
+			secondRandomValue := rand.Int64N(10)
+			ms.SetCounter(m, secondRandomValue)
+			secondGet, secondErr := ms.GetCounter(m)
+			require.NoError(t, secondErr)
+			require.Equal(t, firstRandomValue+secondRandomValue, secondGet)
 		})
 	}
 }
 
-func TestAgentStorage_UpdateCounter(t *testing.T) {
-	type fields struct {
-		gauge   map[string]float64
-		counter map[string]int64
-	}
-	type args struct {
-		name  string
-		value int64
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ms := &AgentStorage{
-				gauge:   tt.fields.gauge,
-				counter: tt.fields.counter,
-			}
-			if err := ms.UpdateCounter(tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
-				t.Errorf("AgentStorage.UpdateCounter() error = %v, wantErr %v", err, tt.wantErr)
-			}
+// Test verifies that ResetCounter sets the counter value to zero.
+func Test_ResetCounter(t *testing.T) {
+	ms := NewAgentStorage()
+	for _, m := range CounterMetrics {
+		t.Run(m, func(t *testing.T) {
+			// Set random value for m and compare
+			randomValue := rand.Int64N(100)
+			ms.SetCounter(m, randomValue)
+			got, err := ms.GetCounter(m)
+			require.NoError(t, err)
+			require.Equal(t, randomValue, got)
+
+			// Set zero for m and compare
+			ms.ResetCounter(m)
+			got, err = ms.GetCounter(m)
+			require.NoError(t, err)
+			require.Equal(t, int64(0), got)
 		})
 	}
 }
 
-func TestAgentStorage_GetGauge(t *testing.T) {
-	type fields struct {
-		gauge   map[string]float64
-		counter map[string]int64
-	}
-	type args struct {
-		name string
-	}
-	tests := []struct {
-		name      string
-		fields    fields
-		args      args
-		wantValue float64
-		wantErr   bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ms := &AgentStorage{
-				gauge:   tt.fields.gauge,
-				counter: tt.fields.counter,
-			}
-			gotValue, err := ms.GetGauge(tt.args.name)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("AgentStorage.GetGauge() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if tt.wantErr {
-				return
-			}
-			if gotValue != tt.wantValue {
-				t.Errorf("AgentStorage.GetGauge() = %v, want %v", gotValue, tt.wantValue)
-			}
+// Test verifies that GetGauge returns an error for a nonexistent key.
+func Test_GetGaugeError(t *testing.T) {
+	ms := NewAgentStorage()
+	t.Run("nonexistent gauge", func(t *testing.T) {
+		_, err := ms.GetGauge("__nonexistent__")
+		require.EqualError(t, err, fmt.Sprintf("Gauge %s not found", "__nonexistent__"))
+	})
+}
+
+// Test verifies that GetCounter returns an error for a nonexistent key.
+func Test_GetCounterError(t *testing.T) {
+	ms := NewAgentStorage()
+	t.Run("nonexistent counter", func(t *testing.T) {
+		_, err := ms.GetCounter("__nonexistent__")
+		require.EqualError(t, err, fmt.Sprintf("Counter %s not found", "__nonexistent__"))
+	})
+}
+
+// Test verifies that GetAllGauges returns a copy, not a reference.
+func Test_GetAllGaugesReturnsCopy(t *testing.T) {
+	ms := NewAgentStorage()
+	copy := ms.GetAllGauges()
+
+	for _, m := range GaugeMetrics {
+		t.Run(m, func(t *testing.T) {
+			firstRandomValue := rand.Float64()
+			ms.SetGauge(m, firstRandomValue)
+			require.NotEqual(t, copy[m], firstRandomValue)
+
+			secondRandomValue := rand.Float64()
+			ms.SetGauge(m, secondRandomValue)
+			require.NotEqual(t, copy[m], secondRandomValue)
 		})
 	}
 }
 
-func TestAgentStorage_GetCounter(t *testing.T) {
-	type fields struct {
-		gauge   map[string]float64
-		counter map[string]int64
-	}
-	type args struct {
-		name string
-	}
-	tests := []struct {
-		name      string
-		fields    fields
-		args      args
-		wantValue int64
-		wantErr   bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ms := &AgentStorage{
-				gauge:   tt.fields.gauge,
-				counter: tt.fields.counter,
-			}
-			gotValue, err := ms.GetCounter(tt.args.name)
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("AgentStorage.GetCounter() error = %v, wantErr %v", err, tt.wantErr)
-			}
-			if tt.wantErr {
-				return
-			}
-			if gotValue != tt.wantValue {
-				t.Errorf("AgentStorage.GetCounter() = %v, want %v", gotValue, tt.wantValue)
-			}
+// Test verifies that GetAllCounters returns a copy, not a reference.
+func Test_GetAllCountersReturnsCopy(t *testing.T) {
+	ms := NewAgentStorage()
+	copy := ms.GetAllCounters()
+
+	for _, m := range CounterMetrics {
+		t.Run(m, func(t *testing.T) {
+			firstRandomValue := rand.Int64()
+			ms.SetCounter(m, firstRandomValue)
+			require.NotEqual(t, copy[m], firstRandomValue)
+
+			secondRandomValue := rand.Int64()
+			ms.SetCounter(m, secondRandomValue)
+			require.NotEqual(t, copy[m], secondRandomValue)
 		})
 	}
 }
 
-func TestAgentStorage_GetAllGauges(t *testing.T) {
-	type fields struct {
-		gauge   map[string]float64
-		counter map[string]int64
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		wantM  map[string]float64
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ms := &AgentStorage{
-				gauge:   tt.fields.gauge,
-				counter: tt.fields.counter,
-			}
-			if gotM := ms.GetAllGauges(); !reflect.DeepEqual(gotM, tt.wantM) {
-				t.Errorf("AgentStorage.GetAllGauges() = %v, want %v", gotM, tt.wantM)
-			}
+// Test verifies that GetAllGauges returns a map containing all stored values.
+func Test_GetAllGauges(t *testing.T) {
+	ms := NewAgentStorage()
+	for _, m := range GaugeMetrics {
+		t.Run(m, func(t *testing.T) {
+			rv := rand.Float64()
+			ms.SetGauge(m, rv)
+			got, err := ms.GetGauge(m)
+
+			gauges := ms.GetAllGauges()
+			require.NoError(t, err)
+			require.Equal(t, gauges[m], got)
 		})
+
 	}
 }
 
-func TestAgentStorage_GetAllCounters(t *testing.T) {
-	type fields struct {
-		gauge   map[string]float64
-		counter map[string]int64
-	}
-	tests := []struct {
-		name   string
-		fields fields
-		wantM  map[string]int64
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			ms := &AgentStorage{
-				gauge:   tt.fields.gauge,
-				counter: tt.fields.counter,
-			}
-			if gotM := ms.GetAllCounters(); !reflect.DeepEqual(gotM, tt.wantM) {
-				t.Errorf("AgentStorage.GetAllCounters() = %v, want %v", gotM, tt.wantM)
-			}
+// Test verifies that GetAllCounters returns a map containing all stored values.
+func Test_GetAllCounters(t *testing.T) {
+	ms := NewAgentStorage()
+	for _, m := range CounterMetrics {
+		t.Run(m, func(t *testing.T) {
+			rv := rand.Int64()
+			ms.SetCounter(m, rv)
+			got, err := ms.GetCounter(m)
+
+			counters := ms.GetAllCounters()
+			require.NoError(t, err)
+			require.Equal(t, counters[m], got)
 		})
 	}
 }
