@@ -1,31 +1,42 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"time"
 
-	"github.com/PrometheRus/metricscollector/internal/handler"
-	"github.com/PrometheRus/metricscollector/internal/repository"
+	"github.com/PrometheRus/metricscollector/internal/agent"
+)
+
+const (
+	// Обновлять метрики из пакета runtime с заданной частотой
+	pollInterval = 2
+	// Отправлять метрики на сервер с заданной частотой
+	reportInterval = 10
+	// Отправлять метрики на сервер с указанным URL
+	url = "http://localhost:8080"
 )
 
 func main() {
-	var r = repository.NewMemStorage()
-	var h = handler.MetricsHandler{Storage: r}
-
-	mux := http.NewServeMux()
-	mux.Handle("/update/", &h)
-
-	srv := &http.Server{
-		Addr:         ":8080",
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
-		Handler:      mux,
+	storage := agent.NewAgentStorage()
+	collector := &agent.Collector{Storage: storage}
+	sender := &agent.Sender{
+		URL:     url,
+		Storage: storage,
+		Client: http.Client{
+			Timeout: 5 * time.Second,
+		},
 	}
 
-	err := srv.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
+	// Два интервала в одном потоке через Sleep не реализовать
+	go func() {
+		for {
+			collector.Run()
+			time.Sleep(pollInterval * time.Second)
+		}
+	}()
+
+	for {
+		sender.Run()
+		time.Sleep(reportInterval * time.Second)
 	}
 }
