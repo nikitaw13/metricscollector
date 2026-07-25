@@ -12,13 +12,22 @@ const (
 	pollInterval = 2
 	// Отправлять метрики на сервер с заданной частотой
 	reportInterval = 10
+	// Отправлять метрики на сервер с указанным URL
+	url = "http://localhost:8080"
 )
 
 func main() {
 	storage := agent.NewAgentStorage()
 	collector := &agent.Collector{Storage: storage}
-	sender := &agent.Sender{Storage: storage, Client: http.Client{Timeout: 5 * time.Second}}
+	sender := &agent.Sender{
+		URL:     url,
+		Storage: storage,
+		Client: http.Client{
+			Timeout: 5 * time.Second,
+		},
+	}
 
+	// Два интервала в одном потоке через Sleep не реализовать
 	go func() {
 		for {
 			collector.Run()
