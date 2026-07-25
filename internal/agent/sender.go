@@ -58,10 +58,7 @@ func (s *Sender) Run() {
 		res.Body.Close()
 		log.Printf("The metric '%s' have been sent to %s by sender", metric, fullpath)
 
-		// Reset the counter
-		if err := s.Storage.ResetCounter(metric); err != nil {
-			log.Println(err)
-			continue
-		}
+		// Reset the counter to zero
+		s.Storage.ResetCounter(metric)
 	}
 }
