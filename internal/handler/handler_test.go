@@ -276,7 +276,7 @@ var table_test_values = []table_test_template{
 }
 
 func TestMethods(t *testing.T) {
-	var s = repository.NewMemStorage()
+	var s = repository.NewServerStorage()
 	var h = MetricsHandler{Storage: s}
 
 	router := chi.NewRouter()
@@ -314,7 +314,7 @@ func TestMethods(t *testing.T) {
 }
 
 func TestTypes(t *testing.T) {
-	var s = repository.NewMemStorage()
+	var s = repository.NewServerStorage()
 	var h = MetricsHandler{Storage: s}
 
 	router := chi.NewRouter()
@@ -352,7 +352,7 @@ func TestTypes(t *testing.T) {
 }
 
 func TestMetrics(t *testing.T) {
-	var s = repository.NewMemStorage()
+	var s = repository.NewServerStorage()
 	var h = MetricsHandler{Storage: s}
 
 	router := chi.NewRouter()
@@ -390,7 +390,7 @@ func TestMetrics(t *testing.T) {
 }
 
 func TestValues(t *testing.T) {
-	var s = repository.NewMemStorage()
+	var s = repository.NewServerStorage()
 	var h = MetricsHandler{Storage: s}
 
 	router := chi.NewRouter()
