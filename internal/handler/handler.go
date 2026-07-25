@@ -78,7 +78,7 @@ func (h *MetricsHandler) PostNoValueHandler(res http.ResponseWriter, req *http.R
 
 func (h *MetricsHandler) PostFullHandler(res http.ResponseWriter, req *http.Request) {
 	switch chi.URLParam(req, "TYPE") {
-	case "gauge":
+	case model.Gauge:
 		mGaugeValue, err := strconv.ParseFloat(chi.URLParam(req, "VALUE"), 64)
 		// При попытке передать запрос с некорректным значением метрики возвращать http.StatusBadRequest.
 		if err != nil {
@@ -92,7 +92,7 @@ func (h *MetricsHandler) PostFullHandler(res http.ResponseWriter, req *http.Requ
 			return
 		}
 
-	case "counter":
+	case model.Counter:
 		mCounterValue, err := strconv.ParseInt(chi.URLParam(req, "VALUE"), 10, 64)
 		// При попытке передать запрос с некорректным значением метрики возвращать http.StatusBadRequest.
 		if err != nil {
