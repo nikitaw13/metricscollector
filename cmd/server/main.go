@@ -7,25 +7,12 @@ import (
 
 	"github.com/PrometheRus/metricscollector/internal/handler"
 	"github.com/PrometheRus/metricscollector/internal/repository"
-	"github.com/go-chi/chi"
 )
 
 func main() {
-	var s = repository.NewMemStorage()
+	var s = repository.NewServerStorage()
 	var h = handler.MetricsHandler{Storage: s}
-
-	router := chi.NewRouter()
-
-	router.Get("/", h.GetRootHandler)
-	router.Get("/value/{TYPE}/{METRIC}", h.GetMetricHandler)
-
-	router.Post("/update", h.PostNoTypeHandler)
-	router.Route("/update/{TYPE}", func(r chi.Router) {
-		r.Use(handler.TypeMiddleware)             // проверит TYPE для всех трёх ниже
-		r.Post("/", h.PostNoMetricHandler)        // 404 — нет имени
-		r.Post("/{METRIC}", h.PostNoValueHandler) // 400 — нет значения
-		r.Post("/{METRIC}/{VALUE}", h.PostFullHandler)
-	})
+	router := h.NewRouter()
 
 	srv := &http.Server{
 		Addr:         ":8080",
