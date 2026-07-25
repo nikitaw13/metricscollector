@@ -8,26 +8,26 @@ import (
 )
 
 type Sender struct {
+	URL     string
 	Storage Storage
 	Client  http.Client
 }
 
 // One-shot run
 func (s *Sender) Run() {
-	baseurl := "http://localhost:8080/update"
 
 	// Send all gauges
 	for metric, value := range s.Storage.GetAllGauges() {
-		fullpath := fmt.Sprintf("%s/gauge/%s/%s", baseurl, metric, strconv.FormatFloat(value, 'f', -1, 64))
+		fullpath := fmt.Sprintf("%s/update/gauge/%s/%s", s.URL, metric, strconv.FormatFloat(value, 'f', -1, 64))
 
 		request, err := http.NewRequest(http.MethodPost, fullpath, nil)
-		request.Header.Add("Content-Type", "text/plain")
 
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
+		request.Header.Add("Content-Type", "text/plain")
 		res, err := s.Client.Do(request)
 
 		if err != nil {
@@ -40,16 +40,16 @@ func (s *Sender) Run() {
 
 	// Send all counters
 	for metric, value := range s.Storage.GetAllCounters() {
-		fullpath := fmt.Sprintf("%s/update/counter/%s/%s", baseurl, metric, strconv.FormatInt(value, 10))
+		fullpath := fmt.Sprintf("%s/update/counter/%s/%s", s.URL, metric, strconv.FormatInt(value, 10))
 
 		request, err := http.NewRequest(http.MethodPost, fullpath, nil)
-		request.Header.Add("Content-Type", "text/plain")
 
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
+		request.Header.Add("Content-Type", "text/plain")
 		res, err := s.Client.Do(request)
 		if err != nil {
 			log.Println(err)
@@ -57,5 +57,11 @@ func (s *Sender) Run() {
 		}
 		res.Body.Close()
 		log.Printf("The metric '%s' have been sent to %s by sender", metric, fullpath)
+
+		// Reset the counter
+		if err := s.Storage.ResetCounter(metric); err != nil {
+			log.Println(err)
+			continue
+		}
 	}
 }

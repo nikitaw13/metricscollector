@@ -2,28 +2,35 @@ package agent
 
 import "testing"
 
-func TestGet_Run(t *testing.T) {
+// TestAllMetricsExist verifies that collector populates all required gauge and counter metrics
+func TestAllMetricsExist(t *testing.T) {
 	storage := NewAgentStorage()
 	c := &Collector{Storage: storage}
 	c.Run()
-
-	// Проверяй напрямую — ключ существует и значение разумное
-	val, _ := storage.GetGauge("Alloc")
-	if val == 0 {
-		t.Error("Alloc should be > 0")
+	for _, metric := range GaugeMetrics {
+		_, err := storage.GetGauge(metric)
+		if err != nil {
+			t.Errorf("Gauge metric %q not found", metric)
+		}
 	}
-
-	// PollCount должен быть 1
-	pollCount, _ := storage.GetCounter("PollCount")
-	if pollCount != 1 {
-		t.Errorf("PollCount = %d, want 1", pollCount)
+	for _, metric := range CounterMetrics {
+		_, err := storage.GetCounter(metric)
+		if err != nil {
+			t.Errorf("Counter metric %q not found", metric)
+		}
 	}
+}
 
-	c.Run()
+// TestPollCountIncrement verifies that PollCount increases by 1 on each collector run.
+func TestPollCountIncrement(t *testing.T) {
+	storage := NewAgentStorage()
+	c := &Collector{Storage: storage}
 
-	// PollCount должен быть 2
-	pollCount, _ = storage.GetCounter("PollCount")
-	if pollCount != 2 {
-		t.Errorf("PollCount = %d, want 2", pollCount)
+	for i := 1; i < 100; i++ {
+		c.Run()
+		pollCount, _ := storage.GetCounter("PollCount")
+		if pollCount != int64(i) {
+			t.Errorf("PollCount = %d, want %d", pollCount, i)
+		}
 	}
 }

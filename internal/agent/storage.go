@@ -20,10 +20,15 @@ type StorageSetter interface {
 	UpdateCounter(name string, value int64) error
 }
 
+type CounterReseter interface {
+	ResetCounter(name string) error
+}
+
 // Storage combines read and write operations for the agent's metric store.
 type Storage interface {
 	StorageGetter
 	StorageSetter
+	CounterReseter
 }
 
 // AgentStorage is an in-memory implementation of Storage that holds agent metrics.
@@ -52,6 +57,12 @@ func (ms *AgentStorage) UpdateGauge(name string, value float64) error {
 // UpdateCounter increments the counter metric with the given name by the specified value.
 func (ms *AgentStorage) UpdateCounter(name string, value int64) error {
 	ms.counter[name] += value
+	return nil
+}
+
+// ResetCounters reset the counter metric to zero after successful report
+func (ms *AgentStorage) ResetCounter(name string) error {
+	ms.counter[name] = 0
 	return nil
 }
 
