@@ -40,11 +40,11 @@ func (h *MetricsHandler) GetRootHandler(rw http.ResponseWriter, r *http.Request)
 	fmt.Fprintln(rw, "<hr></body></html>")
 }
 
-func (h *MetricsHandler) GetMetricHandler(res http.ResponseWriter, r *http.Request) {
+func (h *MetricsHandler) GetMetricHandler(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	switch chi.URLParam(r, "TYPE") {
+	switch chi.URLParam(req, "TYPE") {
 	case model.Gauge:
-		result, err := h.Storage.GetGauge(chi.URLParam(r, "METRIC"))
+		result, err := h.Storage.GetGauge(chi.URLParam(req, "METRIC"))
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusNotFound)
 			return
@@ -52,15 +52,12 @@ func (h *MetricsHandler) GetMetricHandler(res http.ResponseWriter, r *http.Reque
 		fmt.Fprintf(res, "%g\n", result)
 
 	case model.Counter:
-		result, err := h.Storage.GetCounter(chi.URLParam(r, "METRIC"))
+		result, err := h.Storage.GetCounter(chi.URLParam(req, "METRIC"))
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusNotFound)
 			return
 		}
 		fmt.Fprintf(res, "%d\n", result)
-	default:
-		http.Error(res, "Invalid metric type", http.StatusBadRequest)
-		return
 	}
 }
 

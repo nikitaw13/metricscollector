@@ -8,7 +8,10 @@ func (h *MetricsHandler) NewRouter() *chi.Mux {
 	router := chi.NewRouter()
 
 	router.Get("/", h.GetRootHandler)
-	router.Get("/value/{TYPE}/{METRIC}", h.GetMetricHandler)
+	router.Route("/value/{TYPE}", func(r chi.Router) {
+		r.Use(TypeMiddleware)
+		r.Get("/{METRIC}", h.GetMetricHandler)
+	})
 
 	router.Post("/update", h.PostNoTypeHandler)
 	router.Route("/update/{TYPE}", func(r chi.Router) {
