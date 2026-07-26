@@ -10,20 +10,26 @@ import (
 )
 
 func main() {
+	parseFlags()
+
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	var r = repository.NewMemStorage()
 	var h = handler.MetricsHandler{Storage: r}
 	router := h.NewRouter()
 
 	srv := &http.Server{
-		Addr:         ":8080",
+		Addr:         flagRunAddr,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
 		Handler:      router,
 	}
 
-	err := srv.ListenAndServe()
-	if err != nil && err != http.ErrServerClosed {
-		log.Fatal(err)
-	}
+	log.Println("Running server on", flagRunAddr)
+	return srv.ListenAndServe()
 }

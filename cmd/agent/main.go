@@ -7,20 +7,16 @@ import (
 	"github.com/PrometheRus/metricscollector/internal/agent"
 )
 
-const (
-	// Обновлять метрики из пакета runtime с заданной частотой
-	pollInterval = 2
-	// Отправлять метрики на сервер с заданной частотой
-	reportInterval = 10
-	// Отправлять метрики на сервер с указанным URL
-	url = "http://localhost:8080"
-)
-
 func main() {
+	parseFlags()
+	run()
+}
+
+func run() {
 	storage := agent.NewAgentStorage()
 	collector := &agent.Collector{Storage: storage}
 	sender := &agent.Sender{
-		URL:     url,
+		URL:     flagRunAddr,
 		Storage: storage,
 		Client: http.Client{
 			Timeout: 5 * time.Second,
@@ -31,12 +27,12 @@ func main() {
 	go func() {
 		for {
 			collector.Run()
-			time.Sleep(pollInterval * time.Second)
+			time.Sleep(time.Duration(flagPollInterval) * time.Second)
 		}
 	}()
 
 	for {
 		sender.Run()
-		time.Sleep(reportInterval * time.Second)
+		time.Sleep(time.Duration(flagReportInterval) * time.Second)
 	}
 }
