@@ -10,8 +10,8 @@ import (
 )
 
 func main() {
-	var s = repository.NewMemStorage()
-	var h = handler.MetricsHandler{Storage: s}
+	var r = repository.NewMemStorage()
+	var h = handler.MetricsHandler{Storage: r}
 	router := h.NewRouter()
 
 	srv := &http.Server{
