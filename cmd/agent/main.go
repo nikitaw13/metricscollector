@@ -16,7 +16,7 @@ func run() {
 	storage := agent.NewAgentStorage()
 	collector := &agent.Collector{Storage: storage}
 	sender := &agent.Sender{
-		URL:     flagRunAddr,
+		URL:     "http://" + flagRunAddr,
 		Storage: storage,
 		Client: http.Client{
 			Timeout: 5 * time.Second,
