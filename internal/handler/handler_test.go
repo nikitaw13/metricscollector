@@ -43,10 +43,11 @@ type table_want_template struct {
 
 // HTTP method validation cases: only POST is allowed on /update/*.
 var table_test_methods = []table_test_template{
+	// Test full /update endpoint
 	{
-		name:   "200 if proper POST",
+		name:   "200 proper POST",
 		method: http.MethodPost,
-		path:   "/update/counter/test/1",
+		path:   "/update/counter/test/9999999",
 		want: table_want_template{
 			code:        http.StatusOK,
 			response:    "Metric 'test' updated✅\n",
@@ -54,29 +55,33 @@ var table_test_methods = []table_test_template{
 		},
 	},
 	{
-		name:   "405 if GET",
+		name:   "405 GET",
 		method: http.MethodGet,
-		path:   "/update/counter/test/1",
+		path:   "/update/counter/test/9999999",
 		want: table_want_template{
 			code:        http.StatusMethodNotAllowed,
 			response:    "",
 			contenttype: "",
 		},
 	},
+	// Test / root endpoint
 	{
-		name:   "405 if PUT /update",
-		method: http.MethodPut,
-		path:   "/update/counter/test/1",
+		name:   "200 GET /",
+		method: http.MethodGet,
+		path:   "/",
 		want: table_want_template{
-			code:        http.StatusMethodNotAllowed,
-			response:    "",
-			contenttype: "",
+			code: http.StatusOK,
+			response: `<html><body>
+<h1>List of names and results of all currently known metrics</h1>
+<b>test</b>:   <code>9999999</code><br><hr></body></html>
+`,
+			contenttype: "text/html; charset=UTF-8",
 		},
 	},
 	{
-		name:   "405 if HEAD /update",
-		method: http.MethodHead,
-		path:   "/update/counter/test/1",
+		name:   "405 POST /",
+		method: http.MethodPost,
+		path:   "/",
 		want: table_want_template{
 			code:        http.StatusMethodNotAllowed,
 			response:    "",
@@ -132,7 +137,7 @@ var table_test_types = []table_test_template{
 // Metric name validation cases: missing name returns 404.
 var table_test_metrics = []table_test_template{
 	{
-		name:   "404 if POST without gauge metric name",
+		name:   "404 POST without gauge metric name",
 		method: http.MethodPost,
 		path:   "/update/gauge",
 		want: table_want_template{
@@ -142,12 +147,22 @@ var table_test_metrics = []table_test_template{
 		},
 	},
 	{
-		name:   "404 if POST without counter metric name",
+		name:   "404 POST without counter metric name",
 		method: http.MethodPost,
 		path:   "/update/counter",
 		want: table_want_template{
 			code:        http.StatusNotFound,
 			response:    "Metric is required\n",
+			contenttype: "text/plain; charset=utf-8",
+		},
+	},
+	{
+		name:   "404 GET with unknown metric",
+		method: http.MethodGet,
+		path:   "/value/counter/unknown",
+		want: table_want_template{
+			code:        http.StatusNotFound,
+			response:    "Counter unknown not found\n",
 			contenttype: "text/plain; charset=utf-8",
 		},
 	},
