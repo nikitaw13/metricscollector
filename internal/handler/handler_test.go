@@ -7,11 +7,11 @@ import (
 	"testing"
 
 	"github.com/PrometheRus/metricscollector/internal/repository"
-	"github.com/go-chi/chi"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+// Function sends an HTTP request to the test server and returns the response and body.
 func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, nil)
 	require.NoError(t, err)
@@ -26,6 +26,7 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 	return resp, string(respBody)
 }
 
+// Template defines a single table-driven test case.
 type table_test_template struct {
 	name   string
 	method string
@@ -33,12 +34,14 @@ type table_test_template struct {
 	want   table_want_template
 }
 
+// Template defines expected response for a table-driven test case.
 type table_want_template struct {
 	code        int
 	response    string
 	contenttype string
 }
 
+// HTTP method validation cases: only POST is allowed on /update/*.
 var table_test_methods = []table_test_template{
 	{
 		name:   "200 if proper POST",
@@ -82,6 +85,7 @@ var table_test_methods = []table_test_template{
 	},
 }
 
+// Metric type validation cases: only "gauge" and "counter" are accepted.
 var table_test_types = []table_test_template{
 	{
 		name:   "400 if POST without metric type",
@@ -125,6 +129,7 @@ var table_test_types = []table_test_template{
 	},
 }
 
+// Metric name validation cases: missing name returns 404.
 var table_test_metrics = []table_test_template{
 	{
 		name:   "404 if POST without gauge metric name",
@@ -148,6 +153,7 @@ var table_test_metrics = []table_test_template{
 	},
 }
 
+// Metric value validation cases: empty, valid, and invalid values for both types.
 var table_test_values = []table_test_template{
 	// Empty value
 	{
@@ -275,25 +281,18 @@ var table_test_values = []table_test_template{
 	},
 }
 
-func TestMethods(t *testing.T) {
+// Function creates a test server with a fresh storage instance and configured routes.
+func GetTestRouter() (server *httptest.Server) {
 	var s = repository.NewServerStorage()
 	var h = MetricsHandler{Storage: s}
+	router := h.NewRouter()
+	server = httptest.NewServer(router)
+	return
+}
 
-	router := chi.NewRouter()
-
-	router.Get("/", h.GetRootHandler)
-	router.Get("/value/{TYPE}/{METRIC}", h.GetMetricHandler)
-
-	router.Post("/update", h.PostNoTypeHandler)
-	router.Route("/update/{TYPE}", func(r chi.Router) {
-		r.Use(TypeMiddleware)                     // проверит TYPE для всех трёх ниже
-		r.Post("/", h.PostNoMetricHandler)        // 404 — нет имени
-		r.Post("/{METRIC}", h.PostNoValueHandler) // 400 — нет значения
-		r.Post("/{METRIC}/{VALUE}", h.PostFullHandler)
-	})
-
-	ts := httptest.NewServer(router)
-
+// Test verifies that only POST is allowed on /update/* routes.
+func TestMethods(t *testing.T) {
+	ts := GetTestRouter()
 	defer ts.Close()
 
 	for _, v := range table_test_methods {
@@ -313,25 +312,9 @@ func TestMethods(t *testing.T) {
 	}
 }
 
+// Test verifies metric type validation: only "gauge" and "counter" are accepted.
 func TestTypes(t *testing.T) {
-	var s = repository.NewServerStorage()
-	var h = MetricsHandler{Storage: s}
-
-	router := chi.NewRouter()
-
-	router.Get("/", h.GetRootHandler)
-	router.Get("/value/{TYPE}/{METRIC}", h.GetMetricHandler)
-
-	router.Post("/update", h.PostNoTypeHandler)
-	router.Route("/update/{TYPE}", func(r chi.Router) {
-		r.Use(TypeMiddleware)                     // проверит TYPE для всех трёх ниже
-		r.Post("/", h.PostNoMetricHandler)        // 404 — нет имени
-		r.Post("/{METRIC}", h.PostNoValueHandler) // 400 — нет значения
-		r.Post("/{METRIC}/{VALUE}", h.PostFullHandler)
-	})
-
-	ts := httptest.NewServer(router)
-
+	ts := GetTestRouter()
 	defer ts.Close()
 
 	for _, v := range table_test_types {
@@ -351,25 +334,9 @@ func TestTypes(t *testing.T) {
 	}
 }
 
+// Test verifies that missing metric name returns 404.
 func TestMetrics(t *testing.T) {
-	var s = repository.NewServerStorage()
-	var h = MetricsHandler{Storage: s}
-
-	router := chi.NewRouter()
-
-	router.Get("/", h.GetRootHandler)
-	router.Get("/value/{TYPE}/{METRIC}", h.GetMetricHandler)
-
-	router.Post("/update", h.PostNoTypeHandler)
-	router.Route("/update/{TYPE}", func(r chi.Router) {
-		r.Use(TypeMiddleware)                     // проверит TYPE для всех трёх ниже
-		r.Post("/", h.PostNoMetricHandler)        // 404 — нет имени
-		r.Post("/{METRIC}", h.PostNoValueHandler) // 400 — нет значения
-		r.Post("/{METRIC}/{VALUE}", h.PostFullHandler)
-	})
-
-	ts := httptest.NewServer(router)
-
+	ts := GetTestRouter()
 	defer ts.Close()
 
 	for _, v := range table_test_metrics {
@@ -389,25 +356,9 @@ func TestMetrics(t *testing.T) {
 	}
 }
 
+// Test verifies metric value parsing: empty, valid, and invalid values for both types.
 func TestValues(t *testing.T) {
-	var s = repository.NewServerStorage()
-	var h = MetricsHandler{Storage: s}
-
-	router := chi.NewRouter()
-
-	router.Get("/", h.GetRootHandler)
-	router.Get("/value/{TYPE}/{METRIC}", h.GetMetricHandler)
-
-	router.Post("/update", h.PostNoTypeHandler)
-	router.Route("/update/{TYPE}", func(r chi.Router) {
-		r.Use(TypeMiddleware)                     // проверит TYPE для всех трёх ниже
-		r.Post("/", h.PostNoMetricHandler)        // 404 — нет имени
-		r.Post("/{METRIC}", h.PostNoValueHandler) // 400 — нет значения
-		r.Post("/{METRIC}/{VALUE}", h.PostFullHandler)
-	})
-
-	ts := httptest.NewServer(router)
-
+	ts := GetTestRouter()
 	defer ts.Close()
 
 	for _, v := range table_test_values {
