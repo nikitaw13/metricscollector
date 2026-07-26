@@ -283,7 +283,7 @@ var table_test_values = []table_test_template{
 
 // Function creates a test server with a fresh storage instance and configured routes.
 func GetTestRouter() (server *httptest.Server) {
-	var s = repository.NewServerStorage()
+	var s = repository.NewMemStorage()
 	var h = MetricsHandler{Storage: s}
 	router := h.NewRouter()
 	server = httptest.NewServer(router)

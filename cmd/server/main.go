@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	var s = repository.NewServerStorage()
+	var s = repository.NewMemStorage()
 	var h = handler.MetricsHandler{Storage: s}
 	router := h.NewRouter()
 
