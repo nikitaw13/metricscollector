@@ -7,13 +7,16 @@ import (
 	"strconv"
 )
 
+// Sender is responsible for sending collected metrics to the server
+// via HTTP POST requests.
 type Sender struct {
 	URL     string
 	Storage Storage
 	Client  http.Client
 }
 
-// One-shot run
+// Run performs a one-shot send of all stored gauge and counter metrics to the server.
+// Counter metrics are reset to zero only after a successful (HTTP 200) response.
 func (s *Sender) Run() {
 
 	// Send all gauges
@@ -27,7 +30,7 @@ func (s *Sender) Run() {
 			continue
 		}
 
-		request.Header.Add("Content-Type", "text/plain")
+		request.Header.Add("Content-Type", "text/plain; charset=utf-8")
 		res, err := s.Client.Do(request)
 
 		if err != nil {
@@ -49,7 +52,7 @@ func (s *Sender) Run() {
 			continue
 		}
 
-		request.Header.Add("Content-Type", "text/plain")
+		request.Header.Add("Content-Type", "text/plain; charset=utf-8")
 		res, err := s.Client.Do(request)
 		if err != nil {
 			log.Println(err)
@@ -58,7 +61,9 @@ func (s *Sender) Run() {
 		res.Body.Close()
 		log.Printf("The metric '%s' have been sent to %s by sender", metric, fullpath)
 
-		// Reset the counter to zero
-		s.Storage.ResetCounter(metric)
+		// Reset the counter to zero if 200
+		if res.StatusCode == http.StatusOK {
+			s.Storage.ResetCounter(metric)
+		}
 	}
 }
