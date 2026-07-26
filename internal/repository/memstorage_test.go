@@ -8,11 +8,11 @@ import (
 func TestNewMemStorage(t *testing.T) {
 	tests := []struct {
 		name string
-		want *ServerStorage
+		want *MemStorage
 	}{
 		{
 			name: "Return NewMemStorage instance",
-			want: &ServerStorage{
+			want: &MemStorage{
 				gauge:   map[string]float64{},
 				counter: map[string]int64{},
 			},
@@ -20,8 +20,8 @@ func TestNewMemStorage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := NewServerStorage(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewServerStorage() = %v, want %v", got, tt.want)
+			if got := NewMemStorage(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewMemStorage() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -72,12 +72,12 @@ func TestMemStorage_UpdateGauge(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ms := &ServerStorage{
+			ms := &MemStorage{
 				gauge:   tt.fields.gauge,
 				counter: tt.fields.counter,
 			}
 			if err := ms.UpdateGauge(tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
-				t.Errorf("ServerStorage.UpdateGauge() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("MemStorage.UpdateGauge() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -137,7 +137,7 @@ func TestMemStorage_UpdateCounter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ms := &ServerStorage{
+			ms := &MemStorage{
 				gauge:   tt.fields.gauge,
 				counter: tt.fields.counter,
 			}
