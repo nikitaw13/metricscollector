@@ -20,7 +20,7 @@ func main() {
 func run() error {
 	var r = repository.NewMemStorage()
 	var h = handler.MetricsHandler{Storage: r}
-	router := h.NewRouter()
+	router := h.New()
 
 	srv := &http.Server{
 		Addr:         flagRunAddr,

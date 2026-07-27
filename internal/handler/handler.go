@@ -24,7 +24,7 @@ func TypeMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (h *MetricsHandler) GetRootHandler(rw http.ResponseWriter, r *http.Request) {
+func (h *MetricsHandler) GetRoot(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	// Start of the HTML page
 	fmt.Fprintln(rw, "<html><body>")
@@ -39,7 +39,7 @@ func (h *MetricsHandler) GetRootHandler(rw http.ResponseWriter, r *http.Request)
 	fmt.Fprintln(rw, "<hr></body></html>")
 }
 
-func (h *MetricsHandler) GetMetricHandler(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) GetMetric(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	switch chi.URLParam(req, "TYPE") {
 	case model.Gauge:
@@ -60,19 +60,19 @@ func (h *MetricsHandler) GetMetricHandler(res http.ResponseWriter, req *http.Req
 	}
 }
 
-func (h *MetricsHandler) PostNoTypeHandler(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) PostNoType(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Metric type is required", http.StatusBadRequest)
 }
 
-func (h *MetricsHandler) PostNoMetricHandler(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) PostNoMetric(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Metric is required", http.StatusNotFound)
 }
 
-func (h *MetricsHandler) PostNoValueHandler(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) PostNoValue(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Metric value is required", http.StatusBadRequest)
 }
 
-func (h *MetricsHandler) PostFullHandler(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) PostFull(res http.ResponseWriter, req *http.Request) {
 	switch chi.URLParam(req, "TYPE") {
 	case model.Gauge:
 		mGaugeValue, err := strconv.ParseFloat(chi.URLParam(req, "VALUE"), 64)

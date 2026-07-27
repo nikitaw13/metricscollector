@@ -300,7 +300,7 @@ var tableTestValues = []tableTestTemplate{
 func GetTestRouter() (server *httptest.Server) {
 	var s = repository.NewMemStorage()
 	var h = MetricsHandler{Storage: s}
-	router := h.NewRouter()
+	router := h.New()
 	server = httptest.NewServer(router)
 	return
 }
