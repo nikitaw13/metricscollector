@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestNewMemStorage(t *testing.T) {
+func TestNew(t *testing.T) {
 	tests := []struct {
 		name string
 		want *MemStorage
@@ -27,7 +27,7 @@ func TestNewMemStorage(t *testing.T) {
 	}
 }
 
-func TestMemStorage_UpdateGauge(t *testing.T) {
+func TestUpdateGauge(t *testing.T) {
 	type fields struct {
 		gauge   map[string]float64
 		counter map[string]int64
@@ -83,7 +83,7 @@ func TestMemStorage_UpdateGauge(t *testing.T) {
 	}
 }
 
-func TestMemStorage_UpdateCounter(t *testing.T) {
+func TestUpdateCounter(t *testing.T) {
 	type fields struct {
 		gauge   map[string]float64
 		counter map[string]int64

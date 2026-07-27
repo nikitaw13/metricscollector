@@ -17,7 +17,7 @@ import (
 //   - the metric was received by the server,
 //   - the HTTP method is POST,
 //   - the Content-Type header is "text/plain; charset=utf-8".
-func Test_SendMetrics(t *testing.T) {
+func TestSendMetrics(t *testing.T) {
 	as := NewAgentStorage()
 
 	for _, v := range GaugeMetrics {
@@ -80,7 +80,7 @@ func Test_SendMetrics(t *testing.T) {
 
 // Test_ResetIf200 verifies that all counter metrics are reset to zero
 // after the server responds with HTTP 200 OK.
-func Test_ResetIf200(t *testing.T) {
+func TestResetIf200(t *testing.T) {
 	as := NewAgentStorage()
 
 	rv := rand.Int64()
@@ -115,7 +115,7 @@ func Test_ResetIf200(t *testing.T) {
 
 // Test_NoResetIfNot200 verifies that counter metrics are NOT reset
 // when the server responds with a non-200 status code (e.g. HTTP 500).
-func Test_NoResetIfNot200(t *testing.T) {
+func TestNoResetIfNot200(t *testing.T) {
 	as := NewAgentStorage()
 
 	rv := rand.Int64()

@@ -27,28 +27,28 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 }
 
 // Template defines a single table-driven test case.
-type table_test_template struct {
+type tableTestTemplate struct {
 	name   string
 	method string
 	path   string
-	want   table_want_template
+	want   tableWantTemplate
 }
 
 // Template defines expected response for a table-driven test case.
-type table_want_template struct {
+type tableWantTemplate struct {
 	code        int
 	response    string
 	contenttype string
 }
 
 // HTTP method validation cases: only POST is allowed on /update/*.
-var table_test_methods = []table_test_template{
+var tableTestMethods = []tableTestTemplate{
 	// Test full /update endpoint
 	{
 		name:   "200 proper POST",
 		method: http.MethodPost,
 		path:   "/update/counter/test/9999999",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusOK,
 			response:    "Metric 'test' updated✅\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -58,7 +58,7 @@ var table_test_methods = []table_test_template{
 		name:   "405 GET",
 		method: http.MethodGet,
 		path:   "/update/counter/test/9999999",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusMethodNotAllowed,
 			response:    "",
 			contenttype: "",
@@ -69,7 +69,7 @@ var table_test_methods = []table_test_template{
 		name:   "200 GET /",
 		method: http.MethodGet,
 		path:   "/",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code: http.StatusOK,
 			response: `<html><body>
 <h1>List of names and results of all currently known metrics</h1>
@@ -82,7 +82,7 @@ var table_test_methods = []table_test_template{
 		name:   "405 POST /",
 		method: http.MethodPost,
 		path:   "/",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusMethodNotAllowed,
 			response:    "",
 			contenttype: "",
@@ -91,12 +91,12 @@ var table_test_methods = []table_test_template{
 }
 
 // Metric type validation cases: only "gauge" and "counter" are accepted.
-var table_test_types = []table_test_template{
+var tableTestTypes = []tableTestTemplate{
 	{
 		name:   "400 if POST without metric type",
 		method: http.MethodPost,
 		path:   "/update",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusBadRequest,
 			response:    "Metric type is required\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -106,7 +106,7 @@ var table_test_types = []table_test_template{
 		name:   "400 if POST with 'random' type",
 		method: http.MethodPost,
 		path:   "/update/random/",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusBadRequest,
 			response:    "Invalid metric type\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -116,7 +116,7 @@ var table_test_types = []table_test_template{
 		name:   "200 if POST with 'gauge' type",
 		method: http.MethodPost,
 		path:   "/update/gauge/test/1.00",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusOK,
 			response:    "Metric 'test' updated✅\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -126,7 +126,7 @@ var table_test_types = []table_test_template{
 		name:   "200 if POST with 'counter' type",
 		method: http.MethodPost,
 		path:   "/update/counter/test/1",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusOK,
 			response:    "Metric 'test' updated✅\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -135,12 +135,12 @@ var table_test_types = []table_test_template{
 }
 
 // Metric name validation cases: missing name returns 404.
-var table_test_metrics = []table_test_template{
+var tableTestMetrics = []tableTestTemplate{
 	{
 		name:   "404 POST without gauge metric name",
 		method: http.MethodPost,
 		path:   "/update/gauge",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusNotFound,
 			response:    "Metric is required\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -150,7 +150,7 @@ var table_test_metrics = []table_test_template{
 		name:   "404 POST without counter metric name",
 		method: http.MethodPost,
 		path:   "/update/counter",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusNotFound,
 			response:    "Metric is required\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -160,7 +160,7 @@ var table_test_metrics = []table_test_template{
 		name:   "404 GET with unknown metric",
 		method: http.MethodGet,
 		path:   "/value/counter/unknown",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusNotFound,
 			response:    "Counter unknown not found\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -169,13 +169,13 @@ var table_test_metrics = []table_test_template{
 }
 
 // Metric value validation cases: empty, valid, and invalid values for both types.
-var table_test_values = []table_test_template{
+var tableTestValues = []tableTestTemplate{
 	// Empty value
 	{
 		name:   "400 if POST gauge value empty",
 		method: http.MethodPost,
 		path:   "/update/gauge/name",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusBadRequest,
 			response:    "Metric value is required\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -185,7 +185,7 @@ var table_test_values = []table_test_template{
 		name:   "400 if counter gauge value empty",
 		method: http.MethodPost,
 		path:   "/update/counter/name",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusBadRequest,
 			response:    "Metric value is required\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -196,7 +196,7 @@ var table_test_values = []table_test_template{
 		name:   "200 if POST gauge value is positive float",
 		method: http.MethodPost,
 		path:   "/update/gauge/name/1.00",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -206,7 +206,7 @@ var table_test_values = []table_test_template{
 		name:   "200 if POST gauge value is negative float",
 		method: http.MethodPost,
 		path:   "/update/gauge/name/-1000.00",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -216,7 +216,7 @@ var table_test_values = []table_test_template{
 		name:   "200 if POST gauge value is positive int",
 		method: http.MethodPost,
 		path:   "/update/gauge/name/1000",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -226,7 +226,7 @@ var table_test_values = []table_test_template{
 		name:   "200 if POST gauge value is negative int",
 		method: http.MethodPost,
 		path:   "/update/gauge/name/-1000",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -236,7 +236,7 @@ var table_test_values = []table_test_template{
 		name:   "400 if POST gauge value is latin",
 		method: http.MethodPost,
 		path:   "/update/gauge/name/value",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusBadRequest,
 			response:    "Invalid metric value\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -248,7 +248,7 @@ var table_test_values = []table_test_template{
 		name:   "200 if POST counter value is positive int",
 		method: http.MethodPost,
 		path:   "/update/counter/name/1",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -258,7 +258,7 @@ var table_test_values = []table_test_template{
 		name:   "200 if POST counter value is negative int",
 		method: http.MethodPost,
 		path:   "/update/counter/name/-1001",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusOK,
 			response:    "Metric 'name' updated✅\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -268,7 +268,7 @@ var table_test_values = []table_test_template{
 		name:   "400 if POST counter value is positive float",
 		method: http.MethodPost,
 		path:   "/update/counter/name/1000.00",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusBadRequest,
 			response:    "Invalid metric value\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -278,7 +278,7 @@ var table_test_values = []table_test_template{
 		name:   "400 if POST counter value is negative float",
 		method: http.MethodPost,
 		path:   "/update/counter/name/-1001,00",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusBadRequest,
 			response:    "Invalid metric value\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -288,7 +288,7 @@ var table_test_values = []table_test_template{
 		name:   "400 if POST counter value is latin",
 		method: http.MethodPost,
 		path:   "/update/counter/name/value",
-		want: table_want_template{
+		want: tableWantTemplate{
 			code:        http.StatusBadRequest,
 			response:    "Invalid metric value\n",
 			contenttype: "text/plain; charset=utf-8",
@@ -310,7 +310,7 @@ func TestMethods(t *testing.T) {
 	ts := GetTestRouter()
 	defer ts.Close()
 
-	for _, v := range table_test_methods {
+	for _, v := range tableTestMethods {
 		t.Run(v.name, func(t *testing.T) {
 			resp, body := testRequest(t, ts, v.method, v.path)
 			// Check Status code
@@ -332,7 +332,7 @@ func TestTypes(t *testing.T) {
 	ts := GetTestRouter()
 	defer ts.Close()
 
-	for _, v := range table_test_types {
+	for _, v := range tableTestTypes {
 		t.Run(v.name, func(t *testing.T) {
 			resp, body := testRequest(t, ts, v.method, v.path)
 			// Check Status code
@@ -354,7 +354,7 @@ func TestMetrics(t *testing.T) {
 	ts := GetTestRouter()
 	defer ts.Close()
 
-	for _, v := range table_test_metrics {
+	for _, v := range tableTestMetrics {
 		t.Run(v.name, func(t *testing.T) {
 			resp, body := testRequest(t, ts, v.method, v.path)
 			// Check Status code
@@ -376,7 +376,7 @@ func TestValues(t *testing.T) {
 	ts := GetTestRouter()
 	defer ts.Close()
 
-	for _, v := range table_test_values {
+	for _, v := range tableTestValues {
 		t.Run(v.name, func(t *testing.T) {
 			resp, body := testRequest(t, ts, v.method, v.path)
 			// Check Status code

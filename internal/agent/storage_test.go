@@ -9,7 +9,7 @@ import (
 )
 
 // Test verifies that SetGauge stores the value and overwrites on subsequent calls.
-func Test_SetGauge(t *testing.T) {
+func TestSetGauge(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range GaugeMetrics {
 		t.Run(m, func(t *testing.T) {
@@ -29,7 +29,7 @@ func Test_SetGauge(t *testing.T) {
 }
 
 // Test verifies that SetCounter increments the value cumulatively.
-func Test_SetCounter(t *testing.T) {
+func TestSetCounter(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
@@ -49,7 +49,7 @@ func Test_SetCounter(t *testing.T) {
 }
 
 // Test verifies that ResetCounter sets the counter value to zero.
-func Test_ResetCounter(t *testing.T) {
+func TestResetCounter(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
@@ -70,7 +70,7 @@ func Test_ResetCounter(t *testing.T) {
 }
 
 // Test verifies that GetGauge returns an error for a nonexistent key.
-func Test_GetGaugeError(t *testing.T) {
+func TestGetGaugeError(t *testing.T) {
 	ms := NewAgentStorage()
 	t.Run("nonexistent gauge", func(t *testing.T) {
 		_, err := ms.GetGauge("__nonexistent__")
@@ -79,7 +79,7 @@ func Test_GetGaugeError(t *testing.T) {
 }
 
 // Test verifies that GetCounter returns an error for a nonexistent key.
-func Test_GetCounterError(t *testing.T) {
+func TestGetCounterError(t *testing.T) {
 	ms := NewAgentStorage()
 	t.Run("nonexistent counter", func(t *testing.T) {
 		_, err := ms.GetCounter("__nonexistent__")
@@ -88,7 +88,7 @@ func Test_GetCounterError(t *testing.T) {
 }
 
 // Test verifies that GetAllGauges returns a copy, not a reference.
-func Test_GetAllGaugesReturnsCopy(t *testing.T) {
+func TestGetAllGaugesReturnsCopy(t *testing.T) {
 	ms := NewAgentStorage()
 	copy := ms.GetAllGauges()
 
@@ -106,7 +106,7 @@ func Test_GetAllGaugesReturnsCopy(t *testing.T) {
 }
 
 // Test verifies that GetAllCounters returns a copy, not a reference.
-func Test_GetAllCountersReturnsCopy(t *testing.T) {
+func TestGetAllCountersReturnsCopy(t *testing.T) {
 	ms := NewAgentStorage()
 	copy := ms.GetAllCounters()
 
@@ -124,7 +124,7 @@ func Test_GetAllCountersReturnsCopy(t *testing.T) {
 }
 
 // Test verifies that GetAllGauges returns a map containing all stored values.
-func Test_GetAllGauges(t *testing.T) {
+func TestGetAllGauges(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range GaugeMetrics {
 		t.Run(m, func(t *testing.T) {
@@ -141,7 +141,7 @@ func Test_GetAllGauges(t *testing.T) {
 }
 
 // Test verifies that GetAllCounters returns a map containing all stored values.
-func Test_GetAllCounters(t *testing.T) {
+func TestGetAllCounters(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
