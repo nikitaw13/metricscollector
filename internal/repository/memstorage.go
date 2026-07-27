@@ -12,7 +12,7 @@ type MemStorage struct {
 }
 
 // Function creates and returns a pointer to an initialized MemStorage instance with empty metric maps.
-func NewMemStorage() *MemStorage {
+func New() *MemStorage {
 	return &MemStorage{
 		gauge:   map[string]float64{},
 		counter: map[string]int64{},

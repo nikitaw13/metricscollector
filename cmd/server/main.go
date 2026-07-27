@@ -18,7 +18,7 @@ func main() {
 }
 
 func run() error {
-	var r = repository.NewMemStorage()
+	var r = repository.New()
 	var h = handler.MetricsHandler{Storage: r}
 	router := h.New()
 
