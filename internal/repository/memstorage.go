@@ -11,8 +11,6 @@ type MemStorage struct {
 	counter map[string]int64
 }
 
-var _ Repository = (*MemStorage)(nil)
-
 // Function creates and returns a pointer to an initialized MemStorage instance with empty metric maps.
 func NewMemStorage() *MemStorage {
 	return &MemStorage{

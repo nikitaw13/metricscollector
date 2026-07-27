@@ -6,12 +6,11 @@ import (
 	"strconv"
 
 	"github.com/PrometheRus/metricscollector/internal/model"
-	"github.com/PrometheRus/metricscollector/internal/repository"
 	"github.com/go-chi/chi"
 )
 
 type MetricsHandler struct {
-	Storage repository.Repository
+	Storage Repository
 }
 
 func TypeMiddleware(next http.Handler) http.Handler {

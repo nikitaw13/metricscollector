@@ -1,4 +1,4 @@
-package repository
+package handler
 
 type StorageGetter interface {
 	GetGauge(name string) (float64, error)
