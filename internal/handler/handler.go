@@ -61,7 +61,7 @@ func (h *MetricsHandler) GetMetric(res http.ResponseWriter, req *http.Request) {
 }
 
 func (h *MetricsHandler) PostNoType(res http.ResponseWriter, req *http.Request) {
-	http.Error(res, "Metric type is required", http.StatusBadRequest)
+	http.Error(res, "Type is required", http.StatusBadRequest)
 }
 
 func (h *MetricsHandler) PostNoMetric(res http.ResponseWriter, req *http.Request) {
