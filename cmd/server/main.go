@@ -11,6 +11,7 @@ import (
 
 func main() {
 	parseFlags()
+	parseEnvs()
 
 	if err := run(); err != nil {
 		log.Fatal(err)
