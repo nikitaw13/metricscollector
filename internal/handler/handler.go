@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
-	"github.com/PrometheRus/metricscollector/internal/logger"
 	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/go-chi/chi"
 	"go.uber.org/zap"
@@ -26,14 +26,33 @@ func TypeMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// RequestLogger — middleware-логер для входящих HTTP-запросов
-func RequestLogger(h http.Handler) http.Handler {
+// Middleware-логер для логирования входящих HTTP-запросов
+func LoggerMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		logger.Log.Debug("got incoming HTTP request",
+		start := time.Now()
+
+		rd := &responseData{
+			status: 0,
+			size:   0,
+		}
+
+		lwr := loggingResponseWriter{
+			ResponseWriter: rw,
+			responseData:   rd,
+		}
+
+		h.ServeHTTP(&lwr, req)
+
+		Log.Info("got incoming HTTP request",
+			zap.String("URI", req.RequestURI),
 			zap.String("method", req.Method),
-			zap.String("path", req.URL.Path),
+			zap.Duration("duration", time.Since(start)),
 		)
-		h.ServeHTTP(rw, req)
+
+		Log.Info("respose for incoming HTTP request",
+			zap.Int("status", rd.status),
+			zap.Int("size", rd.size),
+		)
 	})
 }
 

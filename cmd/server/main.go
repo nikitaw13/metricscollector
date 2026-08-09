@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/PrometheRus/metricscollector/internal/handler"
-	"github.com/PrometheRus/metricscollector/internal/logger"
 	"github.com/PrometheRus/metricscollector/internal/repository"
 	"go.uber.org/zap"
 )
@@ -21,7 +20,7 @@ func main() {
 }
 
 func run() error {
-	if err := logger.Initialize(flagLogLevel); err != nil {
+	if err := handler.Initialize(flagLogLevel); err != nil {
 		return err
 	}
 
@@ -37,6 +36,6 @@ func run() error {
 		Handler:      router,
 	}
 
-	logger.Log.Info("Running server", zap.String("address", flagRunAddr), zap.String("logLevel", flagLogLevel))
+	handler.Log.Info("Running server", zap.String("address", flagRunAddr), zap.String("logLevel", flagLogLevel))
 	return srv.ListenAndServe()
 }
