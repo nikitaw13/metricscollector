@@ -6,6 +6,7 @@ import (
 
 func (h *MetricsHandler) New() *chi.Mux {
 	router := chi.NewRouter()
+	router.Use(RequestLogger)
 
 	router.Get("/", h.GetRoot)
 	router.Route("/value/{TYPE}", func(r chi.Router) {

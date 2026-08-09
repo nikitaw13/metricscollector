@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/PrometheRus/metricscollector/internal/logger"
 	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/go-chi/chi"
+	"go.uber.org/zap"
 )
 
 type MetricsHandler struct {
@@ -21,6 +23,17 @@ func TypeMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(res, req)
+	})
+}
+
+// RequestLogger — middleware-логер для входящих HTTP-запросов
+func RequestLogger(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		logger.Log.Debug("got incoming HTTP request",
+			zap.String("method", req.Method),
+			zap.String("path", req.URL.Path),
+		)
+		h.ServeHTTP(rw, req)
 	})
 }
 
