@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -136,39 +137,71 @@ func (h *MetricsHandler) PostFull(res http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(res, "Metric '%s' updated✅\n", chi.URLParam(req, "METRIC"))
 }
 
+// JSON Objects
+type apiError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+func writeJSONError(rw http.ResponseWriter, status int, err error) {
+	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	resp, err := json.Marshal(apiError{Code: status, Message: err.Error()})
+
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	rw.WriteHeader(status)
+	rw.Write(resp)
+}
+
 func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) {
 	if req.Header.Get("Content-Type") != "application/json" {
 		http.Error(res, "Type is required", http.StatusBadRequest)
 		return
 	}
 
-	var metrics model.Metrics
+	var m model.Metrics
 
-	if err := json.NewDecoder(req.Body).Decode(&metrics); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
+		// тут можно получать разные JSON ошибки
+		// Возможно, имеет смысл писать разные сообщения
+		// пример curl -X POST http://localhost:8080/update   -H "Content-Type: application/json"   -d '{"type":"counter","id":"ss", "delta":""}'  -i
+		writeJSONError(res, http.StatusBadRequest, fmt.Errorf("Invalid request body"))
 		return
 	}
 
-	if err := metrics.ValidateForRead(); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+	if err := m.ValidateForUpdate(); err != nil {
+		writeJSONError(res, http.StatusBadRequest, err)
 		return
 	}
 
-	switch metrics.MType {
+	switch m.MType {
 	case model.Gauge:
-		if err := h.Storage.UpdateGauge(metrics.ID, *metrics.Value); err != nil {
-			http.Error(res, "Failed to update Gauge", http.StatusInternalServerError)
+		if err := h.Storage.UpdateGauge(m.ID, *m.Value); err != nil {
+			writeJSONError(res, http.StatusInternalServerError, err)
 			return
 		}
 	case model.Counter:
-		if err := h.Storage.UpdateCounter(metrics.ID, *metrics.Delta); err != nil {
-			http.Error(res, "Failed to update Counter", http.StatusInternalServerError)
+		if err := h.Storage.UpdateCounter(m.ID, *m.Delta); err != nil {
+			writeJSONError(res, http.StatusInternalServerError, err)
 			return
 		}
 	}
-	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+	resp, err := json.Marshal(m)
+	if err != nil {
+		writeJSONError(res, http.StatusInternalServerError, err)
+		return
+	}
+
+	var buf bytes.Buffer
+	json.NewEncoder(&buf).Encode(m)
 	res.WriteHeader(http.StatusOK)
-	fmt.Fprintf(res, "Metric '%s' updated✅\n", metrics.ID)
+	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+	res.Write(resp)
 }
 
 func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
@@ -177,34 +210,44 @@ func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var metrics model.Metrics
+	var m model.Metrics
 
-	if err := json.NewDecoder(req.Body).Decode(&metrics); err != nil {
+	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	if err := metrics.ValidateForRead(); err != nil {
+	if err := m.ValidateForRead(); err != nil {
 		http.Error(res, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	res.Header().Set("Content-Type", "application/json; charset=utf-8")
-	switch metrics.MType {
+	switch m.MType {
 	case model.Gauge:
-		result, err := h.Storage.GetGauge(metrics.ID)
+		result, err := h.Storage.GetGauge(m.ID)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusNotFound)
 			return
 		}
-		fmt.Fprintf(res, "%g\n", result)
+		m.Value = &result
 
 	case model.Counter:
-		result, err := h.Storage.GetCounter(metrics.ID)
+		result, err := h.Storage.GetCounter(m.ID)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusNotFound)
 			return
 		}
-		fmt.Fprintf(res, "%d\n", result)
+		m.Delta = &result
 	}
+
+	resp, err := json.Marshal(m)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var buf bytes.Buffer
+	json.NewEncoder(&buf).Encode(m)
+	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+	res.Write(resp)
 }
