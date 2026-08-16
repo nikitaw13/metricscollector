@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -196,29 +195,27 @@ func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) 
 		writeJSONError(res, http.StatusInternalServerError, err)
 		return
 	}
-
-	var buf bytes.Buffer
-	json.NewEncoder(&buf).Encode(m)
-	res.WriteHeader(http.StatusOK)
 	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+	res.WriteHeader(http.StatusOK)
 	res.Write(resp)
 }
 
 func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
 	if req.Header.Get("Content-Type") != "application/json" {
 		http.Error(res, "Type is required", http.StatusBadRequest)
+		writeJSONError(res, http.StatusBadRequest, fmt.Errorf("Type is required"))
 		return
 	}
 
 	var m model.Metrics
 
 	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		writeJSONError(res, http.StatusBadRequest, err)
 		return
 	}
 
 	if err := m.ValidateForRead(); err != nil {
-		http.Error(res, err.Error(), http.StatusBadRequest)
+		writeJSONError(res, http.StatusBadRequest, err)
 		return
 	}
 
@@ -226,7 +223,7 @@ func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
 	case model.Gauge:
 		result, err := h.Storage.GetGauge(m.ID)
 		if err != nil {
-			http.Error(res, err.Error(), http.StatusNotFound)
+			writeJSONError(res, http.StatusNotFound, err)
 			return
 		}
 		m.Value = &result
@@ -234,7 +231,7 @@ func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
 	case model.Counter:
 		result, err := h.Storage.GetCounter(m.ID)
 		if err != nil {
-			http.Error(res, err.Error(), http.StatusNotFound)
+			writeJSONError(res, http.StatusNotFound, err)
 			return
 		}
 		m.Delta = &result
@@ -246,8 +243,7 @@ func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var buf bytes.Buffer
-	json.NewEncoder(&buf).Encode(m)
 	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+	res.WriteHeader(http.StatusOK)
 	res.Write(resp)
 }
