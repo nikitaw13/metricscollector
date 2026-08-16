@@ -54,12 +54,19 @@ func (m Metrics) ValidateForUpdate() error {
 		return ErrInvalidValue
 	}
 
+	if m.MType == Counter && m.Delta != nil && *m.Delta < 0 {
+		return ErrInvalidValue
+	}
+
 	return nil
 }
 
 func (m Metrics) ValidateForRead() error {
 	if m.MType == "" {
 		return ErrMissingType
+	}
+	if m.MType != Gauge && m.MType != Counter {
+		return ErrInvalidType
 	}
 	if m.ID == "" {
 		return ErrMissingID
