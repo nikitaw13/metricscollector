@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/PrometheRus/metricscollector/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -210,17 +209,6 @@ var validationTests = []tableTestTemplate{
 	},
 }
 
-// Function creates a test server with a fresh storage instance and configured routes.
-func GetTestRouter() (server *httptest.Server) {
-	var s = repository.New()
-	s.UpdateGauge("___test___", 123)
-	s.UpdateCounter("___test___", 234)
-	var h = MetricsHandler{Storage: s}
-	router := h.New()
-	server = httptest.NewServer(router)
-	return
-}
-
 func runTableTests(t *testing.T, cases []tableTestTemplate) {
 	ts := GetTestRouter()
 	defer ts.Close()
@@ -242,6 +230,7 @@ func TestUpdate(t *testing.T) {
 func TestRead(t *testing.T) {
 	runTableTests(t, readTests)
 }
+
 func TestValidate(t *testing.T) {
 	runTableTests(t, validationTests)
 }
