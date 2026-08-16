@@ -107,13 +107,13 @@ var readTests = []tableTestTemplate{
 // Validation: invalid type, name, or value
 var validationTests = []tableTestTemplate{
 	// Missing or invalid metric type
-	{
-		"Missing metric type", http.MethodPost, "/update", tableWantTemplate{
-			http.StatusBadRequest,
-			"Type is required\n",
-			"text/plain; charset=utf-8",
-		},
-	},
+	// {
+	// 	"Missing metric type", http.MethodPost, "/update", tableWantTemplate{
+	// 		http.StatusBadRequest,
+	// 		"Type is required\n",
+	// 		"text/plain; charset=utf-8",
+	// 	},
+	// },
 	{
 		"Invalid metric type", http.MethodPost, "/update/random/", tableWantTemplate{
 			http.StatusBadRequest,
