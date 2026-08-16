@@ -139,14 +139,14 @@ var validationTests = []tableTestTemplate{
 	{
 		"Missing gauge metric name", http.MethodPost, "/update/gauge", tableWantTemplate{
 			http.StatusNotFound,
-			"Metric is required\n",
+			"Metric ID is required\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Missing counter metric name", http.MethodPost, "/update/counter", tableWantTemplate{
 			http.StatusNotFound,
-			"Metric is required\n",
+			"Metric ID is required\n",
 			"text/plain; charset=utf-8",
 		},
 	},

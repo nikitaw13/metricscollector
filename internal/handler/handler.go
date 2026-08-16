@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -92,12 +93,8 @@ func (h *MetricsHandler) GetMetric(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *MetricsHandler) PostNoType(res http.ResponseWriter, req *http.Request) {
-	http.Error(res, "Type is required", http.StatusBadRequest)
-}
-
 func (h *MetricsHandler) PostNoMetric(res http.ResponseWriter, req *http.Request) {
-	http.Error(res, "Metric is required", http.StatusNotFound)
+	http.Error(res, "Metric ID is required", http.StatusNotFound)
 }
 
 func (h *MetricsHandler) PostNoValue(res http.ResponseWriter, req *http.Request) {
@@ -137,4 +134,77 @@ func (h *MetricsHandler) PostFull(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.WriteHeader(http.StatusOK)
 	fmt.Fprintf(res, "Metric '%s' updated✅\n", chi.URLParam(req, "METRIC"))
+}
+
+func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) {
+	if req.Header.Get("Content-Type") != "application/json" {
+		http.Error(res, "Type is required", http.StatusBadRequest)
+		return
+	}
+
+	var metrics model.Metrics
+
+	if err := json.NewDecoder(req.Body).Decode(&metrics); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := metrics.ValidateForRead(); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch metrics.MType {
+	case model.Gauge:
+		if err := h.Storage.UpdateGauge(metrics.ID, *metrics.Value); err != nil {
+			http.Error(res, "Failed to update Gauge", http.StatusInternalServerError)
+			return
+		}
+	case model.Counter:
+		if err := h.Storage.UpdateCounter(metrics.ID, *metrics.Delta); err != nil {
+			http.Error(res, "Failed to update Counter", http.StatusInternalServerError)
+			return
+		}
+	}
+	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+	res.WriteHeader(http.StatusOK)
+	fmt.Fprintf(res, "Metric '%s' updated✅\n", metrics.ID)
+}
+
+func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
+	if req.Header.Get("Content-Type") != "application/json" {
+		http.Error(res, "Type is required", http.StatusBadRequest)
+		return
+	}
+
+	var metrics model.Metrics
+
+	if err := json.NewDecoder(req.Body).Decode(&metrics); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if err := metrics.ValidateForRead(); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	res.Header().Set("Content-Type", "application/json; charset=utf-8")
+	switch metrics.MType {
+	case model.Gauge:
+		result, err := h.Storage.GetGauge(metrics.ID)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusNotFound)
+			return
+		}
+		fmt.Fprintf(res, "%g\n", result)
+
+	case model.Counter:
+		result, err := h.Storage.GetCounter(metrics.ID)
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusNotFound)
+			return
+		}
+		fmt.Fprintf(res, "%d\n", result)
+	}
 }

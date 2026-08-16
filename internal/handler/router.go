@@ -14,7 +14,8 @@ func (h *MetricsHandler) New() *chi.Mux {
 		r.Get("/{METRIC}", h.GetMetric)
 	})
 
-	router.Post("/update", h.PostNoType)
+	router.Post("/value", h.PostValue)
+	router.Post("/update", h.PostUpdate)
 	router.Route("/update/{TYPE}", func(r chi.Router) {
 		r.Use(TypeMiddleware)              // проверит TYPE для всех трёх ниже
 		r.Post("/", h.PostNoMetric)        // 404 — нет имени
