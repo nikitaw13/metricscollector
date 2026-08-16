@@ -257,7 +257,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"Counter metric value is latin",
 		http.MethodPost,
 		"/update",
-		"{\"type\":\"counter\", \"id\":\"name\", \"value\":\"LatinText\"}",
+		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":\"LatinText\"}",
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
@@ -268,7 +268,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"Counter metric value is positive float",
 		http.MethodPost,
 		"/update",
-		"{\"type\":\"counter\", \"id\":\"name\", \"value\":1001,00}",
+		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":1001,00}",
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
@@ -279,7 +279,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"Counter metric value is negative float",
 		http.MethodPost,
 		"/update",
-		"{\"type\":\"counter\", \"id\":\"name\", \"value\":-1001,00}",
+		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":-1001,00}",
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
@@ -311,10 +311,6 @@ func runJsonTests(t *testing.T, cases []jsonTestTemplate) {
 		})
 	}
 }
-
-// func TestJsonRead(t *testing.T) {
-// 	runJsonTests(t, jsonReadTests)
-// }
 
 func TestJsonValidate(t *testing.T) {
 	runJsonTests(t, validationJsonTests)
