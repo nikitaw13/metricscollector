@@ -50,13 +50,6 @@ var updateTests = []tableTestTemplate{
 		},
 	},
 	{
-		"Counter negative int", http.MethodPost, "/update/counter/test/-1001", tableWantTemplate{
-			http.StatusOK,
-			"Metric 'test' updated✅\n",
-			"text/plain; charset=utf-8",
-		},
-	},
-	{
 		"Gauge positive int", http.MethodPost, "/update/gauge/test/1000", tableWantTemplate{
 			http.StatusOK,
 			"Metric 'test' updated✅\n",
@@ -85,11 +78,6 @@ var updateTests = []tableTestTemplate{
 		},
 	},
 }
-
-var htmlResponse = `<html><body>
-<h1>List of names and results of all currently known metrics</h1>
-<b>___test___</b>:   <code>234</code><br><b>___test___</b>:   <code>123</code><br><hr></body></html>
-`
 
 // Read: successful fetching metric values and lists
 var readTests = []tableTestTemplate{
@@ -202,6 +190,13 @@ var validationTests = []tableTestTemplate{
 	},
 	{
 		"Counter metric value is negative float", http.MethodPost, "/update/counter/name/-1001,00", tableWantTemplate{
+			http.StatusBadRequest,
+			"Invalid metric value\n",
+			"text/plain; charset=utf-8",
+		},
+	},
+	{
+		"Counter metric value is negative int", http.MethodPost, "/update/counter/test/-1001", tableWantTemplate{
 			http.StatusBadRequest,
 			"Invalid metric value\n",
 			"text/plain; charset=utf-8",

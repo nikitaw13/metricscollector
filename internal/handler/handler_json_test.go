@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,17 +52,104 @@ type jsonTestTemplate struct {
 type tableWantJsonTemplate struct {
 	code        int
 	contentType string
+	// metrics     *model.Metrics
 }
 
 // Update: successful metric updates for json requests
-var jsonUpdateTests = []jsonTestTemplate{}
+var jsonUpdateTests = []jsonTestTemplate{
+	{
+		"Counter positive int",
+		http.MethodPost,
+		"/update",
+		"{\"type\":\"counter\", \"id\":\"test\", \"delta\":1000}",
+		"application/json",
+		tableWantJsonTemplate{
+			http.StatusOK,
+			// Тут надо добавить, что ждем 1000 в ответе
+			"application/json; charset=utf-8",
+		},
+	},
+	{
+		"Gauge positive int",
+		http.MethodPost,
+		"/update",
+		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":1000}",
+		"application/json",
+		tableWantJsonTemplate{
+			http.StatusOK,
+			// Тут надо добавить, что ждем 1000 в ответе
+			"application/json; charset=utf-8",
+		},
+	},
+	{
+		"Gauge negative int",
+		http.MethodPost,
+		"/update",
+		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":-1000}",
+		"application/json",
+		tableWantJsonTemplate{
+			http.StatusOK,
+			// Тут надо добавить, что ждем -1000 в ответе
+			"application/json; charset=utf-8",
+		},
+	},
+	{
+		"Gauge positive float",
+		http.MethodPost,
+		"/update",
+		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":1000.00}",
+		"application/json",
+		tableWantJsonTemplate{
+			http.StatusOK,
+			// Тут надо добавить, что ждем 1000 в ответе
+			"application/json; charset=utf-8",
+		},
+	},
+	{
+		"Gauge positive float",
+		http.MethodPost,
+		"/update",
+		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":-1000.00}",
+		"application/json",
+		tableWantJsonTemplate{
+			http.StatusOK,
+			// Тут надо добавить, что ждем -1000 в ответе
+			"application/json; charset=utf-8",
+		},
+	},
+}
 
 // Read: successful fetching metric values and lists
-var jsonReadTests = []jsonTestTemplate{}
+var jsonReadTests = []jsonTestTemplate{
+	{
+		"Read existing gauge",
+		http.MethodPost,
+		"/value",
+		"{\"type\":\"gauge\", \"id\":\"___test___\"}",
+		"application/json",
+		tableWantJsonTemplate{
+			http.StatusOK,
+			// Тут надо добавить, что ждем 123 в ответе
+			"application/json; charset=utf-8",
+		},
+	},
+	{
+		"Read existing gauge",
+		http.MethodPost,
+		"/value",
+		"{\"type\":\"counter\", \"id\":\"___test___\"}",
+		"application/json",
+		tableWantJsonTemplate{
+			http.StatusOK,
+			// Тут надо добавить, что ждем 234 в ответе
+			"application/json; charset=utf-8",
+		},
+	},
+}
 
 // Validation: invalid type, name, or value
 var validationJsonTests = []jsonTestTemplate{
-	// Missing or invalid metric type
+	// Missing or invalid metric TYPE
 	{
 		"Missing metric type",
 		http.MethodPost,
@@ -84,7 +173,7 @@ var validationJsonTests = []jsonTestTemplate{
 		},
 	},
 
-	// Missing or invalid metric name
+	// Missing or invalid metric NAME
 	{
 		"Missing gauge metric name",
 		http.MethodPost,
@@ -107,31 +196,30 @@ var validationJsonTests = []jsonTestTemplate{
 			"application/json; charset=utf-8",
 		},
 	},
-	// ВНИМАНИЕ - ТУТ VALUE ЭНДПОИНТ
-	// {
-	// 	"Invalid gauge metric name",
-	// 	http.MethodPost,
-	// 	"/value",
-	// 	"{\"type\":\"gauge\",\"id\":\"unknown\"}",
-	// 	"application/json",
-	// 	tableWantJsonTemplate{
-	// 		http.StatusNotFound,
-	// 		"application/json; charset=utf-8",
-	// 	},
-	// },
-	// {
-	// 	"Invalid counter metric name",
-	// 	http.MethodPost,
-	// 	"/value",
-	// 	"{\"type\":\"counter\",\"id\":\"unknown\"}",
-	// 	"application/json",
-	// 	tableWantJsonTemplate{
-	// 		http.StatusNotFound,
-	// 		"application/json; charset=utf-8",
-	// 	},
-	// },
+	{
+		"Invalid gauge metric name",
+		http.MethodPost,
+		"/value",
+		"{\"type\":\"gauge\",\"id\":\"unknown\"}",
+		"application/json",
+		tableWantJsonTemplate{
+			http.StatusNotFound,
+			"application/json; charset=utf-8",
+		},
+	},
+	{
+		"Invalid counter metric name",
+		http.MethodPost,
+		"/value",
+		"{\"type\":\"counter\",\"id\":\"unknown\"}",
+		"application/json",
+		tableWantJsonTemplate{
+			http.StatusNotFound,
+			"application/json; charset=utf-8",
+		},
+	},
 
-	// Missing or invalid metric value
+	// Missing or invalid metric VALUE
 	{
 		"Missing gauge metric value",
 		http.MethodPost,
@@ -198,6 +286,17 @@ var validationJsonTests = []jsonTestTemplate{
 			"application/json; charset=utf-8",
 		},
 	},
+	{
+		"Counter metric value is negative int",
+		http.MethodPost,
+		"/update",
+		"{\"type\":\"counter\", \"id\":\"test\", \"delta\":-1000}",
+		"application/json",
+		tableWantJsonTemplate{
+			http.StatusBadRequest,
+			"application/json; charset=utf-8",
+		},
+	},
 }
 
 func runJsonTests(t *testing.T, cases []jsonTestTemplate) {
@@ -213,14 +312,51 @@ func runJsonTests(t *testing.T, cases []jsonTestTemplate) {
 	}
 }
 
+// func TestJsonRead(t *testing.T) {
+// 	runJsonTests(t, jsonReadTests)
+// }
+
+func TestJsonValidate(t *testing.T) {
+	runJsonTests(t, validationJsonTests)
+}
+
 func TestJsonUpdate(t *testing.T) {
 	runJsonTests(t, jsonUpdateTests)
 }
 
 func TestJsonRead(t *testing.T) {
-	runJsonTests(t, jsonReadTests)
+	ts := GetTestRouter()
+	defer ts.Close()
+
+	tests := []struct {
+		name string
+		body string
+		want model.Metrics
+	}{
+		{
+			"Read existing gauge",
+			"{\"type\":\"gauge\", \"id\":\"___test___\"}",
+			model.Metrics{ID: "___test___", MType: "gauge", Value: fPtr(defaultGaugeValue)},
+		},
+		{
+			"Read existing counter",
+			"{\"type\":\"counter\", \"id\":\"___test___\"}",
+			model.Metrics{ID: "___test___", MType: "counter", Delta: iPtr(defaultCounterValue)},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, body := testJsonRequest(t, ts, http.MethodPost, "/value", tt.body, "application/json")
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+
+			var got model.Metrics
+			require.NoError(t, json.Unmarshal([]byte(body), &got))
+			assert.Equal(t, tt.want, got)
+		})
+	}
 }
 
-func TestJsonValidate(t *testing.T) {
-	runJsonTests(t, validationJsonTests)
-}
+func fPtr(v float64) *float64 { return &v }
+func iPtr(v int64) *int64     { return &v }

@@ -120,7 +120,7 @@ func (h *MetricsHandler) PostFull(res http.ResponseWriter, req *http.Request) {
 	case model.Counter:
 		mCounterValue, err := strconv.ParseInt(chi.URLParam(req, "VALUE"), 10, 64)
 		// При попытке передать запрос с некорректным значением метрики возвращать http.StatusBadRequest.
-		if err != nil {
+		if err != nil || mCounterValue < 0 {
 			http.Error(res, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
@@ -183,11 +183,19 @@ func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) 
 			writeJSONError(res, http.StatusInternalServerError, err)
 			return
 		}
+		newVal, _ := h.Storage.GetGauge(m.ID)
+		m.Value = &newVal
 	case model.Counter:
 		if err := h.Storage.UpdateCounter(m.ID, *m.Delta); err != nil {
 			writeJSONError(res, http.StatusInternalServerError, err)
 			return
 		}
+		newVal, err := h.Storage.GetCounter(m.ID)
+		if err != nil {
+			writeJSONError(res, http.StatusInternalServerError, err)
+			return
+		}
+		m.Delta = &newVal
 	}
 
 	resp, err := json.Marshal(m)
@@ -203,7 +211,6 @@ func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) 
 func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
 	if req.Header.Get("Content-Type") != "application/json" {
 		http.Error(res, "Type is required", http.StatusBadRequest)
-		writeJSONError(res, http.StatusBadRequest, fmt.Errorf("Type is required"))
 		return
 	}
 
