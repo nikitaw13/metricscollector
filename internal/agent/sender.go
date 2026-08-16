@@ -1,11 +1,14 @@
 package agent
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"strconv"
+
+	"github.com/PrometheRus/metricscollector/internal/model"
 )
 
 // Sender is responsible for sending collected metrics to the server
@@ -19,48 +22,70 @@ type Sender struct {
 // Run performs a one-shot send of all stored gauge and counter metrics to the server.
 // Counter metrics are reset to zero only after a successful (HTTP 200) response.
 func (s *Sender) Run() {
+	updateURL := fmt.Sprintf("%s/update", s.URL)
 
 	// Send all gauges
 	for metric, value := range s.Storage.GetAllGauges() {
-		fullpath := fmt.Sprintf("%s/update/gauge/%s/%s", s.URL, metric, strconv.FormatFloat(value, 'f', -1, 64))
+		m := model.Metrics{
+			MType: model.Gauge,
+			ID:    metric,
+			Value: &value,
+		}
 
-		request, err := http.NewRequest(http.MethodPost, fullpath, nil)
+		jsonBody, err := json.Marshal(&m)
 
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
-		request.Header.Add("Content-Type", "text/plain; charset=utf-8")
-		res, err := s.Client.Do(request)
+		req, err := http.NewRequest(
+			http.MethodPost,
+			updateURL,
+			bytes.NewReader(jsonBody),
+		)
 
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		logRequest(res, metric, fullpath)
+
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		res, err := s.Client.Do(req)
+
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		logRequest(res, metric, updateURL)
 		finalizeSend(res)
 	}
 
 	// Send all counters
 	for metric, value := range s.Storage.GetAllCounters() {
-		fullpath := fmt.Sprintf("%s/update/counter/%s/%s", s.URL, metric, strconv.FormatInt(value, 10))
+		m := model.Metrics{
+			MType: model.Counter,
+			ID:    metric,
+			Delta: &value,
+		}
 
-		request, err := http.NewRequest(http.MethodPost, fullpath, nil)
+		jsonBody, err := json.Marshal(&m)
+
+		req, err := http.NewRequest(http.MethodPost, updateURL, bytes.NewReader(jsonBody))
 
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
-		request.Header.Add("Content-Type", "text/plain; charset=utf-8")
-		res, err := s.Client.Do(request)
+		req.Header.Add("Content-Type", "application/json; charset=utf-8")
+		res, err := s.Client.Do(req)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 		resetCounter(res, metric, s.Storage)
-		logRequest(res, metric, fullpath)
+		logRequest(res, metric, updateURL)
 		finalizeSend(res)
 	}
 }
