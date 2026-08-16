@@ -157,11 +157,6 @@ func writeJSONError(rw http.ResponseWriter, status int, err error) {
 }
 
 func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) {
-	if req.Header.Get("Content-Type") != "application/json" {
-		http.Error(res, "Type is required", http.StatusBadRequest)
-		return
-	}
-
 	var m model.Metrics
 
 	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
@@ -209,11 +204,6 @@ func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) 
 }
 
 func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
-	if req.Header.Get("Content-Type") != "application/json" {
-		http.Error(res, "Type is required", http.StatusBadRequest)
-		return
-	}
-
 	var m model.Metrics
 
 	if err := json.NewDecoder(req.Body).Decode(&m); err != nil {
@@ -246,7 +236,7 @@ func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
 
 	resp, err := json.Marshal(m)
 	if err != nil {
-		http.Error(res, err.Error(), http.StatusInternalServerError)
+		writeJSONError(res, http.StatusInternalServerError, err)
 		return
 	}
 
