@@ -26,7 +26,6 @@ func TypeMiddleware(next http.Handler) http.Handler {
 
 func (h *MetricsHandler) HandleIndex(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	// Start of the HTML page
 	fmt.Fprintln(rw, "<html><body>")
 	fmt.Fprintln(rw, "<h1>List of names and results of all currently known metrics</h1>")
 	for k, v := range h.Storage.GetAllCounters() {
@@ -35,7 +34,6 @@ func (h *MetricsHandler) HandleIndex(rw http.ResponseWriter, r *http.Request) {
 	for k, v := range h.Storage.GetAllGauges() {
 		fmt.Fprintf(rw, "<b>%v</b>:   <code>%v</code><br>", k, v)
 	}
-	// End of the HTML page
 	fmt.Fprintln(rw, "<hr></body></html>")
 }
 
@@ -76,13 +74,10 @@ func (h *MetricsHandler) HandleUpdate(res http.ResponseWriter, req *http.Request
 	switch chi.URLParam(req, "TYPE") {
 	case model.Gauge:
 		mGaugeValue, err := strconv.ParseFloat(chi.URLParam(req, "VALUE"), 64)
-		// При попытке передать запрос с некорректным значением метрики возвращать http.StatusBadRequest.
 		if err != nil {
 			http.Error(res, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
-
-		// При ошибке обработки запроса обновления Gauge возвращать http.StatusInternalServerError
 		if err := h.Storage.SetGauge(chi.URLParam(req, "METRIC"), mGaugeValue); err != nil {
 			http.Error(res, "Failed to update Gauge", http.StatusInternalServerError)
 			return
@@ -90,12 +85,10 @@ func (h *MetricsHandler) HandleUpdate(res http.ResponseWriter, req *http.Request
 
 	case model.Counter:
 		mCounterValue, err := strconv.ParseInt(chi.URLParam(req, "VALUE"), 10, 64)
-		// При попытке передать запрос с некорректным значением метрики возвращать http.StatusBadRequest.
 		if err != nil {
 			http.Error(res, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
-		// При ошибке обработки запроса обновления Counter возвращать http.StatusInternalServerError
 		if err := h.Storage.AddCounter(chi.URLParam(req, "METRIC"), mCounterValue); err != nil {
 			http.Error(res, "Failed to update Counter", http.StatusInternalServerError)
 			return

@@ -23,7 +23,8 @@ func run() {
 		},
 	}
 
-	// Два интервала в одном потоке через Sleep не реализовать
+	// Collector runs in a separate goroutine since two independent intervals
+	// cannot be managed by Sleep in a single goroutine.
 	go func() {
 		for {
 			collector.Run()

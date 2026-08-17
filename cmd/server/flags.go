@@ -4,10 +4,10 @@ import (
 	"flag"
 )
 
-// Default server endpoint address
+// flagHTTPAddr holds the HTTP listen address.
 var flagHTTPAddr string
 
-// Function registers and parses command-line flags
+// parseFlags registers and parses command-line flags.
 func parseFlags() {
 	flag.StringVar(&flagHTTPAddr, "a", "localhost:8080", "HTTP server endpoint address")
 	flag.Parse()

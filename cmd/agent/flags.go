@@ -4,14 +4,14 @@ import (
 	"flag"
 )
 
-// Default agent configuration values.
+// Command-line flags for the agent.
 var (
-	flagServerAddr        string
+	flagServerAddr     string
 	flagReportInterval int
 	flagPollInterval   int
 )
 
-// Function registers and parses command-line flags
+// parseFlags registers and parses command-line flags.
 func parseFlags() {
 	flag.StringVar(&flagServerAddr, "a", "localhost:8080", "HTTP server endpoint address")
 	flag.IntVar(&flagReportInterval, "r", 10, "Metrics report interval in seconds")

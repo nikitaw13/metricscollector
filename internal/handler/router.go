@@ -15,9 +15,9 @@ func (h *MetricsHandler) New() *chi.Mux {
 
 	router.Post("/update", h.HandleMissingType)
 	router.Route("/update/{TYPE}", func(r chi.Router) {
-		r.Use(TypeMiddleware)                // проверит TYPE для всех трёх ниже
-		r.Post("/", h.HandleMissingMetric)   // 404 — нет имени
-		r.Post("/{METRIC}", h.HandleMissingValue) // 400 — нет значения
+		r.Use(TypeMiddleware)                     // validates TYPE for all routes below
+		r.Post("/", h.HandleMissingMetric)        // 404 — metric name missing
+		r.Post("/{METRIC}", h.HandleMissingValue) // 400 — metric value missing
 		r.Post("/{METRIC}/{VALUE}", h.HandleUpdate)
 	})
 

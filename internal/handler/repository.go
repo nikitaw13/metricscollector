@@ -12,7 +12,7 @@ type StorageSetter interface {
 	AddCounter(name string, value int64) error
 }
 
-// Интерфейс для взаимодействия с хранилищем
+// Repository defines the interface for interacting with metric storage.
 type Repository interface {
 	StorageGetter
 	StorageSetter

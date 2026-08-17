@@ -6,7 +6,6 @@ import (
 )
 
 // StorageGetter defines read-only operations for retrieving metrics.
-// The only consumer is tests.
 type StorageGetter interface {
 	GetGauge(name string) (float64, error)
 	GetCounter(name string) (int64, error)
