@@ -27,17 +27,17 @@ func TypeMiddleware(next http.Handler) http.Handler {
 }
 
 // HandleIndex returns an HTML page listing all known metrics.
-func (h *MetricsHandler) HandleIndex(rw http.ResponseWriter, r *http.Request) {
-	rw.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	fmt.Fprintln(rw, "<html><body>")
-	fmt.Fprintln(rw, "<h1>List of names and results of all currently known metrics</h1>")
+func (h *MetricsHandler) HandleIndex(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	fmt.Fprintln(w, "<html><body>")
+	fmt.Fprintln(w, "<h1>List of names and results of all currently known metrics</h1>")
 	for k, v := range h.Storage.GetAllCounters() {
-		fmt.Fprintf(rw, "<b>%v</b>:   <code>%v</code><br>", k, v)
+		fmt.Fprintf(w, "<b>%v</b>:   <code>%v</code><br>", k, v)
 	}
 	for k, v := range h.Storage.GetAllGauges() {
-		fmt.Fprintf(rw, "<b>%v</b>:   <code>%v</code><br>", k, v)
+		fmt.Fprintf(w, "<b>%v</b>:   <code>%v</code><br>", k, v)
 	}
-	fmt.Fprintln(rw, "<hr></body></html>")
+	fmt.Fprintln(w, "<hr></body></html>")
 }
 
 // HandleGetMetric returns the current value of a single metric.

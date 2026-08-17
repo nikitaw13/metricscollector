@@ -31,14 +31,14 @@ func TestSendMetrics(t *testing.T) {
 	}
 
 	received := map[string]bool{}
-	content_type := map[string]string{}
+	contentType := map[string]string{}
 	method := map[string]string{}
 
 	testhandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		metric := strings.Split(r.URL.Path, "/")[3]
 		received[metric] = true
 		method[metric] = r.Method
-		content_type[metric] = r.Header.Get("Content-Type")
+		contentType[metric] = r.Header.Get("Content-Type")
 	})
 
 	ts := httptest.NewServer(testhandler)
@@ -62,7 +62,7 @@ func TestSendMetrics(t *testing.T) {
 			assert.Equal(t, http.MethodPost, method[m])
 		})
 		t.Run(fmt.Sprintf("Content-Type %v", m), func(t *testing.T) {
-			assert.Equal(t, "text/plain; charset=utf-8", content_type[m])
+			assert.Equal(t, "text/plain; charset=utf-8", contentType[m])
 		})
 	}
 	for _, m := range CounterMetrics {
@@ -73,7 +73,7 @@ func TestSendMetrics(t *testing.T) {
 			assert.Equal(t, http.MethodPost, method[m])
 		})
 		t.Run(fmt.Sprintf("Content-Type %v", m), func(t *testing.T) {
-			assert.Equal(t, "text/plain; charset=utf-8", content_type[m])
+			assert.Equal(t, "text/plain; charset=utf-8", contentType[m])
 		})
 	}
 }

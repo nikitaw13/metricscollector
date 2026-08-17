@@ -90,17 +90,17 @@ func TestGetCounterError(t *testing.T) {
 // TestGetAllGaugesReturnsCopy verifies that GetAllGauges returns a copy, not a reference.
 func TestGetAllGaugesReturnsCopy(t *testing.T) {
 	ms := NewAgentStorage()
-	copy := ms.GetAllGauges()
+	gaugeCopy := ms.GetAllGauges()
 
 	for _, m := range GaugeMetrics {
 		t.Run(m, func(t *testing.T) {
 			firstRandomValue := rand.Float64()
 			ms.SetGauge(m, firstRandomValue)
-			require.NotEqual(t, copy[m], firstRandomValue)
+			require.NotEqual(t, gaugeCopy[m], firstRandomValue)
 
 			secondRandomValue := rand.Float64()
 			ms.SetGauge(m, secondRandomValue)
-			require.NotEqual(t, copy[m], secondRandomValue)
+			require.NotEqual(t, gaugeCopy[m], secondRandomValue)
 		})
 	}
 }
@@ -108,17 +108,17 @@ func TestGetAllGaugesReturnsCopy(t *testing.T) {
 // TestGetAllCountersReturnsCopy verifies that GetAllCounters returns a copy, not a reference.
 func TestGetAllCountersReturnsCopy(t *testing.T) {
 	ms := NewAgentStorage()
-	copy := ms.GetAllCounters()
+	counterCopy := ms.GetAllCounters()
 
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
 			firstRandomValue := rand.Int64()
 			ms.AddCounter(m, firstRandomValue)
-			require.NotEqual(t, copy[m], firstRandomValue)
+			require.NotEqual(t, counterCopy[m], firstRandomValue)
 
 			secondRandomValue := rand.Int64()
 			ms.AddCounter(m, secondRandomValue)
-			require.NotEqual(t, copy[m], secondRandomValue)
+			require.NotEqual(t, counterCopy[m], secondRandomValue)
 		})
 	}
 }

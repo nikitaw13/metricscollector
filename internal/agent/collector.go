@@ -46,5 +46,5 @@ func (c *Collector) Run() {
 	// Custom Metrics
 	c.Storage.AddCounter("PollCount", 1)                  // increments by 1 on each collection cycle
 	c.Storage.SetGauge("RandomValue", rand.NormFloat64()) // random normally-distributed value
-	log.Print("The metrics have been harvested by collector")
+	log.Print("The metrics have been collected")
 }

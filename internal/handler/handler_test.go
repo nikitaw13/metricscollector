@@ -38,7 +38,7 @@ type testCase struct {
 type expectedResponse struct {
 	code        int
 	response    string
-	contenttype string
+	contentType string
 }
 
 // Update: successful metric updates
@@ -105,14 +105,14 @@ var readTests = []testCase{
 		"Read existing gauge", http.MethodGet, "/value/gauge/___test___", expectedResponse{
 			code:        http.StatusOK,
 			response:    "123\n",
-			contenttype: "text/plain; charset=utf-8",
+			contentType: "text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Read existing counter", http.MethodGet, "/value/counter/___test___", expectedResponse{
 			code:        http.StatusOK,
 			response:    "234\n",
-			contenttype: "text/plain; charset=utf-8",
+			contentType: "text/plain; charset=utf-8",
 		},
 	},
 }
@@ -230,7 +230,7 @@ func runTableTests(t *testing.T, cases []testCase) {
 			resp, body := doRequest(t, ts, v.method, v.path)
 			assert.Equal(t, v.want.code, resp.StatusCode)
 			assert.Equal(t, v.want.response, body)
-			assert.Equal(t, v.want.contenttype, resp.Header.Get("Content-Type"))
+			assert.Equal(t, v.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
 }
