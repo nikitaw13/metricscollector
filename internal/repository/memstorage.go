@@ -20,13 +20,13 @@ func New() *MemStorage {
 }
 
 // Method sets the gauge metric identified by name to the specified value, overwriting any previous value.
-func (ms *MemStorage) UpdateGauge(name string, value float64) error {
+func (ms *MemStorage) SetGauge(name string, value float64) error {
 	ms.gauge[name] = value
 	return nil
 }
 
 // Method increments the counter metric identified by name by the specified delta value.
-func (ms *MemStorage) UpdateCounter(name string, value int64) error {
+func (ms *MemStorage) AddCounter(name string, value int64) error {
 	ms.counter[name] += value
 	return nil
 }

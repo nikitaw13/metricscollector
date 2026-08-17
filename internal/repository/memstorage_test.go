@@ -76,8 +76,8 @@ func TestUpdateGauge(t *testing.T) {
 				gauge:   tt.fields.gauge,
 				counter: tt.fields.counter,
 			}
-			if err := ms.UpdateGauge(tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
-				t.Errorf("MemStorage.UpdateGauge() error = %v, wantErr %v", err, tt.wantErr)
+			if err := ms.SetGauge(tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
+				t.Errorf("MemStorage.SetGauge() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -141,8 +141,8 @@ func TestUpdateCounter(t *testing.T) {
 				gauge:   tt.fields.gauge,
 				counter: tt.fields.counter,
 			}
-			if err := ms.UpdateCounter(tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
-				t.Errorf("MemStorage.UpdateCounter() error = %v, wantErr %v", err, tt.wantErr)
+			if err := ms.AddCounter(tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
+				t.Errorf("MemStorage.AddCounter() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
