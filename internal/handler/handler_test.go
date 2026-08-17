@@ -210,7 +210,7 @@ var validationTests = []testCase{
 }
 
 // Function creates a test server with a fresh storage instance and configured routes.
-func NewTestServer() (server *httptest.Server) {
+func newTestServer() (server *httptest.Server) {
 	var s = repository.New()
 	s.SetGauge("___test___", 123)
 	s.AddCounter("___test___", 234)
@@ -221,7 +221,7 @@ func NewTestServer() (server *httptest.Server) {
 }
 
 func runTableTests(t *testing.T, cases []testCase) {
-	ts := NewTestServer()
+	ts := newTestServer()
 	defer ts.Close()
 
 	for _, v := range cases {
