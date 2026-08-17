@@ -24,7 +24,7 @@ type Sender struct {
 func (s *Sender) Run() {
 	updateURL := fmt.Sprintf("%s/update", s.URL)
 
-	// Send all gauges
+	// Serialize and POST every gauge metric.
 	for metric, value := range s.Storage.GetAllGauges() {
 		m := model.Metrics{
 			MType: model.Gauge,
@@ -61,7 +61,7 @@ func (s *Sender) Run() {
 		finalizeSend(res)
 	}
 
-	// Send all counters
+	// Serialize and POST every counter metric; reset on 200.
 	for metric, value := range s.Storage.GetAllCounters() {
 		m := model.Metrics{
 			MType: model.Counter,
@@ -71,6 +71,11 @@ func (s *Sender) Run() {
 
 		jsonBody, err := json.Marshal(&m)
 
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
 		req, err := http.NewRequest(http.MethodPost, updateURL, bytes.NewReader(jsonBody))
 
 		if err != nil {
@@ -78,7 +83,7 @@ func (s *Sender) Run() {
 			continue
 		}
 
-		req.Header.Add("Content-Type", "application/json; charset=utf-8")
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
 		res, err := s.Client.Do(req)
 		if err != nil {
 			log.Println(err)
@@ -90,13 +95,14 @@ func (s *Sender) Run() {
 	}
 }
 
+// resetCounter zeroes the counter in local storage only after a 200 OK response.
 func resetCounter(res *http.Response, m string, s Storage) {
-	// Reset the counter to zero if 200
 	if res.StatusCode == http.StatusOK {
 		s.ResetCounter(m)
 	}
 }
 
+// logRequest prints whether a metric delivery succeeded or failed.
 func logRequest(res *http.Response, m string, fp string) {
 	if res.StatusCode == http.StatusOK {
 		log.Printf("Metric '%s' sent to %s", m, fp)
