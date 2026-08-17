@@ -41,31 +41,31 @@ func testJSONRequest(t *testing.T, ts *httptest.Server, method, path, body strin
 	return resp, string(bodyBytes)
 }
 
-// JSONTestTemplate holds a single table-driven test case for JSON endpoint tests.
-type JSONTestTemplate struct {
+// jsonTestCase holds a single table-driven test case for JSON endpoint tests.
+type jsonTestCase struct {
 	name        string
 	method      string
 	path        string
 	body        string
 	contentType string
-	want        JSONTestWant
+	want        jsonTestWant
 }
 
-// JSONTestWant describes the expected HTTP response for a JSON test case.
-type JSONTestWant struct {
+// jsonTestWant describes the expected HTTP response for a JSON test case.
+type jsonTestWant struct {
 	code        int
 	contentType string
 }
 
-// JSONUpdateTests covers successful POST /update calls (valid counter and gauge payloads).
-var JSONUpdateTests = []JSONTestTemplate{
+// jsonUpdateTests covers successful POST /update calls (valid counter and gauge payloads).
+var jsonUpdateTests = []jsonTestCase{
 	{
 		"Counter positive int",
 		http.MethodPost,
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"test\", \"delta\":1000}",
 		"application/json",
-		JSONTestWant{
+jsonTestWant{
 			http.StatusOK,
 			expectedJSONContentType,
 		},
@@ -74,9 +74,9 @@ var JSONUpdateTests = []JSONTestTemplate{
 		"Gauge positive int",
 		http.MethodPost,
 		"/update",
-		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":1000}",
+		`{"type":"gauge", "id":"test", "value":1000}`,
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusOK,
 			expectedJSONContentType,
 		},
@@ -85,9 +85,9 @@ var JSONUpdateTests = []JSONTestTemplate{
 		"Gauge negative int",
 		http.MethodPost,
 		"/update",
-		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":-1000}",
+		`{"type":"gauge", "id":"test", "value":-1000}`,
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusOK,
 			expectedJSONContentType,
 		},
@@ -96,9 +96,9 @@ var JSONUpdateTests = []JSONTestTemplate{
 		"Gauge positive float",
 		http.MethodPost,
 		"/update",
-		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":1000.00}",
+		`{"type":"gauge", "id":"test", "value":1000.00}`,
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusOK,
 			expectedJSONContentType,
 		},
@@ -107,18 +107,18 @@ var JSONUpdateTests = []JSONTestTemplate{
 		"Gauge negative float",
 		http.MethodPost,
 		"/update",
-		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":-1000.00}",
+		`{"type":"gauge", "id":"test", "value":-1000.00}`,
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusOK,
 			expectedJSONContentType,
 		},
 	},
 }
 
-// validationJSONTests covers POST /update and POST /value with invalid payloads
+// jsonValidationTests covers POST /update and POST /value with invalid payloads
 // (missing/incorrect type, name, or value) — all expected to return 400 or 404.
-var validationJSONTests = []JSONTestTemplate{
+var jsonValidationTests = []jsonTestCase{
 	// Missing or invalid metric TYPE
 	{
 		"Missing metric type",
@@ -126,7 +126,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		"{}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -137,7 +137,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		"{\"type\":\"random\"}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -150,7 +150,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		"{\"type\":\"gauge\"}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -161,7 +161,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		"{\"type\":\"counter\"}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -172,7 +172,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/value",
 		"{\"type\":\"gauge\",\"id\":\"unknown\"}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusNotFound,
 			expectedJSONContentType,
 		},
@@ -183,7 +183,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/value",
 		"{\"type\":\"counter\",\"id\":\"unknown\"}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusNotFound,
 			expectedJSONContentType,
 		},
@@ -196,7 +196,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		"{\"type\":\"gauge\", \"id\":\"name\"}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -207,7 +207,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"name\"}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -218,7 +218,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		"{\"type\":\"gauge\", \"id\":\"name\", \"value\":\"LatinText\"}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -229,7 +229,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":\"LatinText\"}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -240,7 +240,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":1001.00}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -251,7 +251,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":-1001.00}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -262,7 +262,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"test\", \"delta\":-1000}",
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -275,7 +275,7 @@ var validationJSONTests = []JSONTestTemplate{
 		"/update",
 		`{invalid json`,
 		"application/json",
-		JSONTestWant{
+		jsonTestWant{
 			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
@@ -283,7 +283,7 @@ var validationJSONTests = []JSONTestTemplate{
 }
 
 // runJSONTests executes a slice of table-driven JSON test cases against a test server.
-func runJSONTests(t *testing.T, cases []JSONTestTemplate) {
+func runJSONTests(t *testing.T, cases []jsonTestCase) {
 	ts := GetTestServer()
 	defer ts.Close()
 
@@ -298,12 +298,12 @@ func runJSONTests(t *testing.T, cases []JSONTestTemplate) {
 
 // TestJSONValidate verifies that /update and /value reject invalid JSON payloads.
 func TestJSONValidate(t *testing.T) {
-	runJSONTests(t, validationJSONTests)
+	runJSONTests(t, jsonValidationTests)
 }
 
 // TestJSONUpdate verifies that /update accepts valid metric payloads and returns 200.
 func TestJSONUpdate(t *testing.T) {
-	runJSONTests(t, JSONUpdateTests)
+	runJSONTests(t, jsonUpdateTests)
 }
 
 // TestJSONRead verifies that /value returns the correct stored metric values in JSON.

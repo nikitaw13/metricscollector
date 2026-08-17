@@ -94,19 +94,19 @@ func (h *MetricsHandler) GetMetric(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// PostNoMetric returns 404 when a POST /update request is missing the metric name.
-func (h *MetricsHandler) PostNoMetric(w http.ResponseWriter, r *http.Request) {
+// HandleUpdateMissingName returns 404 when a POST /update request is missing the metric name.
+func (h *MetricsHandler) HandleUpdateMissingName(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Metric ID is required", http.StatusNotFound)
 }
 
-// PostNoValue returns 400 when a POST /update request is missing the metric value.
-func (h *MetricsHandler) PostNoValue(w http.ResponseWriter, r *http.Request) {
+// HandleUpdateMissingValue returns 400 when a POST /update request is missing the metric value.
+func (h *MetricsHandler) HandleUpdateMissingValue(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Metric value is required", http.StatusBadRequest)
 }
 
-// PostFull processes a full URL-encoded update: parses the value, updates storage,
+// HandleUpdatePlain processes a full URL-encoded update: parses the value, updates storage,
 // and returns a plain-text confirmation on success.
-func (h *MetricsHandler) PostFull(w http.ResponseWriter, r *http.Request) {
+func (h *MetricsHandler) HandleUpdatePlain(w http.ResponseWriter, r *http.Request) {
 	switch chi.URLParam(r, "TYPE") {
 	case model.Gauge:
 		gaugeValue, err := strconv.ParseFloat(chi.URLParam(r, "VALUE"), 64)
