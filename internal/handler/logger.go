@@ -6,12 +6,11 @@ import (
 	"go.uber.org/zap"
 )
 
-// Log будет доступен всему коду как синглтон.
-// Никакой код навыка, кроме функции Initialize, не должен модифицировать эту переменную.
-// По умолчанию установлен no-op-логер, который не выводит никаких сообщений.
-var Log *zap.Logger = zap.NewNop()
+// Logger is a package-level logger singleton. Only Initialize should modify it.
+// Defaults to a no-op logger that produces no output.
+var Logger *zap.Logger = zap.NewNop()
 
-// Initialize инициализирует синглтон логера с необходимым уровнем логирования.
+// Initialize creates a production zap logger at the given level.
 func Initialize(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
@@ -25,39 +24,38 @@ func Initialize(level string) error {
 		return err
 	}
 
-	Log = zl
+	Logger = zl
 	return nil
 }
 
 type (
-	// Сведения об ответах должны содержать код статуса и размер содержимого ответа.
-	responseData struct {
+	// responseInfo holds the HTTP status code and response body size.
+	responseInfo struct {
 		status int
 		size   int
 	}
 
-	// Внедряем собственную реализацию в методы интерфейса http.ResponseWriter
+	// loggingResponseWriter wraps http.ResponseWriter to capture status and size.
 	loggingResponseWriter struct {
 		http.ResponseWriter
-		responseData *responseData
+		responseInfo *responseInfo
 	}
 )
 
-// метод для получения размера ответа
+// Write records the response body size and defaults status to 200.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
-	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)
-	r.responseData.size += size
+r.responseInfo.size += size
 
-	if r.responseData.status == 0 {
-		r.responseData.status = http.StatusOK
+		if r.responseInfo.status == 0 {
+		r.responseInfo.status = http.StatusOK
 	}
 
 	return size, err
 }
 
-// метод для получения кода состояния
+// WriteHeader records the HTTP status code.
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
-	r.responseData.status = statusCode
+	r.responseInfo.status = statusCode
 }

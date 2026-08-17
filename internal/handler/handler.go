@@ -33,27 +33,27 @@ func loggerMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		start := time.Now()
 
-		rd := &responseData{
+		ri := &responseInfo{
 			status: 0,
 			size:   0,
 		}
 
 		lwr := loggingResponseWriter{
 			ResponseWriter: rw,
-			responseData:   rd,
+			responseInfo:   ri,
 		}
 
 		h.ServeHTTP(&lwr, req)
 
-		Log.Info("got incoming HTTP request",
+		Logger.Info("got incoming HTTP request",
 			zap.String("URI", req.RequestURI),
 			zap.String("method", req.Method),
 			zap.Duration("duration", time.Since(start)),
 		)
 
-		Log.Info("respose for incoming HTTP request",
-			zap.Int("status", rd.status),
-			zap.Int("size", rd.size),
+		Logger.Info("respose for incoming HTTP request",
+			zap.Int("status", ri.status),
+			zap.Int("size", ri.size),
 		)
 	})
 }
