@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Function sends an HTTP request to the test server and returns the response and body.
+// doRequest sends an HTTP request to the test server and returns the response and body.
 func doRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, nil)
 	require.NoError(t, err)
@@ -26,7 +26,6 @@ func doRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Re
 	return resp, string(respBody)
 }
 
-// Template defines a single table-driven test case.
 type testCase struct {
 	name   string
 	method string

@@ -88,8 +88,8 @@ func TestResetIf200(t *testing.T) {
 		as.AddCounter(v, rv)
 	}
 
-	testhandler := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(http.StatusOK)
+	testhandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
 	})
 
 	ts := httptest.NewServer(testhandler)
@@ -123,8 +123,8 @@ func TestNoResetIfNot200(t *testing.T) {
 		as.AddCounter(v, rv)
 	}
 
-	testhandler := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(http.StatusInternalServerError)
+	testhandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
 	})
 
 	ts := httptest.NewServer(testhandler)
