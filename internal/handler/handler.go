@@ -24,7 +24,7 @@ func TypeMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (h *MetricsHandler) GetRoot(rw http.ResponseWriter, r *http.Request) {
+func (h *MetricsHandler) HandleIndex(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	// Start of the HTML page
 	fmt.Fprintln(rw, "<html><body>")
@@ -39,7 +39,7 @@ func (h *MetricsHandler) GetRoot(rw http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(rw, "<hr></body></html>")
 }
 
-func (h *MetricsHandler) GetMetric(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) HandleGetMetric(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	switch chi.URLParam(req, "TYPE") {
 	case model.Gauge:
@@ -60,19 +60,19 @@ func (h *MetricsHandler) GetMetric(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *MetricsHandler) PostNoType(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) HandleMissingType(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Type is required", http.StatusBadRequest)
 }
 
-func (h *MetricsHandler) PostNoMetric(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) HandleMissingMetric(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Metric is required", http.StatusNotFound)
 }
 
-func (h *MetricsHandler) PostNoValue(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) HandleMissingValue(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Metric value is required", http.StatusBadRequest)
 }
 
-func (h *MetricsHandler) PostFull(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) HandleUpdate(res http.ResponseWriter, req *http.Request) {
 	switch chi.URLParam(req, "TYPE") {
 	case model.Gauge:
 		mGaugeValue, err := strconv.ParseFloat(chi.URLParam(req, "VALUE"), 64)
@@ -83,7 +83,7 @@ func (h *MetricsHandler) PostFull(res http.ResponseWriter, req *http.Request) {
 		}
 
 		// При ошибке обработки запроса обновления Gauge возвращать http.StatusInternalServerError
-		if err := h.Storage.UpdateGauge(chi.URLParam(req, "METRIC"), mGaugeValue); err != nil {
+		if err := h.Storage.SetGauge(chi.URLParam(req, "METRIC"), mGaugeValue); err != nil {
 			http.Error(res, "Failed to update Gauge", http.StatusInternalServerError)
 			return
 		}
@@ -96,7 +96,7 @@ func (h *MetricsHandler) PostFull(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 		// При ошибке обработки запроса обновления Counter возвращать http.StatusInternalServerError
-		if err := h.Storage.UpdateCounter(chi.URLParam(req, "METRIC"), mCounterValue); err != nil {
+		if err := h.Storage.AddCounter(chi.URLParam(req, "METRIC"), mCounterValue); err != nil {
 			http.Error(res, "Failed to update Counter", http.StatusInternalServerError)
 			return
 		}

@@ -8,8 +8,8 @@ type StorageGetter interface {
 }
 
 type StorageSetter interface {
-	UpdateGauge(name string, value float64) error
-	UpdateCounter(name string, value int64) error
+	SetGauge(name string, value float64) error
+	AddCounter(name string, value int64) error
 }
 
 // Интерфейс для взаимодействия с хранилищем
