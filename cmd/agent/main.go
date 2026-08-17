@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -9,6 +10,9 @@ import (
 
 func main() {
 	parseFlags()
+	parseEnvs()
+	// For debug only
+	log.Printf("addr=%s report=%d poll=%d", flagServerAddr, flagReportInterval, flagPollInterval)
 	run()
 }
 
@@ -23,8 +27,7 @@ func run() {
 		},
 	}
 
-	// Collector runs in a separate goroutine since two independent intervals
-	// cannot be managed by Sleep in a single goroutine.
+	// Два интервала в одном потоке через Sleep не реализовать
 	go func() {
 		for {
 			collector.Run()
