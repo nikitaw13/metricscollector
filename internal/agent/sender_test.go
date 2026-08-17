@@ -31,7 +31,7 @@ func TestSendMetrics(t *testing.T) {
 
 	for _, v := range CounterMetrics {
 		rv := rand.Int64()
-		as.SetCounter(v, rv)
+		as.AddCounter(v, rv)
 	}
 
 	received := map[string]bool{}
@@ -39,7 +39,7 @@ func TestSendMetrics(t *testing.T) {
 	method := map[string]string{}
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var m model.Metrics
+		var m model.Metric
 
 		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
@@ -97,7 +97,7 @@ func TestResetCounterOnSuccess(t *testing.T) {
 
 	rv := rand.Int64()
 	for _, v := range CounterMetrics {
-		as.SetCounter(v, rv)
+		as.AddCounter(v, rv)
 	}
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +132,7 @@ func TestKeepCounterOnError(t *testing.T) {
 
 	rv := rand.Int64()
 	for _, v := range CounterMetrics {
-		as.SetCounter(v, rv)
+		as.AddCounter(v, rv)
 	}
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -44,7 +44,7 @@ func (c *Collector) Run() {
 	c.Storage.SetGauge("Sys", float64(memStats.Sys))
 	c.Storage.SetGauge("TotalAlloc", float64(memStats.TotalAlloc))
 	// Custom metrics
-	c.Storage.SetCounter("PollCount", 1)           // increments by 1 on each collector run
+	c.Storage.AddCounter("PollCount", 1)           // increments by 1 on each collector run
 	c.Storage.SetGauge("RandomValue", rand.NormFloat64()) // arbitrary updated value
 	log.Print("The metrics have been harvested by collector")
 }

@@ -28,19 +28,19 @@ func TestSetGauge(t *testing.T) {
 	}
 }
 
-// TestSetCounter verifies that SetCounter increments the value cumulatively.
-func TestSetCounter(t *testing.T) {
+// TestAddCounter verifies that AddCounter increments the value cumulatively.
+func TestAddCounter(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
 			firstRandomValue := rand.Int64N(10)
-			ms.SetCounter(m, firstRandomValue)
+			ms.AddCounter(m, firstRandomValue)
 			firstGet, firstErr := ms.GetCounter(m)
 			require.NoError(t, firstErr)
 			require.Equal(t, firstRandomValue, firstGet)
 
 			secondRandomValue := rand.Int64N(10)
-			ms.SetCounter(m, secondRandomValue)
+			ms.AddCounter(m, secondRandomValue)
 			secondGet, secondErr := ms.GetCounter(m)
 			require.NoError(t, secondErr)
 			require.Equal(t, firstRandomValue+secondRandomValue, secondGet)
@@ -54,7 +54,7 @@ func TestResetCounter(t *testing.T) {
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
 			randomValue := rand.Int64N(100)
-			ms.SetCounter(m, randomValue)
+			ms.AddCounter(m, randomValue)
 			got, err := ms.GetCounter(m)
 			require.NoError(t, err)
 			require.Equal(t, randomValue, got)
@@ -111,11 +111,11 @@ func TestGetAllCountersReturnsCopy(t *testing.T) {
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
 			firstRandomValue := rand.Int64N(1000)
-			ms.SetCounter(m, firstRandomValue)
+			ms.AddCounter(m, firstRandomValue)
 			require.NotEqual(t, countersCopy[m], firstRandomValue)
 
 			secondRandomValue := rand.Int64N(1000)
-			ms.SetCounter(m, secondRandomValue)
+			ms.AddCounter(m, secondRandomValue)
 			require.NotEqual(t, countersCopy[m], secondRandomValue)
 		})
 	}
@@ -143,7 +143,7 @@ func TestGetAllCounters(t *testing.T) {
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
 			randomValue := rand.Int64N(1000)
-			ms.SetCounter(m, randomValue)
+			ms.AddCounter(m, randomValue)
 			got, err := ms.GetCounter(m)
 
 			counters := ms.GetAllCounters()

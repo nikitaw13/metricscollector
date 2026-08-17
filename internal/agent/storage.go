@@ -17,7 +17,7 @@ type StorageGetter interface {
 // StorageSetter defines write operations for updating metrics.
 type StorageSetter interface {
 	SetGauge(name string, value float64)
-	SetCounter(name string, value int64)
+	AddCounter(name string, value int64)
 	ResetCounter(name string)
 }
 
@@ -49,8 +49,8 @@ func (ms *AgentStorage) SetGauge(name string, value float64) {
 	ms.gauge[name] = value
 }
 
-// SetCounter increments the counter metric with the given name by the specified value.
-func (ms *AgentStorage) SetCounter(name string, value int64) {
+// AddCounter increments the counter metric with the given name by the specified value.
+func (ms *AgentStorage) AddCounter(name string, value int64) {
 	ms.counter[name] += value
 }
 

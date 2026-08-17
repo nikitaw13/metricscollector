@@ -26,8 +26,8 @@ func (s *Sender) Run() {
 
 	// Serialize and POST every gauge metric.
 	for metricName, value := range s.Storage.GetAllGauges() {
-		m := model.Metrics{
-			MType: model.Gauge,
+		m := model.Metric{
+			Type: model.Gauge,
 			ID:    metricName,
 			Value: &value,
 		}
@@ -63,8 +63,8 @@ func (s *Sender) Run() {
 
 	// Serialize and POST every counter metric; reset on 200.
 	for metricName, value := range s.Storage.GetAllCounters() {
-		m := model.Metrics{
-			MType: model.Counter,
+		m := model.Metric{
+			Type: model.Counter,
 			ID:    metricName,
 			Delta: &value,
 		}
