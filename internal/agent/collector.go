@@ -6,11 +6,12 @@ import (
 	"runtime"
 )
 
+// Collector gathers system metrics and stores them in the provided Storage.
 type Collector struct {
 	Storage Storage
 }
 
-// One-shot run
+// Run collects one snapshot of runtime memory statistics and custom metrics.
 func (c *Collector) Run() {
 	var memStats runtime.MemStats
 	runtime.ReadMemStats(&memStats)
@@ -43,7 +44,7 @@ func (c *Collector) Run() {
 	c.Storage.SetGauge("Sys", float64(memStats.Sys))
 	c.Storage.SetGauge("TotalAlloc", float64(memStats.TotalAlloc))
 	// Custom Metrics
-	c.Storage.SetCounter("PollCount", 1)                  // increments by 1 on each collection cycle
+	c.Storage.AddCounter("PollCount", 1)                  // increments by 1 on each collection cycle
 	c.Storage.SetGauge("RandomValue", rand.NormFloat64()) // random normally-distributed value
 	log.Print("The metrics have been harvested by collector")
 }

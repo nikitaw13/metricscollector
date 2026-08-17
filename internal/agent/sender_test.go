@@ -27,7 +27,7 @@ func TestSendMetrics(t *testing.T) {
 
 	for _, v := range CounterMetrics {
 		rv := rand.Int64()
-		as.SetCounter(v, rv)
+		as.AddCounter(v, rv)
 	}
 
 	received := map[string]bool{}
@@ -85,7 +85,7 @@ func TestResetIf200(t *testing.T) {
 
 	rv := rand.Int64()
 	for _, v := range CounterMetrics {
-		as.SetCounter(v, rv)
+		as.AddCounter(v, rv)
 	}
 
 	testhandler := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -120,7 +120,7 @@ func TestNoResetIfNot200(t *testing.T) {
 
 	rv := rand.Int64()
 	for _, v := range CounterMetrics {
-		as.SetCounter(v, rv)
+		as.AddCounter(v, rv)
 	}
 
 	testhandler := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {

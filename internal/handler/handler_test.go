@@ -34,6 +34,7 @@ type testCase struct {
 	want   expectedResponse
 }
 
+// expectedResponse describes the anticipated HTTP response for a test case.
 type expectedResponse struct {
 	code        int
 	response    string

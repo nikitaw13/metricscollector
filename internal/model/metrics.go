@@ -1,5 +1,6 @@
 package model
 
+// Supported metric types.
 const (
 	Counter = "counter"
 	Gauge   = "gauge"
@@ -7,6 +8,7 @@ const (
 
 // Metric represents a flat metric model.
 // Delta and Value are pointers to distinguish 0 from an unset value.
+// Type must be one of Counter or Gauge.
 type Metric struct {
 	ID    string   `json:"id"`
 	Type  string   `json:"type"`

@@ -9,10 +9,12 @@ import (
 	"github.com/go-chi/chi"
 )
 
+// MetricsHandler serves HTTP requests for reading and updating metrics.
 type MetricsHandler struct {
 	Storage Repository
 }
 
+// TypeMiddleware rejects requests with an unknown metric type.
 func TypeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		t := chi.URLParam(req, "TYPE")
@@ -24,6 +26,7 @@ func TypeMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// HandleIndex returns an HTML page listing all known metrics.
 func (h *MetricsHandler) HandleIndex(rw http.ResponseWriter, r *http.Request) {
 	rw.Header().Set("Content-Type", "text/html; charset=UTF-8")
 	fmt.Fprintln(rw, "<html><body>")
@@ -37,6 +40,7 @@ func (h *MetricsHandler) HandleIndex(rw http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(rw, "<hr></body></html>")
 }
 
+// HandleGetMetric returns the current value of a single metric.
 func (h *MetricsHandler) HandleGetMetric(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	switch chi.URLParam(req, "TYPE") {
@@ -58,38 +62,42 @@ func (h *MetricsHandler) HandleGetMetric(res http.ResponseWriter, req *http.Requ
 	}
 }
 
+// HandleMissingType returns 400 when the metric type segment is absent.
 func (h *MetricsHandler) HandleMissingType(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Type is required", http.StatusBadRequest)
 }
 
+// HandleMissingMetric returns 404 when the metric name segment is absent.
 func (h *MetricsHandler) HandleMissingMetric(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Metric is required", http.StatusNotFound)
 }
 
+// HandleMissingValue returns 400 when the metric value segment is absent.
 func (h *MetricsHandler) HandleMissingValue(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Metric value is required", http.StatusBadRequest)
 }
 
+// HandleUpdate sets a new value for the given metric.
 func (h *MetricsHandler) HandleUpdate(res http.ResponseWriter, req *http.Request) {
 	switch chi.URLParam(req, "TYPE") {
 	case model.Gauge:
-		mGaugeValue, err := strconv.ParseFloat(chi.URLParam(req, "VALUE"), 64)
+		gaugeValue, err := strconv.ParseFloat(chi.URLParam(req, "VALUE"), 64)
 		if err != nil {
 			http.Error(res, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
-		if err := h.Storage.SetGauge(chi.URLParam(req, "METRIC"), mGaugeValue); err != nil {
+		if err := h.Storage.SetGauge(chi.URLParam(req, "METRIC"), gaugeValue); err != nil {
 			http.Error(res, "Failed to update Gauge", http.StatusInternalServerError)
 			return
 		}
 
 	case model.Counter:
-		mCounterValue, err := strconv.ParseInt(chi.URLParam(req, "VALUE"), 10, 64)
+		counterValue, err := strconv.ParseInt(chi.URLParam(req, "VALUE"), 10, 64)
 		if err != nil {
 			http.Error(res, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
-		if err := h.Storage.AddCounter(chi.URLParam(req, "METRIC"), mCounterValue); err != nil {
+		if err := h.Storage.AddCounter(chi.URLParam(req, "METRIC"), counterValue); err != nil {
 			http.Error(res, "Failed to update Counter", http.StatusInternalServerError)
 			return
 		}

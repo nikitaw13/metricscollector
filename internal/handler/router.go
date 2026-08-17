@@ -4,6 +4,7 @@ import (
 	"github.com/go-chi/chi"
 )
 
+// New builds and returns a chi router with all metric API routes.
 func (h *MetricsHandler) New() *chi.Mux {
 	router := chi.NewRouter()
 
