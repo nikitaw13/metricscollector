@@ -45,13 +45,13 @@ func LoggerMiddleware(h http.Handler) http.Handler {
 
 		h.ServeHTTP(&lwr, r)
 
-		Log.Info("got incoming HTTP request",
+		Logger.Info("got incoming HTTP request",
 			zap.String("URI", r.RequestURI),
 			zap.String("method", r.Method),
 			zap.Duration("duration", time.Since(start)),
 		)
 
-		Log.Info("response for incoming HTTP request",
+		Logger.Info("response for incoming HTTP request",
 			zap.Int("status", rd.status),
 			zap.Int("size", rd.size),
 		)
@@ -104,9 +104,9 @@ func (h *MetricsHandler) HandleUpdateMissingValue(w http.ResponseWriter, r *http
 	http.Error(w, "Metric value is required", http.StatusBadRequest)
 }
 
-// HandleUpdatePlain processes a full URL-encoded update: parses the value, updates storage,
+// HandleUpdateParam processes a full URL-encoded update: parses the value, updates storage,
 // and returns a plain-text confirmation on success.
-func (h *MetricsHandler) HandleUpdatePlain(w http.ResponseWriter, r *http.Request) {
+func (h *MetricsHandler) HandleUpdateParam(w http.ResponseWriter, r *http.Request) {
 	switch chi.URLParam(r, "TYPE") {
 	case model.Gauge:
 		gaugeValue, err := strconv.ParseFloat(chi.URLParam(r, "VALUE"), 64)
@@ -134,5 +134,5 @@ func (h *MetricsHandler) HandleUpdatePlain(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintf(w, "Metric '%s' updated✅\n", chi.URLParam(r, "METRIC"))
+	fmt.Fprintf(w, "Metric '%s' updated\n", chi.URLParam(r, "METRIC"))
 }

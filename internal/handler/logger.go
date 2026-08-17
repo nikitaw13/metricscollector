@@ -9,7 +9,7 @@ import (
 // Log is a package-level singleton logger.
 // Only Initialize should modify this variable.
 // Defaults to a no-op logger that produces no output.
-var Log *zap.Logger = zap.NewNop()
+var Logger *zap.Logger = zap.NewNop()
 
 // Initialize bootstraps the singleton logger at the given level.
 func Initialize(level string) error {
@@ -25,7 +25,7 @@ func Initialize(level string) error {
 		return err
 	}
 
-	Log = zl
+	Logger = zl
 	return nil
 }
 

@@ -45,35 +45,35 @@ var plainUpdateTests = []plainTestTemplate{
 	{
 		"Counter positive int", http.MethodPost, "/update/counter/test/1000", plainTestWant{
 			http.StatusOK,
-			"Metric 'test' updated✅\n",
+			"Metric 'test' updated\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Gauge positive int", http.MethodPost, "/update/gauge/test/1000", plainTestWant{
 			http.StatusOK,
-			"Metric 'test' updated✅\n",
+			"Metric 'test' updated\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Gauge negative int", http.MethodPost, "/update/gauge/test/-1000", plainTestWant{
 			http.StatusOK,
-			"Metric 'test' updated✅\n",
+			"Metric 'test' updated\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Gauge positive float", http.MethodPost, "/update/gauge/test/1000.00", plainTestWant{
 			http.StatusOK,
-			"Metric 'test' updated✅\n",
+			"Metric 'test' updated\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Gauge negative float", http.MethodPost, "/update/gauge/test/-1000.00", plainTestWant{
 			http.StatusOK,
-			"Metric 'test' updated✅\n",
+			"Metric 'test' updated\n",
 			"text/plain; charset=utf-8",
 		},
 	},
@@ -84,7 +84,7 @@ var plainReadTests = []plainTestTemplate{
 	{
 		"Read all metrics", http.MethodGet, "/", plainTestWant{
 			http.StatusOK,
-			htmlResponse,
+			expectedHTMLResponse,
 			"text/html; charset=UTF-8",
 		},
 	},

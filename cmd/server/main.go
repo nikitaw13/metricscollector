@@ -37,6 +37,6 @@ func run() error {
 		Handler:      router,
 	}
 
-	handler.Log.Info("Running server", zap.String("address", flagRunAddr), zap.String("logLevel", flagLogLevel))
+	handler.Logger.Info("Running server", zap.String("address", flagRunAddr), zap.String("logLevel", flagLogLevel))
 	return srv.ListenAndServe()
 }
