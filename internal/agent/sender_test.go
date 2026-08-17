@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Test_SendMetrics verifies that the sender correctly reports all gauge and
+// TestSendMetrics verifies that the sender correctly reports all gauge and
 // counter metrics to the server. It checks three things for each metric:
 //   - the metric was received by the server,
 //   - the HTTP method is POST,
