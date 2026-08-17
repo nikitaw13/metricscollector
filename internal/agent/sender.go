@@ -39,7 +39,7 @@ func (s *Sender) Run() {
 			continue
 		}
 		logRequest(res, metric, endpointURL)
-		finalizeSend(res)
+		drainAndCloseResponse(res)
 	}
 
 	// Send all counters
@@ -61,7 +61,7 @@ func (s *Sender) Run() {
 		}
 		resetCounter(res, metric, s.Storage)
 		logRequest(res, metric, endpointURL)
-		finalizeSend(res)
+		drainAndCloseResponse(res)
 	}
 }
 
@@ -82,8 +82,8 @@ func logRequest(res *http.Response, m string, url string) {
 	}
 }
 
-// Drain response body to allow TCP connection reuse (keep-alive).
-func finalizeSend(res *http.Response) {
+// drainAndCloseResponse drains and closes the response body to allow TCP connection reuse.
+func drainAndCloseResponse(res *http.Response) {
 	io.Copy(io.Discard, res.Body)
 	res.Body.Close()
 }
