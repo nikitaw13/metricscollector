@@ -209,7 +209,6 @@ var validationTests = []testCase{
 	},
 }
 
-// Function creates a test server with a fresh storage instance and configured routes.
 func newTestServer() (server *httptest.Server) {
 	var s = repository.New()
 	s.SetGauge("___test___", 123)

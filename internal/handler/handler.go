@@ -40,8 +40,8 @@ func (h *MetricsHandler) handleListMetrics(w http.ResponseWriter, r *http.Reques
 	fmt.Fprintln(w, "<hr></body></html>")
 }
 
-// HandleGetMetric returns the current value of a single metric.
-func (h *MetricsHandler) HandleGetMetric(w http.ResponseWriter, r *http.Request) {
+// handleGetMetric returns the current value of a single metric.
+func (h *MetricsHandler) handleGetMetric(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	switch chi.URLParam(r, "TYPE") {
 	case model.Gauge:

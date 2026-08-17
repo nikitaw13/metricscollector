@@ -11,7 +11,7 @@ func (h *MetricsHandler) New() *chi.Mux {
 	router.Get("/", h.handleListMetrics)
 	router.Route("/value/{TYPE}", func(r chi.Router) {
 		r.Use(typeMiddleware)
-		r.Get("/{METRIC}", h.HandleGetMetric)
+		r.Get("/{METRIC}", h.handleGetMetric)
 	})
 
 	router.Post("/update", h.handleMissingType)
