@@ -13,8 +13,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Function sends a JSON request to the test server
-// and returns the response and body in JSON
+// desiredContentType is the expected Content-Type header for all JSON responses.
+const desiredContentType = "application/json; charset=utf-8"
+
+// testJsonRequest sends an HTTP request with a JSON body to the test server
+// and returns the full response along with the response body as a string.
 func testJsonRequest(t *testing.T, ts *httptest.Server, method, path, body string, contentType string) (*http.Response, string) {
 	var buf io.Reader
 	if body != "" {
@@ -38,7 +41,7 @@ func testJsonRequest(t *testing.T, ts *httptest.Server, method, path, body strin
 	return resp, string(respBody)
 }
 
-// Template defines a single table-driven test case for json requests
+// jsonTestTemplate holds a single table-driven test case for JSON endpoint tests.
 type jsonTestTemplate struct {
 	name        string
 	method      string
@@ -48,14 +51,14 @@ type jsonTestTemplate struct {
 	want        tableWantJsonTemplate
 }
 
-// Template defines expected JSON response for a table-driven test case.
+// tableWantJsonTemplate describes the expected HTTP response for a JSON test case.
 type tableWantJsonTemplate struct {
 	code        int
 	contentType string
 	// metrics     *model.Metrics
 }
 
-// Update: successful metric updates for json requests
+// jsonUpdateTests covers successful POST /update calls (valid counter and gauge payloads).
 var jsonUpdateTests = []jsonTestTemplate{
 	{
 		"Counter positive int",
@@ -66,7 +69,7 @@ var jsonUpdateTests = []jsonTestTemplate{
 		tableWantJsonTemplate{
 			http.StatusOK,
 			// Тут надо добавить, что ждем 1000 в ответе
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -78,7 +81,7 @@ var jsonUpdateTests = []jsonTestTemplate{
 		tableWantJsonTemplate{
 			http.StatusOK,
 			// Тут надо добавить, что ждем 1000 в ответе
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -90,7 +93,7 @@ var jsonUpdateTests = []jsonTestTemplate{
 		tableWantJsonTemplate{
 			http.StatusOK,
 			// Тут надо добавить, что ждем -1000 в ответе
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -102,7 +105,7 @@ var jsonUpdateTests = []jsonTestTemplate{
 		tableWantJsonTemplate{
 			http.StatusOK,
 			// Тут надо добавить, что ждем 1000 в ответе
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -114,40 +117,13 @@ var jsonUpdateTests = []jsonTestTemplate{
 		tableWantJsonTemplate{
 			http.StatusOK,
 			// Тут надо добавить, что ждем -1000 в ответе
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 }
 
-// Read: successful fetching metric values and lists
-var jsonReadTests = []jsonTestTemplate{
-	{
-		"Read existing gauge",
-		http.MethodPost,
-		"/value",
-		"{\"type\":\"gauge\", \"id\":\"___test___\"}",
-		"application/json",
-		tableWantJsonTemplate{
-			http.StatusOK,
-			// Тут надо добавить, что ждем 123 в ответе
-			"application/json; charset=utf-8",
-		},
-	},
-	{
-		"Read existing gauge",
-		http.MethodPost,
-		"/value",
-		"{\"type\":\"counter\", \"id\":\"___test___\"}",
-		"application/json",
-		tableWantJsonTemplate{
-			http.StatusOK,
-			// Тут надо добавить, что ждем 234 в ответе
-			"application/json; charset=utf-8",
-		},
-	},
-}
-
-// Validation: invalid type, name, or value
+// validationJsonTests covers POST /update and POST /value with invalid payloads
+// (missing/incorrect type, name, or value) — all expected to return 400 or 404.
 var validationJsonTests = []jsonTestTemplate{
 	// Missing or invalid metric TYPE
 	{
@@ -158,7 +134,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -169,7 +145,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 
@@ -182,7 +158,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -193,7 +169,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -204,7 +180,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusNotFound,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -215,7 +191,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusNotFound,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 
@@ -228,7 +204,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -239,7 +215,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -250,7 +226,7 @@ var validationJsonTests = []jsonTestTemplate{
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -261,29 +237,29 @@ var validationJsonTests = []jsonTestTemplate{
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
 		"Counter metric value is positive float",
 		http.MethodPost,
 		"/update",
-		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":1001,00}",
+		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":1001.00}",
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
 		"Counter metric value is negative float",
 		http.MethodPost,
 		"/update",
-		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":-1001,00}",
+		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":-1001.00}",
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 	{
@@ -294,11 +270,12 @@ var validationJsonTests = []jsonTestTemplate{
 		"application/json",
 		tableWantJsonTemplate{
 			http.StatusBadRequest,
-			"application/json; charset=utf-8",
+			desiredContentType,
 		},
 	},
 }
 
+// runJsonTests executes a slice of table-driven JSON test cases against a test server.
 func runJsonTests(t *testing.T, cases []jsonTestTemplate) {
 	ts := GetTestRouter()
 	defer ts.Close()
@@ -312,14 +289,17 @@ func runJsonTests(t *testing.T, cases []jsonTestTemplate) {
 	}
 }
 
+// TestJsonValidate verifies that /update and /value reject invalid JSON payloads.
 func TestJsonValidate(t *testing.T) {
 	runJsonTests(t, validationJsonTests)
 }
 
+// TestJsonUpdate verifies that /update accepts valid metric payloads and returns 200.
 func TestJsonUpdate(t *testing.T) {
 	runJsonTests(t, jsonUpdateTests)
 }
 
+// TestJsonRead verifies that /value returns the correct stored metric values in JSON.
 func TestJsonRead(t *testing.T) {
 	ts := GetTestRouter()
 	defer ts.Close()
@@ -345,7 +325,7 @@ func TestJsonRead(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, body := testJsonRequest(t, ts, http.MethodPost, "/value", tt.body, "application/json")
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
-			assert.Equal(t, "application/json; charset=utf-8", resp.Header.Get("Content-Type"))
+			assert.Equal(t, desiredContentType, resp.Header.Get("Content-Type"))
 
 			var got model.Metrics
 			require.NoError(t, json.Unmarshal([]byte(body), &got))
@@ -354,5 +334,7 @@ func TestJsonRead(t *testing.T) {
 	}
 }
 
+// fPtr returns a pointer to v, used to build *float64 for test expectations.
 func fPtr(v float64) *float64 { return &v }
+// iPtr returns a pointer to v, used to build *int64 for test expectations.
 func iPtr(v int64) *int64     { return &v }

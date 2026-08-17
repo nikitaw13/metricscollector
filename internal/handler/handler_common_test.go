@@ -6,10 +6,13 @@ import (
 	"github.com/PrometheRus/metricscollector/internal/repository"
 )
 
-const defaultGaugeValue = 123
+// defaultGaugeValue is the pre-seeded gauge value used across handler tests.
+const defaultGaugeValue = 123.00
+// defaultCounterValue is the pre-seeded counter value used across handler tests.
 const defaultCounterValue = 234
 
-// Function creates a test server with a fresh storage instance and configured routes.
+// GetTestRouter returns an httptest.Server backed by a fresh MemStorage
+// pre-populated with one gauge and one counter metric named "___test___".
 func GetTestRouter() (server *httptest.Server) {
 	var s = repository.New()
 	s.UpdateGauge("___test___", defaultGaugeValue)
@@ -20,6 +23,7 @@ func GetTestRouter() (server *httptest.Server) {
 	return
 }
 
+// htmlResponse is the expected HTML page returned by GET / for the seeded storage.
 var htmlResponse = `<html><body>
 <h1>List of names and results of all currently known metrics</h1>
 <b>___test___</b>:   <code>234</code><br><b>___test___</b>:   <code>123</code><br><hr></body></html>

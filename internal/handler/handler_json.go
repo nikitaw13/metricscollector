@@ -9,12 +9,13 @@ import (
 	"github.com/PrometheRus/metricscollector/internal/model"
 )
 
-// JSON Objects
+// apiError holds the JSON body for error responses.
 type apiError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
 
+// writeJSONError marshals an apiError and writes it with the given HTTP status code.
 func writeJSONError(rw http.ResponseWriter, status int, err error) {
 	resp, err := json.Marshal(apiError{Code: status, Message: err.Error()})
 
@@ -29,6 +30,7 @@ func writeJSONError(rw http.ResponseWriter, status int, err error) {
 	rw.Write(resp)
 }
 
+// decodeJSON unmarshals the request body into m and classifies decode errors.
 func decodeJSON(res http.ResponseWriter, req *http.Request, m *model.Metrics) error {
 	var (
 		syntaxErr        *json.SyntaxError
@@ -51,6 +53,8 @@ func decodeJSON(res http.ResponseWriter, req *http.Request, m *model.Metrics) er
 	return nil
 }
 
+// PostUpdate handles POST /update: validates the JSON payload, stores the metric,
+// and returns the updated metric value in the response body.
 func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) {
 	var m model.Metrics
 
@@ -71,7 +75,11 @@ func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) 
 			writeJSONError(res, http.StatusInternalServerError, err)
 			return
 		}
-		newVal, _ := h.Storage.GetGauge(m.ID)
+		newVal, err := h.Storage.GetGauge(m.ID)
+		if err != nil {
+			writeJSONError(res, http.StatusInternalServerError, err)
+			return
+		}
 		m.Value = &newVal
 	case model.Counter:
 		if err := h.Storage.UpdateCounter(m.ID, *m.Delta); err != nil {
@@ -96,6 +104,8 @@ func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) 
 	res.Write(resp)
 }
 
+// PostValue handles POST /value: validates the JSON payload, looks up the stored
+// metric and returns its current value in the response body.
 func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
 	var m model.Metrics
 
