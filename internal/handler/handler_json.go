@@ -31,7 +31,7 @@ func writeJSONError(w http.ResponseWriter, status int, err error) {
 }
 
 // decodeJSON unmarshals the request body into m and classifies decode errors.
-func decodeJSON(w http.ResponseWriter, r *http.Request, m *model.Metrics) error {
+func decodeJSON(w http.ResponseWriter, r *http.Request, m *model.Metric) error {
 	var (
 		syntaxErr        *json.SyntaxError
 		unmarshalTypeErr *json.UnmarshalTypeError
@@ -56,7 +56,7 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, m *model.Metrics) error 
 // PostUpdate handles POST /update: validates the JSON payload, stores the metric,
 // and returns the updated metric value in the response body.
 func (h *MetricsHandler) PostUpdate(w http.ResponseWriter, r *http.Request) {
-	var m model.Metrics
+	var m model.Metric
 
 	decodeErr := decodeJSON(w, r, &m)
 
@@ -69,7 +69,7 @@ func (h *MetricsHandler) PostUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch m.MType {
+	switch m.Type {
 	case model.Gauge:
 		if err := h.Storage.UpdateGauge(m.ID, *m.Value); err != nil {
 			writeJSONError(w, http.StatusInternalServerError, err)
@@ -107,7 +107,7 @@ func (h *MetricsHandler) PostUpdate(w http.ResponseWriter, r *http.Request) {
 // PostValue handles POST /value: validates the JSON payload, looks up the stored
 // metric and returns its current value in the response body.
 func (h *MetricsHandler) PostValue(w http.ResponseWriter, r *http.Request) {
-	var m model.Metrics
+	var m model.Metric
 
 	decodeErr := decodeJSON(w, r, &m)
 
@@ -120,7 +120,7 @@ func (h *MetricsHandler) PostValue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	switch m.MType {
+	switch m.Type {
 	case model.Gauge:
 		result, err := h.Storage.GetGauge(m.ID)
 		if err != nil {

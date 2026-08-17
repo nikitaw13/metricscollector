@@ -267,6 +267,19 @@ var validationJSONTests = []JSONTestTemplate{
 			expectedJSONContentType,
 		},
 	},
+
+	// Invalid JSON syntax
+	{
+		"Invalid JSON syntax",
+		http.MethodPost,
+		"/update",
+		`{invalid json`,
+		"application/json",
+		JSONTestWant{
+			http.StatusBadRequest,
+			expectedJSONContentType,
+		},
+	},
 }
 
 // runJSONTests executes a slice of table-driven JSON test cases against a test server.
@@ -301,17 +314,17 @@ func TestJSONRead(t *testing.T) {
 	tests := []struct {
 		name string
 		body string
-		want model.Metrics
+		want model.Metric
 	}{
 		{
 			"Read existing gauge",
 			"{\"type\":\"gauge\", \"id\":\"___test___\"}",
-			model.Metrics{ID: "___test___", MType: "gauge", Value: ptrFloat64(defaultGaugeValue)},
+			model.Metric{ID: "___test___", Type: "gauge", Value: ptrFloat64(defaultGaugeValue)},
 		},
 		{
 			"Read existing counter",
 			"{\"type\":\"counter\", \"id\":\"___test___\"}",
-			model.Metrics{ID: "___test___", MType: "counter", Delta: ptrInt64(defaultCounterValue)},
+			model.Metric{ID: "___test___", Type: "counter", Delta: ptrInt64(defaultCounterValue)},
 		},
 	}
 
@@ -321,7 +334,7 @@ func TestJSONRead(t *testing.T) {
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 			assert.Equal(t, expectedJSONContentType, resp.Header.Get("Content-Type"))
 
-			var got model.Metrics
+			var got model.Metric
 			require.NoError(t, json.Unmarshal([]byte(body), &got))
 			assert.Equal(t, tt.want, got)
 		})
@@ -330,5 +343,6 @@ func TestJSONRead(t *testing.T) {
 
 // ptrFloat64 returns a pointer to v, used to build *float64 for test expectations.
 func ptrFloat64(v float64) *float64 { return &v }
+
 // ptrInt64 returns a pointer to v, used to build *int64 for test expectations.
-func ptrInt64(v int64) *int64      { return &v }
+func ptrInt64(v int64) *int64 { return &v }
