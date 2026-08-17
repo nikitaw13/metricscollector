@@ -23,13 +23,13 @@ func run() error {
 	router := h.New()
 
 	srv := &http.Server{
-		Addr:         flagRunAddr,
+		Addr:         flagHTTPAddr,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
 		Handler:      router,
 	}
 
-	log.Println("Running server on", flagRunAddr)
+	log.Println("Running server on", flagHTTPAddr)
 	return srv.ListenAndServe()
 }
