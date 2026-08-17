@@ -29,6 +29,7 @@ type Metric struct {
 	Hash  string   `json:"hash,omitempty"`
 }
 
+// ValidateForUpdate checks that the metric has a valid type, ID and value for an update request.
 func (m Metric) ValidateForUpdate() error {
 	if m.Type == "" {
 		return ErrMissingType
@@ -58,6 +59,7 @@ func (m Metric) ValidateForUpdate() error {
 	return nil
 }
 
+// ValidateForRead checks that the metric has a valid type and ID for a read request.
 func (m Metric) ValidateForRead() error {
 	if m.Type == "" {
 		return ErrMissingType

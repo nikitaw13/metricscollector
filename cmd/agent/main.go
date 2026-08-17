@@ -13,6 +13,7 @@ func main() {
 	run()
 }
 
+// run starts the collector and sender in separate goroutines with independent intervals.
 func run() {
 	storage := agent.NewAgentStorage()
 	collector := &agent.Collector{Storage: storage}
