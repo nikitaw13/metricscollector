@@ -4,12 +4,14 @@ import (
 	"flag"
 )
 
-// Command-line flags for the agent.
-var (
-	flagServerAddr     string
-	flagReportInterval int
-	flagPollInterval   int
-)
+// flagServerAddr HTTP address of the metrics server (-a).
+var flagServerAddr string
+
+// flagReportInterval interval in seconds between metric reports (-r).
+var flagReportInterval int
+
+// flagPollInterval interval in seconds between metric collection cycles (-p).
+var flagPollInterval int
 
 // parseFlags registers and parses command-line flags.
 func parseFlags() {

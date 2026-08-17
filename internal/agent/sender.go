@@ -65,6 +65,7 @@ func (s *Sender) Run() {
 	}
 }
 
+// resetCounter zeroes the named counter after a successful (HTTP 200) send.
 func resetCounter(res *http.Response, m string, s Storage) {
 	// Reset the counter to zero if 200
 	if res.StatusCode == http.StatusOK {
@@ -72,6 +73,7 @@ func resetCounter(res *http.Response, m string, s Storage) {
 	}
 }
 
+// logRequest logs the outcome of sending a single metric.
 func logRequest(res *http.Response, m string, fp string) {
 	if res.StatusCode == http.StatusOK {
 		log.Printf("Metric '%s' sent to %s", m, fp)
