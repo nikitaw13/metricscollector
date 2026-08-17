@@ -43,7 +43,7 @@ func (m Metrics) ValidateForUpdate() error {
 		return ErrMissingID
 	}
 
-	if m.MType == Gauge && m.Value == nil || m.MType == Counter && m.Delta == nil {
+	if (m.MType == Gauge && m.Value == nil) || (m.MType == Counter && m.Delta == nil) {
 		return ErrMissingValue
 	}
 
