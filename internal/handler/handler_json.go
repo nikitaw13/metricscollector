@@ -16,38 +16,38 @@ type apiError struct {
 }
 
 // writeJSONError marshals an apiError and writes it with the given HTTP status code.
-func writeJSONError(rw http.ResponseWriter, status int, err error) {
-	resp, err := json.Marshal(apiError{Code: status, Message: err.Error()})
+func writeJSONError(w http.ResponseWriter, status int, err error) {
+	body, err := json.Marshal(apiError{Code: status, Message: err.Error()})
 
 	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write([]byte("Internal error"))
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Internal error"))
 		return
 	}
 
-	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
-	rw.WriteHeader(status)
-	rw.Write(resp)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	w.Write(body)
 }
 
 // decodeJSON unmarshals the request body into m and classifies decode errors.
-func decodeJSON(res http.ResponseWriter, req *http.Request, m *model.Metrics) error {
+func decodeJSON(w http.ResponseWriter, r *http.Request, m *model.Metrics) error {
 	var (
 		syntaxErr        *json.SyntaxError
 		unmarshalTypeErr *json.UnmarshalTypeError
 	)
-	err := json.NewDecoder(req.Body).Decode(m)
+	err := json.NewDecoder(r.Body).Decode(m)
 	if errors.As(err, &syntaxErr) {
-		writeJSONError(res, http.StatusBadRequest, fmt.Errorf("Invalid JSON syntax at offset %d", syntaxErr.Offset))
+		writeJSONError(w, http.StatusBadRequest, fmt.Errorf("Invalid JSON syntax at offset %d", syntaxErr.Offset))
 		return err
 	}
 	if errors.As(err, &unmarshalTypeErr) {
-		writeJSONError(res, http.StatusBadRequest, fmt.Errorf("Invalid type %q for field %q", unmarshalTypeErr.Value, unmarshalTypeErr.Field))
+		writeJSONError(w, http.StatusBadRequest, fmt.Errorf("Invalid type %q for field %q", unmarshalTypeErr.Value, unmarshalTypeErr.Field))
 		return err
 	}
 
 	if err != nil {
-		writeJSONError(res, http.StatusInternalServerError, err)
+		writeJSONError(w, http.StatusInternalServerError, err)
 		return err
 	}
 	return nil
@@ -55,40 +55,40 @@ func decodeJSON(res http.ResponseWriter, req *http.Request, m *model.Metrics) er
 
 // PostUpdate handles POST /update: validates the JSON payload, stores the metric,
 // and returns the updated metric value in the response body.
-func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) PostUpdate(w http.ResponseWriter, r *http.Request) {
 	var m model.Metrics
 
-	decodeErr := decodeJSON(res, req, &m)
+	decodeErr := decodeJSON(w, r, &m)
 
 	if decodeErr != nil {
 		return
 	}
 
 	if err := m.ValidateForUpdate(); err != nil {
-		writeJSONError(res, http.StatusBadRequest, err)
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	switch m.MType {
 	case model.Gauge:
 		if err := h.Storage.UpdateGauge(m.ID, *m.Value); err != nil {
-			writeJSONError(res, http.StatusInternalServerError, err)
+			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
 		newVal, err := h.Storage.GetGauge(m.ID)
 		if err != nil {
-			writeJSONError(res, http.StatusInternalServerError, err)
+			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
 		m.Value = &newVal
 	case model.Counter:
 		if err := h.Storage.UpdateCounter(m.ID, *m.Delta); err != nil {
-			writeJSONError(res, http.StatusInternalServerError, err)
+			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
 		newVal, err := h.Storage.GetCounter(m.ID)
 		if err != nil {
-			writeJSONError(res, http.StatusInternalServerError, err)
+			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
 		m.Delta = &newVal
@@ -96,27 +96,27 @@ func (h *MetricsHandler) PostUpdate(res http.ResponseWriter, req *http.Request) 
 
 	resp, err := json.Marshal(m)
 	if err != nil {
-		writeJSONError(res, http.StatusInternalServerError, err)
+		writeJSONError(w, http.StatusInternalServerError, err)
 		return
 	}
-	res.Header().Set("Content-Type", "application/json; charset=utf-8")
-	res.WriteHeader(http.StatusOK)
-	res.Write(resp)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(resp)
 }
 
 // PostValue handles POST /value: validates the JSON payload, looks up the stored
 // metric and returns its current value in the response body.
-func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
+func (h *MetricsHandler) PostValue(w http.ResponseWriter, r *http.Request) {
 	var m model.Metrics
 
-	decodeErr := decodeJSON(res, req, &m)
+	decodeErr := decodeJSON(w, r, &m)
 
 	if decodeErr != nil {
 		return
 	}
 
 	if err := m.ValidateForRead(); err != nil {
-		writeJSONError(res, http.StatusBadRequest, err)
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 
@@ -124,7 +124,7 @@ func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
 	case model.Gauge:
 		result, err := h.Storage.GetGauge(m.ID)
 		if err != nil {
-			writeJSONError(res, http.StatusNotFound, err)
+			writeJSONError(w, http.StatusNotFound, err)
 			return
 		}
 		m.Value = &result
@@ -132,7 +132,7 @@ func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
 	case model.Counter:
 		result, err := h.Storage.GetCounter(m.ID)
 		if err != nil {
-			writeJSONError(res, http.StatusNotFound, err)
+			writeJSONError(w, http.StatusNotFound, err)
 			return
 		}
 		m.Delta = &result
@@ -140,11 +140,11 @@ func (h *MetricsHandler) PostValue(res http.ResponseWriter, req *http.Request) {
 
 	resp, err := json.Marshal(m)
 	if err != nil {
-		writeJSONError(res, http.StatusInternalServerError, err)
+		writeJSONError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	res.Header().Set("Content-Type", "application/json; charset=utf-8")
-	res.WriteHeader(http.StatusOK)
-	res.Write(resp)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(resp)
 }

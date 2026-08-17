@@ -25,10 +25,10 @@ func (s *Sender) Run() {
 	updateURL := fmt.Sprintf("%s/update", s.URL)
 
 	// Serialize and POST every gauge metric.
-	for metric, value := range s.Storage.GetAllGauges() {
+	for metricName, value := range s.Storage.GetAllGauges() {
 		m := model.Metrics{
 			MType: model.Gauge,
-			ID:    metric,
+			ID:    metricName,
 			Value: &value,
 		}
 
@@ -51,21 +51,21 @@ func (s *Sender) Run() {
 		}
 
 		req.Header.Set("Content-Type", "application/json; charset=utf-8")
-		res, err := s.Client.Do(req)
+		resp, err := s.Client.Do(req)
 
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		logRequest(res, metric, updateURL)
-		finalizeSend(res)
+		logRequest(resp, metricName, updateURL)
+		finalizeSend(resp)
 	}
 
 	// Serialize and POST every counter metric; reset on 200.
-	for metric, value := range s.Storage.GetAllCounters() {
+	for metricName, value := range s.Storage.GetAllCounters() {
 		m := model.Metrics{
 			MType: model.Counter,
-			ID:    metric,
+			ID:    metricName,
 			Delta: &value,
 		}
 
@@ -84,35 +84,35 @@ func (s *Sender) Run() {
 		}
 
 		req.Header.Set("Content-Type", "application/json; charset=utf-8")
-		res, err := s.Client.Do(req)
+		resp, err := s.Client.Do(req)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		resetCounter(res, metric, s.Storage)
-		logRequest(res, metric, updateURL)
-		finalizeSend(res)
+		resetCounter(resp, metricName, s.Storage)
+		logRequest(resp, metricName, updateURL)
+		finalizeSend(resp)
 	}
 }
 
 // resetCounter zeroes the counter in local storage only after a 200 OK response.
-func resetCounter(res *http.Response, m string, s Storage) {
-	if res.StatusCode == http.StatusOK {
-		s.ResetCounter(m)
+func resetCounter(resp *http.Response, metricName string, storage Storage) {
+	if resp.StatusCode == http.StatusOK {
+		storage.ResetCounter(metricName)
 	}
 }
 
 // logRequest prints whether a metric delivery succeeded or failed.
-func logRequest(res *http.Response, m string, fp string) {
-	if res.StatusCode == http.StatusOK {
-		log.Printf("Metric '%s' sent to %s", m, fp)
+func logRequest(resp *http.Response, metricName string, url string) {
+	if resp.StatusCode == http.StatusOK {
+		log.Printf("Metric '%s' sent to %s", metricName, url)
 	} else {
-		log.Printf("Metric '%s' failed to send to %s, status: %d", m, fp, res.StatusCode)
+		log.Printf("Metric '%s' failed to send to %s, status: %d", metricName, url, resp.StatusCode)
 	}
 }
 
-// Drain response body to allow TCP connection reuse (keep-alive).
-func finalizeSend(res *http.Response) {
-	io.Copy(io.Discard, res.Body)
-	res.Body.Close()
+// finalizeSend drains the response body to allow TCP connection reuse (keep-alive).
+func finalizeSend(resp *http.Response) {
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
 }

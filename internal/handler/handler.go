@@ -18,19 +18,19 @@ type MetricsHandler struct {
 
 // TypeMiddleware validates that the URL param TYPE is "gauge" or "counter".
 func TypeMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		t := chi.URLParam(req, "TYPE")
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t := chi.URLParam(r, "TYPE")
 		if t != model.Gauge && t != model.Counter {
-			http.Error(res, "Invalid metric type", http.StatusBadRequest)
+			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
 		}
-		next.ServeHTTP(res, req)
+		next.ServeHTTP(w, r)
 	})
 }
 
 // LoggerMiddleware logs request details (method, URI, duration) and response status/size.
 func LoggerMiddleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
 		rd := &responseData{
@@ -39,15 +39,15 @@ func LoggerMiddleware(h http.Handler) http.Handler {
 		}
 
 		lwr := loggingResponseWriter{
-			ResponseWriter: rw,
+			ResponseWriter: w,
 			responseData:   rd,
 		}
 
-		h.ServeHTTP(&lwr, req)
+		h.ServeHTTP(&lwr, r)
 
 		Log.Info("got incoming HTTP request",
-			zap.String("URI", req.RequestURI),
-			zap.String("method", req.Method),
+			zap.String("URI", r.RequestURI),
+			zap.String("method", r.Method),
 			zap.Duration("duration", time.Since(start)),
 		)
 
@@ -59,82 +59,80 @@ func LoggerMiddleware(h http.Handler) http.Handler {
 }
 
 // GetRoot renders an HTML page listing all known counters and gauges.
-func (h *MetricsHandler) GetRoot(rw http.ResponseWriter, r *http.Request) {
-	rw.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	// Start of the HTML page
-	fmt.Fprintln(rw, "<html><body>")
-	fmt.Fprintln(rw, "<h1>List of names and results of all currently known metrics</h1>")
+func (h *MetricsHandler) GetRoot(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	fmt.Fprintln(w, "<html><body>")
+	fmt.Fprintln(w, "<h1>List of names and results of all currently known metrics</h1>")
 	for k, v := range h.Storage.GetAllCounters() {
-		fmt.Fprintf(rw, "<b>%v</b>:   <code>%v</code><br>", k, v)
+		fmt.Fprintf(w, "<b>%v</b>:   <code>%v</code><br>", k, v)
 	}
 	for k, v := range h.Storage.GetAllGauges() {
-		fmt.Fprintf(rw, "<b>%v</b>:   <code>%v</code><br>", k, v)
+		fmt.Fprintf(w, "<b>%v</b>:   <code>%v</code><br>", k, v)
 	}
-	// End of the HTML page
-	fmt.Fprintln(rw, "<hr></body></html>")
+	fmt.Fprintln(w, "<hr></body></html>")
 }
 
 // GetMetric returns the current value of a single metric as plain text.
-func (h *MetricsHandler) GetMetric(res http.ResponseWriter, req *http.Request) {
-	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	switch chi.URLParam(req, "TYPE") {
+func (h *MetricsHandler) GetMetric(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	switch chi.URLParam(r, "TYPE") {
 	case model.Gauge:
-		result, err := h.Storage.GetGauge(chi.URLParam(req, "METRIC"))
+		result, err := h.Storage.GetGauge(chi.URLParam(r, "METRIC"))
 		if err != nil {
-			http.Error(res, err.Error(), http.StatusNotFound)
+			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		fmt.Fprintf(res, "%g\n", result)
+		fmt.Fprintf(w, "%g\n", result)
 
 	case model.Counter:
-		result, err := h.Storage.GetCounter(chi.URLParam(req, "METRIC"))
+		result, err := h.Storage.GetCounter(chi.URLParam(r, "METRIC"))
 		if err != nil {
-			http.Error(res, err.Error(), http.StatusNotFound)
+			http.Error(w, err.Error(), http.StatusNotFound)
 			return
 		}
-		fmt.Fprintf(res, "%d\n", result)
+		fmt.Fprintf(w, "%d\n", result)
 	}
 }
 
 // PostNoMetric returns 404 when a POST /update request is missing the metric name.
-func (h *MetricsHandler) PostNoMetric(res http.ResponseWriter, req *http.Request) {
-	http.Error(res, "Metric ID is required", http.StatusNotFound)
+func (h *MetricsHandler) PostNoMetric(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Metric ID is required", http.StatusNotFound)
 }
 
 // PostNoValue returns 400 when a POST /update request is missing the metric value.
-func (h *MetricsHandler) PostNoValue(res http.ResponseWriter, req *http.Request) {
-	http.Error(res, "Metric value is required", http.StatusBadRequest)
+func (h *MetricsHandler) PostNoValue(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Metric value is required", http.StatusBadRequest)
 }
 
 // PostFull processes a full URL-encoded update: parses the value, updates storage,
 // and returns a plain-text confirmation on success.
-func (h *MetricsHandler) PostFull(res http.ResponseWriter, req *http.Request) {
-	switch chi.URLParam(req, "TYPE") {
+func (h *MetricsHandler) PostFull(w http.ResponseWriter, r *http.Request) {
+	switch chi.URLParam(r, "TYPE") {
 	case model.Gauge:
-		mGaugeValue, err := strconv.ParseFloat(chi.URLParam(req, "VALUE"), 64)
+		gaugeValue, err := strconv.ParseFloat(chi.URLParam(r, "VALUE"), 64)
 		if err != nil {
-			http.Error(res, "Invalid metric value", http.StatusBadRequest)
+			http.Error(w, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
 
-		if err := h.Storage.UpdateGauge(chi.URLParam(req, "METRIC"), mGaugeValue); err != nil {
-			http.Error(res, "Failed to update Gauge", http.StatusInternalServerError)
+		if err := h.Storage.UpdateGauge(chi.URLParam(r, "METRIC"), gaugeValue); err != nil {
+			http.Error(w, "Failed to update Gauge", http.StatusInternalServerError)
 			return
 		}
 
 	case model.Counter:
-		mCounterValue, err := strconv.ParseInt(chi.URLParam(req, "VALUE"), 10, 64)
-		if err != nil || mCounterValue < 0 {
-			http.Error(res, "Invalid metric value", http.StatusBadRequest)
+		counterValue, err := strconv.ParseInt(chi.URLParam(r, "VALUE"), 10, 64)
+		if err != nil || counterValue < 0 {
+			http.Error(w, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
-		if err := h.Storage.UpdateCounter(chi.URLParam(req, "METRIC"), mCounterValue); err != nil {
-			http.Error(res, "Failed to update Counter", http.StatusInternalServerError)
+		if err := h.Storage.UpdateCounter(chi.URLParam(r, "METRIC"), counterValue); err != nil {
+			http.Error(w, "Failed to update Counter", http.StatusInternalServerError)
 			return
 		}
 	}
 
-	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	res.WriteHeader(http.StatusOK)
-	fmt.Fprintf(res, "Metric '%s' updated✅\n", chi.URLParam(req, "METRIC"))
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Metric '%s' updated✅\n", chi.URLParam(r, "METRIC"))
 }

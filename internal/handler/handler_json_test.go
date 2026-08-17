@@ -13,18 +13,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// desiredContentType is the expected Content-Type header for all JSON responses.
-const desiredContentType = "application/json; charset=utf-8"
+// expectedJSONContentType is the expected Content-Type header for all JSON responses.
+const expectedJSONContentType = "application/json; charset=utf-8"
 
-// testJsonRequest sends an HTTP request with a JSON body to the test server
+// testJSONRequest sends an HTTP request with a JSON body to the test server
 // and returns the full response along with the response body as a string.
-func testJsonRequest(t *testing.T, ts *httptest.Server, method, path, body string, contentType string) (*http.Response, string) {
-	var buf io.Reader
+func testJSONRequest(t *testing.T, ts *httptest.Server, method, path, body string, contentType string) (*http.Response, string) {
+	var bodyReader io.Reader
 	if body != "" {
-		buf = strings.NewReader(body)
+		bodyReader = strings.NewReader(body)
 	}
 
-	req, err := http.NewRequest(method, ts.URL+path, buf)
+	req, err := http.NewRequest(method, ts.URL+path, bodyReader)
 	require.NoError(t, err)
 
 	if contentType != "" {
@@ -35,41 +35,39 @@ func testJsonRequest(t *testing.T, ts *httptest.Server, method, path, body strin
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	return resp, string(respBody)
+	return resp, string(bodyBytes)
 }
 
-// jsonTestTemplate holds a single table-driven test case for JSON endpoint tests.
-type jsonTestTemplate struct {
+// JSONTestTemplate holds a single table-driven test case for JSON endpoint tests.
+type JSONTestTemplate struct {
 	name        string
 	method      string
 	path        string
 	body        string
 	contentType string
-	want        tableWantJsonTemplate
+	want        JSONTestWant
 }
 
-// tableWantJsonTemplate describes the expected HTTP response for a JSON test case.
-type tableWantJsonTemplate struct {
+// JSONTestWant describes the expected HTTP response for a JSON test case.
+type JSONTestWant struct {
 	code        int
 	contentType string
-	// metrics     *model.Metrics
 }
 
-// jsonUpdateTests covers successful POST /update calls (valid counter and gauge payloads).
-var jsonUpdateTests = []jsonTestTemplate{
+// JSONUpdateTests covers successful POST /update calls (valid counter and gauge payloads).
+var JSONUpdateTests = []JSONTestTemplate{
 	{
 		"Counter positive int",
 		http.MethodPost,
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"test\", \"delta\":1000}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusOK,
-			// Тут надо добавить, что ждем 1000 в ответе
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -78,10 +76,9 @@ var jsonUpdateTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":1000}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusOK,
-			// Тут надо добавить, что ждем 1000 в ответе
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -90,10 +87,9 @@ var jsonUpdateTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":-1000}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusOK,
-			// Тут надо добавить, что ждем -1000 в ответе
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -102,29 +98,27 @@ var jsonUpdateTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":1000.00}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusOK,
-			// Тут надо добавить, что ждем 1000 в ответе
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
-		"Gauge positive float",
+		"Gauge negative float",
 		http.MethodPost,
 		"/update",
 		"{\"type\":\"gauge\", \"id\":\"test\", \"value\":-1000.00}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusOK,
-			// Тут надо добавить, что ждем -1000 в ответе
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 }
 
-// validationJsonTests covers POST /update and POST /value with invalid payloads
+// validationJSONTests covers POST /update and POST /value with invalid payloads
 // (missing/incorrect type, name, or value) — all expected to return 400 or 404.
-var validationJsonTests = []jsonTestTemplate{
+var validationJSONTests = []JSONTestTemplate{
 	// Missing or invalid metric TYPE
 	{
 		"Missing metric type",
@@ -132,9 +126,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/update",
 		"{}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusBadRequest,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -143,9 +137,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"random\"}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusBadRequest,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 
@@ -156,9 +150,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"gauge\"}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusBadRequest,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -167,9 +161,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"counter\"}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusBadRequest,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -178,9 +172,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/value",
 		"{\"type\":\"gauge\",\"id\":\"unknown\"}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusNotFound,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -189,9 +183,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/value",
 		"{\"type\":\"counter\",\"id\":\"unknown\"}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusNotFound,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 
@@ -202,9 +196,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"gauge\", \"id\":\"name\"}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusBadRequest,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -213,9 +207,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"name\"}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusBadRequest,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -224,9 +218,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"gauge\", \"id\":\"name\", \"value\":\"LatinText\"}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusBadRequest,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -235,9 +229,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":\"LatinText\"}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusBadRequest,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -246,9 +240,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":1001.00}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusBadRequest,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -257,9 +251,9 @@ var validationJsonTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"name\", \"delta\":-1001.00}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusBadRequest,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 	{
@@ -268,40 +262,40 @@ var validationJsonTests = []jsonTestTemplate{
 		"/update",
 		"{\"type\":\"counter\", \"id\":\"test\", \"delta\":-1000}",
 		"application/json",
-		tableWantJsonTemplate{
+		JSONTestWant{
 			http.StatusBadRequest,
-			desiredContentType,
+			expectedJSONContentType,
 		},
 	},
 }
 
-// runJsonTests executes a slice of table-driven JSON test cases against a test server.
-func runJsonTests(t *testing.T, cases []jsonTestTemplate) {
-	ts := GetTestRouter()
+// runJSONTests executes a slice of table-driven JSON test cases against a test server.
+func runJSONTests(t *testing.T, cases []JSONTestTemplate) {
+	ts := GetTestServer()
 	defer ts.Close()
 
-	for _, v := range cases {
-		t.Run(v.name, func(t *testing.T) {
-			resp, _ := testJsonRequest(t, ts, v.method, v.path, v.body, v.contentType)
-			assert.Equal(t, v.want.code, resp.StatusCode)
-			assert.Equal(t, v.want.contentType, resp.Header.Get("Content-Type"))
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, _ := testJSONRequest(t, ts, tc.method, tc.path, tc.body, tc.contentType)
+			assert.Equal(t, tc.want.code, resp.StatusCode)
+			assert.Equal(t, tc.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
 }
 
-// TestJsonValidate verifies that /update and /value reject invalid JSON payloads.
-func TestJsonValidate(t *testing.T) {
-	runJsonTests(t, validationJsonTests)
+// TestJSONValidate verifies that /update and /value reject invalid JSON payloads.
+func TestJSONValidate(t *testing.T) {
+	runJSONTests(t, validationJSONTests)
 }
 
-// TestJsonUpdate verifies that /update accepts valid metric payloads and returns 200.
-func TestJsonUpdate(t *testing.T) {
-	runJsonTests(t, jsonUpdateTests)
+// TestJSONUpdate verifies that /update accepts valid metric payloads and returns 200.
+func TestJSONUpdate(t *testing.T) {
+	runJSONTests(t, JSONUpdateTests)
 }
 
-// TestJsonRead verifies that /value returns the correct stored metric values in JSON.
-func TestJsonRead(t *testing.T) {
-	ts := GetTestRouter()
+// TestJSONRead verifies that /value returns the correct stored metric values in JSON.
+func TestJSONRead(t *testing.T) {
+	ts := GetTestServer()
 	defer ts.Close()
 
 	tests := []struct {
@@ -312,20 +306,20 @@ func TestJsonRead(t *testing.T) {
 		{
 			"Read existing gauge",
 			"{\"type\":\"gauge\", \"id\":\"___test___\"}",
-			model.Metrics{ID: "___test___", MType: "gauge", Value: fPtr(defaultGaugeValue)},
+			model.Metrics{ID: "___test___", MType: "gauge", Value: ptrFloat64(defaultGaugeValue)},
 		},
 		{
 			"Read existing counter",
 			"{\"type\":\"counter\", \"id\":\"___test___\"}",
-			model.Metrics{ID: "___test___", MType: "counter", Delta: iPtr(defaultCounterValue)},
+			model.Metrics{ID: "___test___", MType: "counter", Delta: ptrInt64(defaultCounterValue)},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resp, body := testJsonRequest(t, ts, http.MethodPost, "/value", tt.body, "application/json")
+			resp, body := testJSONRequest(t, ts, http.MethodPost, "/value", tt.body, "application/json")
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
-			assert.Equal(t, desiredContentType, resp.Header.Get("Content-Type"))
+			assert.Equal(t, expectedJSONContentType, resp.Header.Get("Content-Type"))
 
 			var got model.Metrics
 			require.NoError(t, json.Unmarshal([]byte(body), &got))
@@ -334,7 +328,7 @@ func TestJsonRead(t *testing.T) {
 	}
 }
 
-// fPtr returns a pointer to v, used to build *float64 for test expectations.
-func fPtr(v float64) *float64 { return &v }
-// iPtr returns a pointer to v, used to build *int64 for test expectations.
-func iPtr(v int64) *int64     { return &v }
+// ptrFloat64 returns a pointer to v, used to build *float64 for test expectations.
+func ptrFloat64(v float64) *float64 { return &v }
+// ptrInt64 returns a pointer to v, used to build *int64 for test expectations.
+func ptrInt64(v int64) *int64      { return &v }

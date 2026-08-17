@@ -5,13 +5,13 @@ import (
 	"maps"
 )
 
-// Struct implements in-memory metric storage using separate maps for gauge and counter metrics.
+// MemStorage holds gauge and counter metrics in separate maps.
 type MemStorage struct {
 	gauge   map[string]float64
 	counter map[string]int64
 }
 
-// Function creates and returns a pointer to an initialized MemStorage instance with empty metric maps.
+// New returns an empty MemStorage with initialized maps.
 func New() *MemStorage {
 	return &MemStorage{
 		gauge:   map[string]float64{},
@@ -19,20 +19,19 @@ func New() *MemStorage {
 	}
 }
 
-// Method sets the gauge metric identified by name to the specified value, overwriting any previous value.
+// UpdateGauge overwrites the gauge metric with the given value.
 func (ms *MemStorage) UpdateGauge(name string, value float64) error {
 	ms.gauge[name] = value
 	return nil
 }
 
-// Method increments the counter metric identified by name by the specified delta value.
+// UpdateCounter adds delta to the counter metric.
 func (ms *MemStorage) UpdateCounter(name string, value int64) error {
 	ms.counter[name] += value
 	return nil
 }
 
-// Method returns the value of the gauge metric identified by name.
-// Returns an error if the metric does not exist.
+// GetGauge returns the gauge value or an error if not found.
 func (ms *MemStorage) GetGauge(name string) (value float64, err error) {
 	if _, ok := ms.gauge[name]; ok {
 		return ms.gauge[name], nil
@@ -40,8 +39,7 @@ func (ms *MemStorage) GetGauge(name string) (value float64, err error) {
 	return 0, fmt.Errorf("Gauge %s not found", name)
 }
 
-// Method returns the value of the counter metric identified by name.
-// Returns an error if the metric does not exist.
+// GetCounter returns the counter value or an error if not found.
 func (ms *MemStorage) GetCounter(name string) (value int64, err error) {
 	if _, ok := ms.counter[name]; ok {
 		return ms.counter[name], nil
@@ -49,12 +47,12 @@ func (ms *MemStorage) GetCounter(name string) (value int64, err error) {
 	return 0, fmt.Errorf("Counter %s not found", name)
 }
 
-// Method returns a shallow copy of all stored gauge metrics to prevent external mutation of internal state.
+// GetAllGauges returns a defensive copy of all gauge metrics.
 func (ms *MemStorage) GetAllGauges() (m map[string]float64) {
 	return maps.Clone(ms.gauge)
 }
 
-// Method returns a shallow copy of all stored counter metrics to prevent external mutation of internal state.
+// GetAllCounters returns a defensive copy of all counter metrics.
 func (ms *MemStorage) GetAllCounters() (m map[string]int64) {
 	return maps.Clone(ms.counter)
 }

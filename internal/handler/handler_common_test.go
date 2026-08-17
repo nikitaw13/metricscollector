@@ -11,9 +11,9 @@ const defaultGaugeValue = 123.00
 // defaultCounterValue is the pre-seeded counter value used across handler tests.
 const defaultCounterValue = 234
 
-// GetTestRouter returns an httptest.Server backed by a fresh MemStorage
+// GetTestServer returns an httptest.Server backed by a fresh MemStorage
 // pre-populated with one gauge and one counter metric named "___test___".
-func GetTestRouter() (server *httptest.Server) {
+func GetTestServer() (server *httptest.Server) {
 	var s = repository.New()
 	s.UpdateGauge("___test___", defaultGaugeValue)
 	s.UpdateCounter("___test___", defaultCounterValue)

@@ -24,8 +24,8 @@ func run() error {
 		return err
 	}
 
-	var r = repository.New()
-	var h = handler.MetricsHandler{Storage: r}
+	storage := repository.New()
+	h := handler.MetricsHandler{Storage: storage}
 	router := h.New()
 
 	srv := &http.Server{

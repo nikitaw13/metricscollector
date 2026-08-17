@@ -54,7 +54,7 @@ func (ms *AgentStorage) SetCounter(name string, value int64) {
 	ms.counter[name] += value
 }
 
-// ResetCounters reset the counter metric to zero after successful report
+// ResetCounter zeroes the counter metric after successful report.
 func (ms *AgentStorage) ResetCounter(name string) {
 	ms.counter[name] = 0
 }

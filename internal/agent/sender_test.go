@@ -13,14 +13,14 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Test_SendMetrics verifies that the sender correctly reports all gauge and
+// expectedContentType is the expected Content-Type header for all JSON requests from the agent.
+const expectedContentType = "application/json; charset=utf-8"
+
+// TestSendMetrics verifies that the sender correctly reports all gauge and
 // counter metrics to the server. It checks three things for each metric:
 //   - the metric was received by the server,
 //   - the HTTP method is POST,
 //   - the Content-Type header is "application/json; charset=utf-8".
-
-const ContentTypeHeader = "application/json; charset=utf-8"
-
 func TestSendMetrics(t *testing.T) {
 	as := NewAgentStorage()
 
@@ -35,10 +35,10 @@ func TestSendMetrics(t *testing.T) {
 	}
 
 	received := map[string]bool{}
-	content_type := map[string]string{}
+	contentType := map[string]string{}
 	method := map[string]string{}
 
-	testhandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var m model.Metrics
 
 		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
@@ -48,12 +48,12 @@ func TestSendMetrics(t *testing.T) {
 
 		received[m.ID] = true
 		method[m.ID] = r.Method
-		content_type[m.ID] = r.Header.Get("Content-Type")
+		contentType[m.ID] = r.Header.Get("Content-Type")
 
 		w.WriteHeader(http.StatusOK)
 	})
 
-	ts := httptest.NewServer(testhandler)
+	ts := httptest.NewServer(testHandler)
 	defer ts.Close()
 
 	sender := &Sender{
@@ -74,7 +74,7 @@ func TestSendMetrics(t *testing.T) {
 			assert.Equal(t, http.MethodPost, method[m])
 		})
 		t.Run(fmt.Sprintf("Content-Type %v", m), func(t *testing.T) {
-			assert.Equal(t, ContentTypeHeader, content_type[m])
+			assert.Equal(t, expectedContentType, contentType[m])
 		})
 	}
 	for _, m := range CounterMetrics {
@@ -85,15 +85,14 @@ func TestSendMetrics(t *testing.T) {
 			assert.Equal(t, http.MethodPost, method[m])
 		})
 		t.Run(fmt.Sprintf("Content-Type %v", m), func(t *testing.T) {
-			assert.Equal(t, ContentTypeHeader, content_type[m])
+			assert.Equal(t, expectedContentType, contentType[m])
 		})
 	}
 }
 
-// TestResetIf200 verifies that counter metrics are reset to zero
-// only after successful delivery (HTTP 200). This prevents
-// re-sending already accepted values on the next run cycle.
-func TestResetIf200(t *testing.T) {
+// TestResetCounterOnSuccess verifies that counter metrics are reset to zero
+// only after successful delivery (HTTP 200).
+func TestResetCounterOnSuccess(t *testing.T) {
 	as := NewAgentStorage()
 
 	rv := rand.Int64()
@@ -101,11 +100,11 @@ func TestResetIf200(t *testing.T) {
 		as.SetCounter(v, rv)
 	}
 
-	testhandler := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(http.StatusOK)
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
 	})
 
-	ts := httptest.NewServer(testhandler)
+	ts := httptest.NewServer(testHandler)
 	defer ts.Close()
 
 	sender := &Sender{
@@ -126,10 +125,9 @@ func TestResetIf200(t *testing.T) {
 	}
 }
 
-// TestNoResetIfNot200 verifies that counter metrics are NOT reset
-// when delivery fails (non-200 response). This ensures that metrics
-// are preserved for retry on the next run cycle, preventing data loss.
-func TestNoResetIfNot200(t *testing.T) {
+// TestKeepCounterOnError verifies that counter metrics are NOT reset
+// when delivery fails (non-200 response), preserving them for retry.
+func TestKeepCounterOnError(t *testing.T) {
 	as := NewAgentStorage()
 
 	rv := rand.Int64()
@@ -137,11 +135,11 @@ func TestNoResetIfNot200(t *testing.T) {
 		as.SetCounter(v, rv)
 	}
 
-	testhandler := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(http.StatusInternalServerError)
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
 	})
 
-	ts := httptest.NewServer(testhandler)
+	ts := httptest.NewServer(testHandler)
 	defer ts.Close()
 
 	sender := &Sender{

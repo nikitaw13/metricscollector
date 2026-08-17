@@ -6,12 +6,12 @@ import (
 	"go.uber.org/zap"
 )
 
-// Log будет доступен всему коду как синглтон.
-// Никакой код навыка, кроме функции Initialize, не должен модифицировать эту переменную.
-// По умолчанию установлен no-op-логер, который не выводит никаких сообщений.
+// Log is a package-level singleton logger.
+// Only Initialize should modify this variable.
+// Defaults to a no-op logger that produces no output.
 var Log *zap.Logger = zap.NewNop()
 
-// Initialize инициализирует синглтон логера с необходимым уровнем логирования.
+// Initialize bootstraps the singleton logger at the given level.
 func Initialize(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
@@ -30,22 +30,21 @@ func Initialize(level string) error {
 }
 
 type (
-	// Сведения об ответах должны содержать код статуса и размер содержимого ответа.
+	// responseData captures the HTTP status code and response body size.
 	responseData struct {
 		status int
 		size   int
 	}
 
-	// Внедряем собственную реализацию в методы интерфейса http.ResponseWriter
+	// loggingResponseWriter wraps http.ResponseWriter to capture status and size.
 	loggingResponseWriter struct {
 		http.ResponseWriter
 		responseData *responseData
 	}
 )
 
-// метод для получения размера ответа
+// Write delegates to the wrapped ResponseWriter and accumulates bytes written.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
-	// записываем ответ, используя оригинальный http.ResponseWriter
 	size, err := r.ResponseWriter.Write(b)
 	r.responseData.size += size
 
@@ -56,7 +55,7 @@ func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	return size, err
 }
 
-// метод для получения кода состояния
+// WriteHeader delegates to the wrapped ResponseWriter and records the status code.
 func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode

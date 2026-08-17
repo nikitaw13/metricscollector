@@ -5,6 +5,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 )
 
+// New builds and returns the chi router with all registered routes.
 func (h *MetricsHandler) New() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(LoggerMiddleware)
@@ -28,9 +29,9 @@ func (h *MetricsHandler) New() *chi.Mux {
 
 	r.Route("/update/{TYPE}", func(r chi.Router) {
 		r.Use(middleware.AllowContentType("text/plain"))
-		r.Use(TypeMiddleware)              // проверит TYPE для всех трёх ниже
-		r.Post("/", h.PostNoMetric)        // 404 — нет имени
-		r.Post("/{METRIC}", h.PostNoValue) // 400 — нет значения
+		r.Use(TypeMiddleware)              // validates TYPE for all three routes below
+		r.Post("/", h.PostNoMetric)        // 404 — metric name missing
+		r.Post("/{METRIC}", h.PostNoValue) // 400 — metric value missing
 		r.Post("/{METRIC}/{VALUE}", h.PostFull)
 	})
 

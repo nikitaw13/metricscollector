@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Function sends an HTTP request to the test server and returns the response and body.
-func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
+// testPlainRequest sends an HTTP request to the test server and returns the response and body.
+func testPlainRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Response, string) {
 	req, err := http.NewRequest(method, ts.URL+path, nil)
 	require.NoError(t, err)
 
@@ -19,59 +19,59 @@ func testRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	return resp, string(respBody)
+	return resp, string(body)
 }
 
-// Template defines a single table-driven test case.
-type tableTestTemplate struct {
+// plainTestTemplate holds a single table-driven test case for plain-text endpoints.
+type plainTestTemplate struct {
 	name   string
 	method string
 	path   string
-	want   tableWantTemplate
+	want   plainTestWant
 }
 
-// Template defines expected response for a table-driven test case.
-type tableWantTemplate struct {
+// plainTestWant describes the expected HTTP response for a plain-text test case.
+type plainTestWant struct {
 	code        int
 	response    string
-	contenttype string
+	contentType string
 }
 
-// Update: successful metric updates
-var updateTests = []tableTestTemplate{
+// plainUpdateTests covers successful metric updates via URL-encoded endpoints.
+var plainUpdateTests = []plainTestTemplate{
 	{
-		"Counter positive int", http.MethodPost, "/update/counter/test/1000", tableWantTemplate{
+		"Counter positive int", http.MethodPost, "/update/counter/test/1000", plainTestWant{
 			http.StatusOK,
 			"Metric 'test' updated✅\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Gauge positive int", http.MethodPost, "/update/gauge/test/1000", tableWantTemplate{
+		"Gauge positive int", http.MethodPost, "/update/gauge/test/1000", plainTestWant{
 			http.StatusOK,
 			"Metric 'test' updated✅\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Gauge negative int", http.MethodPost, "/update/gauge/test/-1000", tableWantTemplate{
+		"Gauge negative int", http.MethodPost, "/update/gauge/test/-1000", plainTestWant{
 			http.StatusOK,
 			"Metric 'test' updated✅\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Gauge positive float", http.MethodPost, "/update/gauge/test/1000.00", tableWantTemplate{
+		"Gauge positive float", http.MethodPost, "/update/gauge/test/1000.00", plainTestWant{
 			http.StatusOK,
 			"Metric 'test' updated✅\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Gauge negative float", http.MethodPost, "/update/gauge/test/-1000.00", tableWantTemplate{
+		"Gauge negative float", http.MethodPost, "/update/gauge/test/-1000.00", plainTestWant{
 			http.StatusOK,
 			"Metric 'test' updated✅\n",
 			"text/plain; charset=utf-8",
@@ -79,43 +79,36 @@ var updateTests = []tableTestTemplate{
 	},
 }
 
-// Read: successful fetching metric values and lists
-var readTests = []tableTestTemplate{
+// plainReadTests covers successful metric reads via URL-encoded endpoints.
+var plainReadTests = []plainTestTemplate{
 	{
-		"Read all metrics", http.MethodGet, "/", tableWantTemplate{
+		"Read all metrics", http.MethodGet, "/", plainTestWant{
 			http.StatusOK,
 			htmlResponse,
 			"text/html; charset=UTF-8",
 		},
 	},
 	{
-		"Read existing gauge", http.MethodGet, "/value/gauge/___test___", tableWantTemplate{
+		"Read existing gauge", http.MethodGet, "/value/gauge/___test___", plainTestWant{
 			code:        http.StatusOK,
 			response:    "123\n",
-			contenttype: "text/plain; charset=utf-8",
+			contentType: "text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Read existing counter", http.MethodGet, "/value/counter/___test___", tableWantTemplate{
+		"Read existing counter", http.MethodGet, "/value/counter/___test___", plainTestWant{
 			code:        http.StatusOK,
 			response:    "234\n",
-			contenttype: "text/plain; charset=utf-8",
+			contentType: "text/plain; charset=utf-8",
 		},
 	},
 }
 
-// Validation: invalid type, name, or value
-var validationTests = []tableTestTemplate{
-	// Missing or invalid metric type
-	// {
-	// 	"Missing metric type", http.MethodPost, "/update", tableWantTemplate{
-	// 		http.StatusBadRequest,
-	// 		"Type is required\n",
-	// 		"text/plain; charset=utf-8",
-	// 	},
-	// },
+// plainValidationTests covers invalid requests to URL-encoded endpoints.
+var plainValidationTests = []plainTestTemplate{
+	// Invalid metric type
 	{
-		"Invalid metric type", http.MethodPost, "/update/random/", tableWantTemplate{
+		"Invalid metric type", http.MethodPost, "/update/random/", plainTestWant{
 			http.StatusBadRequest,
 			"Invalid metric type\n",
 			"text/plain; charset=utf-8",
@@ -124,28 +117,28 @@ var validationTests = []tableTestTemplate{
 
 	// Missing or invalid metric name
 	{
-		"Missing gauge metric name", http.MethodPost, "/update/gauge", tableWantTemplate{
+		"Missing gauge metric name", http.MethodPost, "/update/gauge", plainTestWant{
 			http.StatusNotFound,
 			"Metric ID is required\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Missing counter metric name", http.MethodPost, "/update/counter", tableWantTemplate{
+		"Missing counter metric name", http.MethodPost, "/update/counter", plainTestWant{
 			http.StatusNotFound,
 			"Metric ID is required\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Invalid gauge metric name", http.MethodGet, "/value/gauge/unknown", tableWantTemplate{
+		"Invalid gauge metric name", http.MethodGet, "/value/gauge/unknown", plainTestWant{
 			http.StatusNotFound,
 			"Gauge unknown not found\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Invalid counter metric name", http.MethodGet, "/value/counter/unknown", tableWantTemplate{
+		"Invalid counter metric name", http.MethodGet, "/value/counter/unknown", plainTestWant{
 			http.StatusNotFound,
 			"Counter unknown not found\n",
 			"text/plain; charset=utf-8",
@@ -154,49 +147,49 @@ var validationTests = []tableTestTemplate{
 
 	// Missing or invalid metric value
 	{
-		"Missing gauge metric value", http.MethodPost, "/update/gauge/name", tableWantTemplate{
+		"Missing gauge metric value", http.MethodPost, "/update/gauge/name", plainTestWant{
 			http.StatusBadRequest,
 			"Metric value is required\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Missing counter metric value", http.MethodPost, "/update/counter/name", tableWantTemplate{
+		"Missing counter metric value", http.MethodPost, "/update/counter/name", plainTestWant{
 			http.StatusBadRequest,
 			"Metric value is required\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Gauge metric value is latin", http.MethodPost, "/update/gauge/name/value", tableWantTemplate{
+		"Gauge metric value is latin", http.MethodPost, "/update/gauge/name/value", plainTestWant{
 			http.StatusBadRequest,
 			"Invalid metric value\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Counter metric value is latin", http.MethodPost, "/update/counter/name/value", tableWantTemplate{
+		"Counter metric value is latin", http.MethodPost, "/update/counter/name/value", plainTestWant{
 			http.StatusBadRequest,
 			"Invalid metric value\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Counter metric value is positive float", http.MethodPost, "/update/counter/name/1000.00", tableWantTemplate{
+		"Counter metric value is positive float", http.MethodPost, "/update/counter/name/1000.00", plainTestWant{
 			http.StatusBadRequest,
 			"Invalid metric value\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Counter metric value is negative float", http.MethodPost, "/update/counter/name/-1001,00", tableWantTemplate{
+		"Counter metric value is negative float", http.MethodPost, "/update/counter/name/-1001,00", plainTestWant{
 			http.StatusBadRequest,
 			"Invalid metric value\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
-		"Counter metric value is negative int", http.MethodPost, "/update/counter/test/-1001", tableWantTemplate{
+		"Counter metric value is negative int", http.MethodPost, "/update/counter/test/-1001", plainTestWant{
 			http.StatusBadRequest,
 			"Invalid metric value\n",
 			"text/plain; charset=utf-8",
@@ -204,28 +197,29 @@ var validationTests = []tableTestTemplate{
 	},
 }
 
-func runTableTests(t *testing.T, cases []tableTestTemplate) {
-	ts := GetTestRouter()
+// runPlainTests executes a slice of table-driven plain-text test cases against a test server.
+func runPlainTests(t *testing.T, cases []plainTestTemplate) {
+	ts := GetTestServer()
 	defer ts.Close()
 
-	for _, v := range cases {
-		t.Run(v.name, func(t *testing.T) {
-			resp, body := testRequest(t, ts, v.method, v.path)
-			assert.Equal(t, v.want.code, resp.StatusCode)
-			assert.Equal(t, v.want.response, body)
-			assert.Equal(t, v.want.contenttype, resp.Header.Get("Content-Type"))
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, body := testPlainRequest(t, ts, tc.method, tc.path)
+			assert.Equal(t, tc.want.code, resp.StatusCode)
+			assert.Equal(t, tc.want.response, body)
+			assert.Equal(t, tc.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
 }
 
-func TestUpdate(t *testing.T) {
-	runTableTests(t, updateTests)
+func TestPlainUpdate(t *testing.T) {
+	runPlainTests(t, plainUpdateTests)
 }
 
-func TestRead(t *testing.T) {
-	runTableTests(t, readTests)
+func TestPlainRead(t *testing.T) {
+	runPlainTests(t, plainReadTests)
 }
 
-func TestValidate(t *testing.T) {
-	runTableTests(t, validationTests)
+func TestPlainValidate(t *testing.T) {
+	runPlainTests(t, plainValidationTests)
 }

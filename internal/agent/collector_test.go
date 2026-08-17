@@ -2,7 +2,7 @@ package agent
 
 import "testing"
 
-// TestAllMetricsExist verifies that collector populates all required gauge and counter metrics
+// TestAllMetricsExist verifies that collector populates all required gauge and counter metrics.
 func TestAllMetricsExist(t *testing.T) {
 	storage := NewAgentStorage()
 	c := &Collector{Storage: storage}
