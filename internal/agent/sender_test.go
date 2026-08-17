@@ -34,14 +34,14 @@ func TestSendMetrics(t *testing.T) {
 	contentType := map[string]string{}
 	method := map[string]string{}
 
-	testhandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		metric := strings.Split(r.URL.Path, "/")[3]
 		received[metric] = true
 		method[metric] = r.Method
 		contentType[metric] = r.Header.Get("Content-Type")
 	})
 
-	ts := httptest.NewServer(testhandler)
+	ts := httptest.NewServer(testHandler)
 	defer ts.Close()
 
 	sender := &Sender{
@@ -78,7 +78,7 @@ func TestSendMetrics(t *testing.T) {
 	}
 }
 
-// Test_ResetIf200 verifies that all counter metrics are reset to zero
+// TestResetIf200 verifies that all counter metrics are reset to zero
 // after the server responds with HTTP 200 OK.
 func TestResetIf200(t *testing.T) {
 	as := NewAgentStorage()
@@ -88,11 +88,11 @@ func TestResetIf200(t *testing.T) {
 		as.AddCounter(v, rv)
 	}
 
-	testhandler := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(http.StatusOK)
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
 	})
 
-	ts := httptest.NewServer(testhandler)
+	ts := httptest.NewServer(testHandler)
 	defer ts.Close()
 
 	sender := &Sender{
@@ -113,7 +113,7 @@ func TestResetIf200(t *testing.T) {
 	}
 }
 
-// Test_NoResetIfNot200 verifies that counter metrics are NOT reset
+// TestNoResetIfNot200 verifies that counter metrics are NOT reset
 // when the server responds with a non-200 status code (e.g. HTTP 500).
 func TestNoResetIfNot200(t *testing.T) {
 	as := NewAgentStorage()
@@ -123,11 +123,11 @@ func TestNoResetIfNot200(t *testing.T) {
 		as.AddCounter(v, rv)
 	}
 
-	testhandler := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
-		res.WriteHeader(http.StatusInternalServerError)
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
 	})
 
-	ts := httptest.NewServer(testhandler)
+	ts := httptest.NewServer(testHandler)
 	defer ts.Close()
 
 	sender := &Sender{

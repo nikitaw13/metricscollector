@@ -32,14 +32,14 @@ func (s *Sender) Run() {
 		}
 
 		request.Header.Add("Content-Type", "text/plain; charset=utf-8")
-		res, err := s.Client.Do(request)
+		resp, err := s.Client.Do(request)
 
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		logRequest(res, metric, endpointURL)
-		finalizeSend(res)
+		logRequest(resp, metric, endpointURL)
+		drainAndCloseResponse(resp)
 	}
 
 	// Send all counters
@@ -54,36 +54,36 @@ func (s *Sender) Run() {
 		}
 
 		request.Header.Add("Content-Type", "text/plain; charset=utf-8")
-		res, err := s.Client.Do(request)
+		resp, err := s.Client.Do(request)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		resetCounter(res, metric, s.Storage)
-		logRequest(res, metric, endpointURL)
-		finalizeSend(res)
+		resetCounter(resp, metric, s.Storage)
+		logRequest(resp, metric, endpointURL)
+		drainAndCloseResponse(resp)
 	}
 }
 
 // resetCounter zeroes the named counter after a successful (HTTP 200) send.
-func resetCounter(res *http.Response, m string, s Storage) {
+func resetCounter(resp *http.Response, m string, s Storage) {
 	// Reset the counter to zero if 200
-	if res.StatusCode == http.StatusOK {
+	if resp.StatusCode == http.StatusOK {
 		s.ResetCounter(m)
 	}
 }
 
 // logRequest logs the outcome of sending a single metric.
-func logRequest(res *http.Response, m string, url string) {
-	if res.StatusCode == http.StatusOK {
+func logRequest(resp *http.Response, m string, url string) {
+	if resp.StatusCode == http.StatusOK {
 		log.Printf("Metric '%s' sent to %s", m, url)
 	} else {
-		log.Printf("Metric '%s' failed to send to %s, status: %d", m, url, res.StatusCode)
+		log.Printf("Metric '%s' failed to send to %s, status: %d", m, url, resp.StatusCode)
 	}
 }
 
-// Drain response body to allow TCP connection reuse (keep-alive).
-func finalizeSend(res *http.Response) {
-	io.Copy(io.Discard, res.Body)
-	res.Body.Close()
+// drainAndCloseResponse drains and closes the response body to allow TCP connection reuse.
+func drainAndCloseResponse(resp *http.Response) {
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
 }

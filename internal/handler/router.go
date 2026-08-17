@@ -8,18 +8,18 @@ import (
 func (h *MetricsHandler) New() *chi.Mux {
 	router := chi.NewRouter()
 
-	router.Get("/", h.HandleIndex)
+	router.Get("/", h.handleListMetrics)
 	router.Route("/value/{TYPE}", func(r chi.Router) {
-		r.Use(TypeMiddleware)
-		r.Get("/{METRIC}", h.HandleGetMetric)
+		r.Use(typeMiddleware)
+		r.Get("/{METRIC}", h.handleGetMetric)
 	})
 
-	router.Post("/update", h.HandleMissingType)
+	router.Post("/update", h.handleMissingType)
 	router.Route("/update/{TYPE}", func(r chi.Router) {
-		r.Use(TypeMiddleware)                     // validates TYPE for all routes below
-		r.Post("/", h.HandleMissingMetric)        // 404 — metric name missing
-		r.Post("/{METRIC}", h.HandleMissingValue) // 400 — metric value missing
-		r.Post("/{METRIC}/{VALUE}", h.HandleUpdate)
+		r.Use(typeMiddleware)                     // validates TYPE for all routes below
+		r.Post("/", h.handleMissingMetric)        // 404 — metric name missing
+		r.Post("/{METRIC}", h.handleMissingValue) // 400 — metric value missing
+		r.Post("/{METRIC}/{VALUE}", h.handleSetMetric)
 	})
 
 	return router
