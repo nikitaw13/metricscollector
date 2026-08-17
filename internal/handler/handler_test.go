@@ -45,42 +45,42 @@ var updateTests = []testCase{
 	{
 		"Counter positive int", http.MethodPost, "/update/counter/test/1000", expectedResponse{
 			http.StatusOK,
-			"Metric 'test' updated✅\n",
+			"Metric 'test' updated\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Counter negative int", http.MethodPost, "/update/counter/test/-1001", expectedResponse{
 			http.StatusOK,
-			"Metric 'test' updated✅\n",
+			"Metric 'test' updated\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Gauge positive int", http.MethodPost, "/update/gauge/test/1000", expectedResponse{
 			http.StatusOK,
-			"Metric 'test' updated✅\n",
+			"Metric 'test' updated\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Gauge negative int", http.MethodPost, "/update/gauge/test/-1000", expectedResponse{
 			http.StatusOK,
-			"Metric 'test' updated✅\n",
+			"Metric 'test' updated\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Gauge positive float", http.MethodPost, "/update/gauge/test/1000.00", expectedResponse{
 			http.StatusOK,
-			"Metric 'test' updated✅\n",
+			"Metric 'test' updated\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Gauge negative float", http.MethodPost, "/update/gauge/test/-1000.00", expectedResponse{
 			http.StatusOK,
-			"Metric 'test' updated✅\n",
+			"Metric 'test' updated\n",
 			"text/plain; charset=utf-8",
 		},
 	},

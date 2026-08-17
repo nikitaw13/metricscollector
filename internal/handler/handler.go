@@ -104,5 +104,5 @@ func (h *MetricsHandler) HandleUpdate(res http.ResponseWriter, req *http.Request
 
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.WriteHeader(http.StatusOK)
-	fmt.Fprintf(res, "Metric '%s' updated✅\n", chi.URLParam(req, "METRIC"))
+	fmt.Fprintf(res, "Metric '%s' updated\n", chi.URLParam(req, "METRIC"))
 }
