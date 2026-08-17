@@ -19,6 +19,7 @@ func main() {
 	}
 }
 
+// run initializes logger, storage, and handlers, then starts the HTTP server.
 func run() error {
 	if err := handler.Initialize(flagLogLevel); err != nil {
 		return err

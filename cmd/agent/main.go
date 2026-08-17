@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"time"
 
@@ -11,8 +10,6 @@ import (
 func main() {
 	parseFlags()
 	parseEnvs()
-	// For debug only
-	log.Printf("addr=%s report=%d poll=%d", flagRunAddr, flagReportInterval, flagPollInterval)
 	run()
 }
 
