@@ -27,7 +27,7 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestUpdateGauge(t *testing.T) {
+func TestSetGauge(t *testing.T) {
 	type fields struct {
 		gauge   map[string]float64
 		counter map[string]int64
@@ -43,7 +43,7 @@ func TestUpdateGauge(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Test metric_gauge is 1.00",
+			name: "gauge value is 1.00",
 			fields: fields{
 				gauge:   map[string]float64{"metric_gauge": 1.00},
 				counter: map[string]int64{"metric_counter": 1},
@@ -52,7 +52,7 @@ func TestUpdateGauge(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Test metric_gauge is -1.00",
+			name: "gauge value is -1.00",
 			fields: fields{
 				gauge:   map[string]float64{"metric_gauge": -1.00},
 				counter: map[string]int64{"metric_counter": 1},
@@ -61,7 +61,7 @@ func TestUpdateGauge(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Test metric_gauge is 1111.50",
+			name: "gauge value is 1111.50",
 			fields: fields{
 				gauge:   map[string]float64{"metric_gauge": 1111.50},
 				counter: map[string]int64{"metric_counter": 1},
@@ -76,14 +76,14 @@ func TestUpdateGauge(t *testing.T) {
 				gauge:   tt.fields.gauge,
 				counter: tt.fields.counter,
 			}
-			if err := ms.UpdateGauge(tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
-				t.Errorf("MemStorage.UpdateGauge() error = %v, wantErr %v", err, tt.wantErr)
+			if err := ms.SetGauge(tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
+				t.Errorf("MemStorage.SetGauge() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestUpdateCounter(t *testing.T) {
+func TestAddCounter(t *testing.T) {
 	type fields struct {
 		gauge   map[string]float64
 		counter map[string]int64
@@ -99,7 +99,7 @@ func TestUpdateCounter(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "Test metric_counter is 1",
+			name: "counter value is 1",
 			fields: fields{
 				gauge:   map[string]float64{"metric_gauge": 1.00},
 				counter: map[string]int64{"metric_counter": 1},
@@ -108,7 +108,7 @@ func TestUpdateCounter(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Test metric_counter is -11111",
+			name: "counter value is -11111",
 			fields: fields{
 				gauge:   map[string]float64{"metric_gauge": 1.00},
 				counter: map[string]int64{"metric_counter": -1111},
@@ -117,7 +117,7 @@ func TestUpdateCounter(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Test metric_counter is 1111",
+			name: "counter value is 1111",
 			fields: fields{
 				gauge:   map[string]float64{"metric_gauge": 1.00},
 				counter: map[string]int64{"metric_counter": 1},
@@ -126,7 +126,7 @@ func TestUpdateCounter(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "Test metric_counter is 0",
+			name: "counter value is 0",
 			fields: fields{
 				gauge:   map[string]float64{"metric_gauge": 1.00},
 				counter: map[string]int64{"metric_counter": 1},
@@ -141,8 +141,8 @@ func TestUpdateCounter(t *testing.T) {
 				gauge:   tt.fields.gauge,
 				counter: tt.fields.counter,
 			}
-			if err := ms.UpdateCounter(tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
-				t.Errorf("MemStorage.UpdateCounter() error = %v, wantErr %v", err, tt.wantErr)
+			if err := ms.AddCounter(tt.args.name, tt.args.value); (err != nil) != tt.wantErr {
+				t.Errorf("MemStorage.AddCounter() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

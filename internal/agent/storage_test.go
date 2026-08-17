@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Test verifies that SetGauge stores the value and overwrites on subsequent calls.
+// TestSetGauge verifies that SetGauge stores the value and overwrites on subsequent calls.
 func TestSetGauge(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range GaugeMetrics {
@@ -28,19 +28,19 @@ func TestSetGauge(t *testing.T) {
 	}
 }
 
-// Test verifies that SetCounter increments the value cumulatively.
-func TestSetCounter(t *testing.T) {
+// TestAddCounter verifies that AddCounter increments the value cumulatively.
+func TestAddCounter(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
 			firstRandomValue := rand.Int64N(10)
-			ms.SetCounter(m, firstRandomValue)
+			ms.AddCounter(m, firstRandomValue)
 			firstGet, firstErr := ms.GetCounter(m)
 			require.NoError(t, firstErr)
 			require.Equal(t, firstRandomValue, firstGet)
 
 			secondRandomValue := rand.Int64N(10)
-			ms.SetCounter(m, secondRandomValue)
+			ms.AddCounter(m, secondRandomValue)
 			secondGet, secondErr := ms.GetCounter(m)
 			require.NoError(t, secondErr)
 			require.Equal(t, firstRandomValue+secondRandomValue, secondGet)
@@ -48,14 +48,14 @@ func TestSetCounter(t *testing.T) {
 	}
 }
 
-// Test verifies that ResetCounter sets the counter value to zero.
+// TestResetCounter verifies that ResetCounter sets the counter value to zero.
 func TestResetCounter(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
 			// Set random value for m and compare
 			randomValue := rand.Int64N(100)
-			ms.SetCounter(m, randomValue)
+			ms.AddCounter(m, randomValue)
 			got, err := ms.GetCounter(m)
 			require.NoError(t, err)
 			require.Equal(t, randomValue, got)
@@ -69,7 +69,7 @@ func TestResetCounter(t *testing.T) {
 	}
 }
 
-// Test verifies that GetGauge returns an error for a nonexistent key.
+// TestGetGaugeError verifies that GetGauge returns an error for a nonexistent key.
 func TestGetGaugeError(t *testing.T) {
 	ms := NewAgentStorage()
 	t.Run("nonexistent gauge", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestGetGaugeError(t *testing.T) {
 	})
 }
 
-// Test verifies that GetCounter returns an error for a nonexistent key.
+// TestGetCounterError verifies that GetCounter returns an error for a nonexistent key.
 func TestGetCounterError(t *testing.T) {
 	ms := NewAgentStorage()
 	t.Run("nonexistent counter", func(t *testing.T) {
@@ -87,43 +87,43 @@ func TestGetCounterError(t *testing.T) {
 	})
 }
 
-// Test verifies that GetAllGauges returns a copy, not a reference.
+// TestGetAllGaugesReturnsCopy verifies that GetAllGauges returns a copy, not a reference.
 func TestGetAllGaugesReturnsCopy(t *testing.T) {
 	ms := NewAgentStorage()
-	copy := ms.GetAllGauges()
+	gaugeCopy := ms.GetAllGauges()
 
 	for _, m := range GaugeMetrics {
 		t.Run(m, func(t *testing.T) {
 			firstRandomValue := rand.Float64()
 			ms.SetGauge(m, firstRandomValue)
-			require.NotEqual(t, copy[m], firstRandomValue)
+			require.NotEqual(t, gaugeCopy[m], firstRandomValue)
 
 			secondRandomValue := rand.Float64()
 			ms.SetGauge(m, secondRandomValue)
-			require.NotEqual(t, copy[m], secondRandomValue)
+			require.NotEqual(t, gaugeCopy[m], secondRandomValue)
 		})
 	}
 }
 
-// Test verifies that GetAllCounters returns a copy, not a reference.
+// TestGetAllCountersReturnsCopy verifies that GetAllCounters returns a copy, not a reference.
 func TestGetAllCountersReturnsCopy(t *testing.T) {
 	ms := NewAgentStorage()
-	copy := ms.GetAllCounters()
+	counterCopy := ms.GetAllCounters()
 
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
 			firstRandomValue := rand.Int64()
-			ms.SetCounter(m, firstRandomValue)
-			require.NotEqual(t, copy[m], firstRandomValue)
+			ms.AddCounter(m, firstRandomValue)
+			require.NotEqual(t, counterCopy[m], firstRandomValue)
 
 			secondRandomValue := rand.Int64()
-			ms.SetCounter(m, secondRandomValue)
-			require.NotEqual(t, copy[m], secondRandomValue)
+			ms.AddCounter(m, secondRandomValue)
+			require.NotEqual(t, counterCopy[m], secondRandomValue)
 		})
 	}
 }
 
-// Test verifies that GetAllGauges returns a map containing all stored values.
+// TestGetAllGauges verifies that GetAllGauges returns a map containing all stored values.
 func TestGetAllGauges(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range GaugeMetrics {
@@ -140,13 +140,13 @@ func TestGetAllGauges(t *testing.T) {
 	}
 }
 
-// Test verifies that GetAllCounters returns a map containing all stored values.
+// TestGetAllCounters verifies that GetAllCounters returns a map containing all stored values.
 func TestGetAllCounters(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
 			rv := rand.Int64()
-			ms.SetCounter(m, rv)
+			ms.AddCounter(m, rv)
 			got, err := ms.GetCounter(m)
 
 			counters := ms.GetAllCounters()

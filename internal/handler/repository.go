@@ -1,5 +1,6 @@
 package handler
 
+// StorageGetter defines read-only operations for metric storage used by the handler.
 type StorageGetter interface {
 	GetGauge(name string) (float64, error)
 	GetCounter(name string) (int64, error)
@@ -7,12 +8,13 @@ type StorageGetter interface {
 	GetAllCounters() map[string]int64
 }
 
+// StorageSetter defines write operations for metric storage used by the handler.
 type StorageSetter interface {
-	UpdateGauge(name string, value float64) error
-	UpdateCounter(name string, value int64) error
+	SetGauge(name string, value float64) error
+	AddCounter(name string, value int64) error
 }
 
-// Интерфейс для взаимодействия с хранилищем
+// Repository defines the interface for interacting with metric storage.
 type Repository interface {
 	StorageGetter
 	StorageSetter

@@ -22,9 +22,9 @@ func (s *Sender) Run() {
 
 	// Send all gauges
 	for metric, value := range s.Storage.GetAllGauges() {
-		fullpath := fmt.Sprintf("%s/update/gauge/%s/%s", s.URL, metric, strconv.FormatFloat(value, 'f', -1, 64))
+		endpointURL := fmt.Sprintf("%s/update/gauge/%s/%s", s.URL, metric, strconv.FormatFloat(value, 'f', -1, 64))
 
-		request, err := http.NewRequest(http.MethodPost, fullpath, nil)
+		request, err := http.NewRequest(http.MethodPost, endpointURL, nil)
 
 		if err != nil {
 			log.Println(err)
@@ -38,15 +38,15 @@ func (s *Sender) Run() {
 			log.Println(err)
 			continue
 		}
-		logRequest(res, metric, fullpath)
+		logRequest(res, metric, endpointURL)
 		finalizeSend(res)
 	}
 
 	// Send all counters
 	for metric, value := range s.Storage.GetAllCounters() {
-		fullpath := fmt.Sprintf("%s/update/counter/%s/%s", s.URL, metric, strconv.FormatInt(value, 10))
+		endpointURL := fmt.Sprintf("%s/update/counter/%s/%s", s.URL, metric, strconv.FormatInt(value, 10))
 
-		request, err := http.NewRequest(http.MethodPost, fullpath, nil)
+		request, err := http.NewRequest(http.MethodPost, endpointURL, nil)
 
 		if err != nil {
 			log.Println(err)
@@ -60,11 +60,12 @@ func (s *Sender) Run() {
 			continue
 		}
 		resetCounter(res, metric, s.Storage)
-		logRequest(res, metric, fullpath)
+		logRequest(res, metric, endpointURL)
 		finalizeSend(res)
 	}
 }
 
+// resetCounter zeroes the named counter after a successful (HTTP 200) send.
 func resetCounter(res *http.Response, m string, s Storage) {
 	// Reset the counter to zero if 200
 	if res.StatusCode == http.StatusOK {
@@ -72,11 +73,12 @@ func resetCounter(res *http.Response, m string, s Storage) {
 	}
 }
 
-func logRequest(res *http.Response, m string, fp string) {
+// logRequest logs the outcome of sending a single metric.
+func logRequest(res *http.Response, m string, url string) {
 	if res.StatusCode == http.StatusOK {
-		log.Printf("Metric '%s' sent to %s", m, fp)
+		log.Printf("Metric '%s' sent to %s", m, url)
 	} else {
-		log.Printf("Metric '%s' failed to send to %s, status: %d", m, fp, res.StatusCode)
+		log.Printf("Metric '%s' failed to send to %s, status: %d", m, url, res.StatusCode)
 	}
 }
 

@@ -4,21 +4,22 @@ import (
 	"github.com/go-chi/chi"
 )
 
+// New builds and returns a chi router with all metric API routes.
 func (h *MetricsHandler) New() *chi.Mux {
 	router := chi.NewRouter()
 
-	router.Get("/", h.GetRoot)
+	router.Get("/", h.HandleIndex)
 	router.Route("/value/{TYPE}", func(r chi.Router) {
 		r.Use(TypeMiddleware)
-		r.Get("/{METRIC}", h.GetMetric)
+		r.Get("/{METRIC}", h.HandleGetMetric)
 	})
 
-	router.Post("/update", h.PostNoType)
+	router.Post("/update", h.HandleMissingType)
 	router.Route("/update/{TYPE}", func(r chi.Router) {
-		r.Use(TypeMiddleware)              // проверит TYPE для всех трёх ниже
-		r.Post("/", h.PostNoMetric)        // 404 — нет имени
-		r.Post("/{METRIC}", h.PostNoValue) // 400 — нет значения
-		r.Post("/{METRIC}/{VALUE}", h.PostFull)
+		r.Use(TypeMiddleware)                     // validates TYPE for all routes below
+		r.Post("/", h.HandleMissingMetric)        // 404 — metric name missing
+		r.Post("/{METRIC}", h.HandleMissingValue) // 400 — metric value missing
+		r.Post("/{METRIC}/{VALUE}", h.HandleUpdate)
 	})
 
 	return router

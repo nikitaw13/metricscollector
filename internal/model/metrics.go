@@ -1,18 +1,17 @@
 package model
 
+// Supported metric types.
 const (
 	Counter = "counter"
 	Gauge   = "gauge"
 )
 
-// NOTE: Не усложняем пример, вводя иерархическую вложенность структур.
-// Органичиваясь плоской моделью.
-// Delta и Value объявлены через указатели,
-// что бы отличать значение "0", от не заданного значения
-// и соответственно не кодировать в структуру.
-type Metrics struct {
+// Metric represents a flat metric model.
+// Delta and Value are pointers to distinguish 0 from an unset value.
+// Type must be one of Counter or Gauge.
+type Metric struct {
 	ID    string   `json:"id"`
-	MType string   `json:"type"`
+	Type  string   `json:"type"`
 	Delta *int64   `json:"delta,omitempty"`
 	Value *float64 `json:"value,omitempty"`
 	Hash  string   `json:"hash,omitempty"`

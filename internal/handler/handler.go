@@ -9,10 +9,12 @@ import (
 	"github.com/go-chi/chi"
 )
 
+// MetricsHandler serves HTTP requests for reading and updating metrics.
 type MetricsHandler struct {
 	Storage Repository
 }
 
+// TypeMiddleware rejects requests with an unknown metric type.
 func TypeMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		t := chi.URLParam(req, "TYPE")
@@ -24,22 +26,22 @@ func TypeMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func (h *MetricsHandler) GetRoot(rw http.ResponseWriter, r *http.Request) {
-	rw.Header().Set("Content-Type", "text/html; charset=UTF-8")
-	// Start of the HTML page
-	fmt.Fprintln(rw, "<html><body>")
-	fmt.Fprintln(rw, "<h1>List of names and results of all currently known metrics</h1>")
+// HandleIndex returns an HTML page listing all known metrics.
+func (h *MetricsHandler) HandleIndex(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=UTF-8")
+	fmt.Fprintln(w, "<html><body>")
+	fmt.Fprintln(w, "<h1>List of names and results of all currently known metrics</h1>")
 	for k, v := range h.Storage.GetAllCounters() {
-		fmt.Fprintf(rw, "<b>%v</b>:   <code>%v</code><br>", k, v)
+		fmt.Fprintf(w, "<b>%v</b>:   <code>%v</code><br>", k, v)
 	}
 	for k, v := range h.Storage.GetAllGauges() {
-		fmt.Fprintf(rw, "<b>%v</b>:   <code>%v</code><br>", k, v)
+		fmt.Fprintf(w, "<b>%v</b>:   <code>%v</code><br>", k, v)
 	}
-	// End of the HTML page
-	fmt.Fprintln(rw, "<hr></body></html>")
+	fmt.Fprintln(w, "<hr></body></html>")
 }
 
-func (h *MetricsHandler) GetMetric(res http.ResponseWriter, req *http.Request) {
+// HandleGetMetric returns the current value of a single metric.
+func (h *MetricsHandler) HandleGetMetric(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	switch chi.URLParam(req, "TYPE") {
 	case model.Gauge:
@@ -60,43 +62,42 @@ func (h *MetricsHandler) GetMetric(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *MetricsHandler) PostNoType(res http.ResponseWriter, req *http.Request) {
+// HandleMissingType returns 400 when the metric type segment is absent.
+func (h *MetricsHandler) HandleMissingType(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Type is required", http.StatusBadRequest)
 }
 
-func (h *MetricsHandler) PostNoMetric(res http.ResponseWriter, req *http.Request) {
+// HandleMissingMetric returns 404 when the metric name segment is absent.
+func (h *MetricsHandler) HandleMissingMetric(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Metric is required", http.StatusNotFound)
 }
 
-func (h *MetricsHandler) PostNoValue(res http.ResponseWriter, req *http.Request) {
+// HandleMissingValue returns 400 when the metric value segment is absent.
+func (h *MetricsHandler) HandleMissingValue(res http.ResponseWriter, req *http.Request) {
 	http.Error(res, "Metric value is required", http.StatusBadRequest)
 }
 
-func (h *MetricsHandler) PostFull(res http.ResponseWriter, req *http.Request) {
+// HandleUpdate sets a new value for the given metric.
+func (h *MetricsHandler) HandleUpdate(res http.ResponseWriter, req *http.Request) {
 	switch chi.URLParam(req, "TYPE") {
 	case model.Gauge:
-		mGaugeValue, err := strconv.ParseFloat(chi.URLParam(req, "VALUE"), 64)
-		// При попытке передать запрос с некорректным значением метрики возвращать http.StatusBadRequest.
+		gaugeValue, err := strconv.ParseFloat(chi.URLParam(req, "VALUE"), 64)
 		if err != nil {
 			http.Error(res, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
-
-		// При ошибке обработки запроса обновления Gauge возвращать http.StatusInternalServerError
-		if err := h.Storage.UpdateGauge(chi.URLParam(req, "METRIC"), mGaugeValue); err != nil {
+		if err := h.Storage.SetGauge(chi.URLParam(req, "METRIC"), gaugeValue); err != nil {
 			http.Error(res, "Failed to update Gauge", http.StatusInternalServerError)
 			return
 		}
 
 	case model.Counter:
-		mCounterValue, err := strconv.ParseInt(chi.URLParam(req, "VALUE"), 10, 64)
-		// При попытке передать запрос с некорректным значением метрики возвращать http.StatusBadRequest.
+		counterValue, err := strconv.ParseInt(chi.URLParam(req, "VALUE"), 10, 64)
 		if err != nil {
 			http.Error(res, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
-		// При ошибке обработки запроса обновления Counter возвращать http.StatusInternalServerError
-		if err := h.Storage.UpdateCounter(chi.URLParam(req, "METRIC"), mCounterValue); err != nil {
+		if err := h.Storage.AddCounter(chi.URLParam(req, "METRIC"), counterValue); err != nil {
 			http.Error(res, "Failed to update Counter", http.StatusInternalServerError)
 			return
 		}
@@ -104,5 +105,5 @@ func (h *MetricsHandler) PostFull(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	res.WriteHeader(http.StatusOK)
-	fmt.Fprintf(res, "Metric '%s' updated✅\n", chi.URLParam(req, "METRIC"))
+	fmt.Fprintf(res, "Metric '%s' updated\n", chi.URLParam(req, "METRIC"))
 }

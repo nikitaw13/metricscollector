@@ -18,18 +18,18 @@ func main() {
 }
 
 func run() error {
-	var r = repository.New()
-	var h = handler.MetricsHandler{Storage: r}
-	router := h.New()
+	storage := repository.New()
+	metricsHandler := handler.MetricsHandler{Storage: storage}
+	router := metricsHandler.New()
 
 	srv := &http.Server{
-		Addr:         flagRunAddr,
+		Addr:         flagHTTPAddr,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
 		Handler:      router,
 	}
 
-	log.Println("Running server on", flagRunAddr)
+	log.Println("Running server on", flagHTTPAddr)
 	return srv.ListenAndServe()
 }

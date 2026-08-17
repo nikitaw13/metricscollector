@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Test_SendMetrics verifies that the sender correctly reports all gauge and
+// TestSendMetrics verifies that the sender correctly reports all gauge and
 // counter metrics to the server. It checks three things for each metric:
 //   - the metric was received by the server,
 //   - the HTTP method is POST,
@@ -27,18 +27,18 @@ func TestSendMetrics(t *testing.T) {
 
 	for _, v := range CounterMetrics {
 		rv := rand.Int64()
-		as.SetCounter(v, rv)
+		as.AddCounter(v, rv)
 	}
 
 	received := map[string]bool{}
-	content_type := map[string]string{}
+	contentType := map[string]string{}
 	method := map[string]string{}
 
 	testhandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		metric := strings.Split(r.URL.Path, "/")[3]
 		received[metric] = true
 		method[metric] = r.Method
-		content_type[metric] = r.Header.Get("Content-Type")
+		contentType[metric] = r.Header.Get("Content-Type")
 	})
 
 	ts := httptest.NewServer(testhandler)
@@ -62,7 +62,7 @@ func TestSendMetrics(t *testing.T) {
 			assert.Equal(t, http.MethodPost, method[m])
 		})
 		t.Run(fmt.Sprintf("Content-Type %v", m), func(t *testing.T) {
-			assert.Equal(t, "text/plain; charset=utf-8", content_type[m])
+			assert.Equal(t, "text/plain; charset=utf-8", contentType[m])
 		})
 	}
 	for _, m := range CounterMetrics {
@@ -73,7 +73,7 @@ func TestSendMetrics(t *testing.T) {
 			assert.Equal(t, http.MethodPost, method[m])
 		})
 		t.Run(fmt.Sprintf("Content-Type %v", m), func(t *testing.T) {
-			assert.Equal(t, "text/plain; charset=utf-8", content_type[m])
+			assert.Equal(t, "text/plain; charset=utf-8", contentType[m])
 		})
 	}
 }
@@ -85,7 +85,7 @@ func TestResetIf200(t *testing.T) {
 
 	rv := rand.Int64()
 	for _, v := range CounterMetrics {
-		as.SetCounter(v, rv)
+		as.AddCounter(v, rv)
 	}
 
 	testhandler := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
@@ -120,7 +120,7 @@ func TestNoResetIfNot200(t *testing.T) {
 
 	rv := rand.Int64()
 	for _, v := range CounterMetrics {
-		as.SetCounter(v, rv)
+		as.AddCounter(v, rv)
 	}
 
 	testhandler := http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
