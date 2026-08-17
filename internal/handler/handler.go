@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/go-chi/chi"
+	"go.uber.org/zap"
 )
 
 // MetricsHandler serves HTTP requests for reading and updating metrics.
@@ -23,6 +25,36 @@ func typeMiddleware(next http.Handler) http.Handler {
 			return
 		}
 		next.ServeHTTP(w, r)
+	})
+}
+
+// loggerMiddleware logs incoming HTTP requests
+func loggerMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		start := time.Now()
+
+		rd := &responseData{
+			status: 0,
+			size:   0,
+		}
+
+		lwr := loggingResponseWriter{
+			ResponseWriter: rw,
+			responseData:   rd,
+		}
+
+		h.ServeHTTP(&lwr, req)
+
+		Log.Info("got incoming HTTP request",
+			zap.String("URI", req.RequestURI),
+			zap.String("method", req.Method),
+			zap.Duration("duration", time.Since(start)),
+		)
+
+		Log.Info("respose for incoming HTTP request",
+			zap.Int("status", rd.status),
+			zap.Int("size", rd.size),
+		)
 	})
 }
 

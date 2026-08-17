@@ -7,6 +7,7 @@ import (
 // New builds and returns a chi router with all metric API routes.
 func (h *MetricsHandler) New() *chi.Mux {
 	router := chi.NewRouter()
+	router.Use(loggerMiddleware)
 
 	router.Get("/", h.handleListMetrics)
 	router.Route("/value/{TYPE}", func(r chi.Router) {
