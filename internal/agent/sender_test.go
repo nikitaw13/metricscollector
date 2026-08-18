@@ -1,22 +1,26 @@
 package agent
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/stretchr/testify/assert"
 )
+
+// expectedContentType is the expected Content-Type header for all JSON requests from the agent.
+const expectedContentType = "application/json; charset=utf-8"
 
 // TestSendMetrics verifies that the sender correctly reports all gauge and
 // counter metrics to the server. It checks three things for each metric:
 //   - the metric was received by the server,
 //   - the HTTP method is POST,
-//   - the Content-Type header is "text/plain; charset=utf-8".
+//   - the Content-Type header is "application/json; charset=utf-8".
 func TestSendMetrics(t *testing.T) {
 	as := NewAgentStorage()
 
@@ -35,10 +39,18 @@ func TestSendMetrics(t *testing.T) {
 	method := map[string]string{}
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		metric := strings.Split(r.URL.Path, "/")[3]
-		received[metric] = true
-		method[metric] = r.Method
-		contentType[metric] = r.Header.Get("Content-Type")
+		var m model.Metric
+
+		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		received[m.ID] = true
+		method[m.ID] = r.Method
+		contentType[m.ID] = r.Header.Get("Content-Type")
+
+		w.WriteHeader(http.StatusOK)
 	})
 
 	ts := httptest.NewServer(testHandler)
@@ -62,7 +74,7 @@ func TestSendMetrics(t *testing.T) {
 			assert.Equal(t, http.MethodPost, method[m])
 		})
 		t.Run(fmt.Sprintf("Content-Type %v", m), func(t *testing.T) {
-			assert.Equal(t, "text/plain; charset=utf-8", contentType[m])
+			assert.Equal(t, expectedContentType, contentType[m])
 		})
 	}
 	for _, m := range CounterMetrics {
@@ -73,14 +85,14 @@ func TestSendMetrics(t *testing.T) {
 			assert.Equal(t, http.MethodPost, method[m])
 		})
 		t.Run(fmt.Sprintf("Content-Type %v", m), func(t *testing.T) {
-			assert.Equal(t, "text/plain; charset=utf-8", contentType[m])
+			assert.Equal(t, expectedContentType, contentType[m])
 		})
 	}
 }
 
-// TestResetIf200 verifies that all counter metrics are reset to zero
-// after the server responds with HTTP 200 OK.
-func TestResetIf200(t *testing.T) {
+// TestResetCounterOnSuccess verifies that counter metrics are reset to zero
+// only after successful delivery (HTTP 200).
+func TestResetCounterOnSuccess(t *testing.T) {
 	as := NewAgentStorage()
 
 	rv := rand.Int64()
@@ -113,9 +125,9 @@ func TestResetIf200(t *testing.T) {
 	}
 }
 
-// TestNoResetIfNot200 verifies that counter metrics are NOT reset
-// when the server responds with a non-200 status code (e.g. HTTP 500).
-func TestNoResetIfNot200(t *testing.T) {
+// TestKeepCounterOnError verifies that counter metrics are NOT reset
+// when delivery fails (non-200 response), preserving them for retry.
+func TestKeepCounterOnError(t *testing.T) {
 	as := NewAgentStorage()
 
 	rv := rand.Int64()

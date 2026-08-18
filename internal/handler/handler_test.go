@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/PrometheRus/metricscollector/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -209,18 +208,8 @@ var validationTests = []testCase{
 	},
 }
 
-func newTestServer() (server *httptest.Server) {
-	var s = repository.New()
-	s.SetGauge("___test___", 123)
-	s.AddCounter("___test___", 234)
-	var h = MetricsHandler{Storage: s}
-	router := h.New()
-	server = httptest.NewServer(router)
-	return
-}
-
 func runTableTests(t *testing.T, cases []testCase) {
-	ts := newTestServer()
+	ts := GetTestServer()
 	defer ts.Close()
 
 	for _, v := range cases {
