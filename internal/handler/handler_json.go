@@ -53,7 +53,7 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, m *model.Metric) error {
 	return nil
 }
 
-// PostUpdate handles POST /update: validates the JSON payload, stores the metric,
+// handleJSONUpdate handles POST /update: validates the JSON payload, stores the metric,
 // and returns the updated metric value in the response body.
 func (h *MetricsHandler) handleJSONUpdate(w http.ResponseWriter, r *http.Request) {
 	var m model.Metric
@@ -104,7 +104,7 @@ func (h *MetricsHandler) handleJSONUpdate(w http.ResponseWriter, r *http.Request
 	w.Write(resp)
 }
 
-// PostValue handles POST /value: validates the JSON payload, looks up the stored
+// handleJSONRead handles POST /value: validates the JSON payload, looks up the stored
 // metric and returns its current value in the response body.
 func (h *MetricsHandler) handleJSONRead(w http.ResponseWriter, r *http.Request) {
 	var m model.Metric

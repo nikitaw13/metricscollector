@@ -11,7 +11,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// contentTypeMiddleware enforces application/json Content-Type and non-empty body
+// requireJSONContent enforces application/json Content-Type and non-empty body
 // for endpoints that expect JSON payloads.
 func requireJSONContent(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +28,7 @@ func requireJSONContent(next http.Handler) http.Handler {
 	})
 }
 
-// typeMiddleware rejects requests with an unknown metric type.
+// requireMetricType rejects requests with an unknown metric type.
 func requireMetricType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t := chi.URLParam(r, "TYPE")

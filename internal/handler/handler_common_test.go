@@ -24,7 +24,7 @@ func GetTestServer() (server *httptest.Server) {
 	return
 }
 
-// htmlResponse is the expected HTML page returned by GET / for the seeded storage.
+// expectedHTMLResponse is the expected HTML page returned by GET / for the seeded storage.
 var expectedHTMLResponse = `<html><body>
 <h1>List of names and results of all currently known metrics</h1>
 <b>___test___</b>:   <code>234</code><br><b>___test___</b>:   <code>123</code><br><hr></body></html>

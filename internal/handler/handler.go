@@ -28,7 +28,7 @@ func (h *MetricsHandler) handleListMetrics(w http.ResponseWriter, r *http.Reques
 	fmt.Fprintln(w, "<hr></body></html>")
 }
 
-// handleGetMetric returns the current value of a single metric.
+// handleURLRead returns the current value of a single metric.
 func (h *MetricsHandler) handleURLRead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	switch chi.URLParam(r, "TYPE") {
@@ -60,7 +60,7 @@ func (h *MetricsHandler) handleMissingValue(w http.ResponseWriter, r *http.Reque
 	http.Error(w, "Metric value is required", http.StatusBadRequest)
 }
 
-// handleSetMetric sets a new value for the given metric.
+// handleURLUpdate sets a new value for the given metric.
 func (h *MetricsHandler) handleURLUpdate(w http.ResponseWriter, r *http.Request) {
 	switch chi.URLParam(r, "TYPE") {
 	case model.Gauge:
