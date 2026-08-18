@@ -4,58 +4,14 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/go-chi/chi"
-	"go.uber.org/zap"
 )
 
 // MetricsHandler serves HTTP requests for reading and updating metrics.
 type MetricsHandler struct {
 	Storage Repository
-}
-
-// typeMiddleware rejects requests with an unknown metric type.
-func typeMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t := chi.URLParam(r, "TYPE")
-		if t != model.Gauge && t != model.Counter {
-			http.Error(w, "Invalid metric type", http.StatusBadRequest)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
-// loggerMiddleware logs incoming HTTP requests
-func loggerMiddleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		start := time.Now()
-
-		ri := &responseInfo{
-			status: 0,
-			size:   0,
-		}
-
-		lwr := loggingResponseWriter{
-			ResponseWriter: rw,
-			responseInfo:   ri,
-		}
-
-		h.ServeHTTP(&lwr, req)
-
-		Logger.Info("got incoming HTTP request",
-			zap.String("URI", req.RequestURI),
-			zap.String("method", req.Method),
-			zap.Duration("duration", time.Since(start)),
-		)
-
-		Logger.Info("respose for incoming HTTP request",
-			zap.Int("status", ri.status),
-			zap.Int("size", ri.size),
-		)
-	})
 }
 
 // handleListMetrics returns an HTML page listing all known metrics.
@@ -73,7 +29,7 @@ func (h *MetricsHandler) handleListMetrics(w http.ResponseWriter, r *http.Reques
 }
 
 // handleGetMetric returns the current value of a single metric.
-func (h *MetricsHandler) handleGetMetric(w http.ResponseWriter, r *http.Request) {
+func (h *MetricsHandler) handleURLRead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	switch chi.URLParam(r, "TYPE") {
 	case model.Gauge:
@@ -94,11 +50,6 @@ func (h *MetricsHandler) handleGetMetric(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// handleMissingType returns 400 when the metric type segment is absent.
-func (h *MetricsHandler) handleMissingType(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Type is required", http.StatusBadRequest)
-}
-
 // handleMissingMetric returns 404 when the metric name segment is absent.
 func (h *MetricsHandler) handleMissingMetric(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Metric is required", http.StatusNotFound)
@@ -110,7 +61,7 @@ func (h *MetricsHandler) handleMissingValue(w http.ResponseWriter, r *http.Reque
 }
 
 // handleSetMetric sets a new value for the given metric.
-func (h *MetricsHandler) handleSetMetric(w http.ResponseWriter, r *http.Request) {
+func (h *MetricsHandler) handleURLUpdate(w http.ResponseWriter, r *http.Request) {
 	switch chi.URLParam(r, "TYPE") {
 	case model.Gauge:
 		gaugeValue, err := strconv.ParseFloat(chi.URLParam(r, "VALUE"), 64)
