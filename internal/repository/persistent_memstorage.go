@@ -10,12 +10,14 @@ import (
 	"github.com/PrometheRus/metricscollector/internal/model"
 )
 
+// PersistentMemStorage wraps MemStorage with file-based persistence capabilities.
 type PersistentMemStorage struct {
 	*MemStorage
 	FilePath  string
 	SyncWrite bool
 }
 
+// NewPersistentMemStorage creates a PersistentMemStorage with the given underlying storage, file path, and sync-write mode.
 func NewPersistentMemStorage(memStorage *MemStorage, filePath string, syncWrite bool) *PersistentMemStorage {
 	return &PersistentMemStorage{
 		MemStorage: memStorage,
@@ -24,6 +26,7 @@ func NewPersistentMemStorage(memStorage *MemStorage, filePath string, syncWrite 
 	}
 }
 
+// Restore loads previously saved metrics from the file into in-memory maps.
 func (s *PersistentMemStorage) Restore() error {
 	file, err := os.Open(s.FilePath)
 
@@ -57,6 +60,7 @@ func (s *PersistentMemStorage) Restore() error {
 
 }
 
+// Save writes all current metrics to the file, replacing any previous contents.
 func (s *PersistentMemStorage) Save() error {
 	file, err := os.OpenFile(s.FilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 
@@ -93,6 +97,7 @@ func (s *PersistentMemStorage) Save() error {
 	return nil
 }
 
+// PeriodicSave saves metrics to disk at the given interval until the program exits.
 func (s *PersistentMemStorage) PeriodicSave(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -106,6 +111,7 @@ func (s *PersistentMemStorage) PeriodicSave(interval time.Duration) {
 	}
 }
 
+// SaveSync performs a synchronous save and logs any error.
 func (s *PersistentMemStorage) SaveSync() {
 	err := s.Save()
 	if err != nil {

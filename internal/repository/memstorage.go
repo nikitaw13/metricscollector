@@ -37,7 +37,7 @@ func (ms *MemStorage) GetGauge(name string) (value float64, err error) {
 	if _, ok := ms.gauge[name]; ok {
 		return ms.gauge[name], nil
 	}
-	return 0, fmt.Errorf("Gauge %s not found", name)
+	return 0, fmt.Errorf("gauge %s not found", name)
 }
 
 // GetCounter returns the value of the named counter metric.
@@ -46,7 +46,7 @@ func (ms *MemStorage) GetCounter(name string) (value int64, err error) {
 	if _, ok := ms.counter[name]; ok {
 		return ms.counter[name], nil
 	}
-	return 0, fmt.Errorf("Counter %s not found", name)
+	return 0, fmt.Errorf("counter %s not found", name)
 }
 
 // GetAllGauges returns a shallow copy of all gauge metrics to prevent external mutation.

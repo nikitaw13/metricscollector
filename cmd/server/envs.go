@@ -17,12 +17,12 @@ func parseEnvs() {
 	}
 
 	if envStoreInterval := os.Getenv("STORE_INTERVAL"); envStoreInterval != "" {
-		result, err := strconv.Atoi(envStoreInterval)
+		intervalSec, err := strconv.Atoi(envStoreInterval)
 
 		if err != nil {
 			log.Fatal("Can't convert STORE_INTERVAL")
 		}
-		flagStoreInterval = result
+		flagStoreInterval = intervalSec
 	}
 
 	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
@@ -30,11 +30,11 @@ func parseEnvs() {
 	}
 
 	if envRESTORE := os.Getenv("RESTORE"); envRESTORE != "" {
-		result, err := strconv.ParseBool(envRESTORE)
+		shouldRestore, err := strconv.ParseBool(envRESTORE)
 
 		if err != nil {
 			log.Fatal("Can't convert RESTORE")
 		}
-		flagRestore = result
+		flagRestore = shouldRestore
 	}
 }
