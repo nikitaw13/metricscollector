@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Logger is a package-level logger singleton. Only Initialize should modify it.
+// Logger is a package-level logger singleton. Only InitLogger should modify it.
 // Defaults to a no-op logger that produces no output.
 var Logger *zap.Logger = zap.NewNop()
 

@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// parseEnvs overrides flag variables with values from environment variables.
 func parseEnvs() {
 	if envAddress := os.Getenv("ADDRESS"); envAddress != "" {
 		flagServerAddr = envAddress
