@@ -29,8 +29,8 @@ func parseEnvs() {
 		flagFileStoragePath = envFileStoragePath
 	}
 
-	if envRESTORE := os.Getenv("RESTORE"); envRESTORE != "" {
-		shouldRestore, err := strconv.ParseBool(envRESTORE)
+	if envRestore := os.Getenv("RESTORE"); envRestore != "" {
+		shouldRestore, err := strconv.ParseBool(envRestore)
 
 		if err != nil {
 			log.Fatal("Can't convert RESTORE")
