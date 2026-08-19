@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -202,4 +203,20 @@ func TestDecompressMiddleware_InvalidGzipBody(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+}
+
+// TestRequireJSONContent_EmptyBody verifies that requireJSONContent rejects
+// a request with Content-Length == 0 and application/json type.
+func TestRequireJSONContent_EmptyBody(t *testing.T) {
+	handler := requireJSONContent(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(""))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }

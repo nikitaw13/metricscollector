@@ -49,7 +49,6 @@ func (s *Sender) Run() {
 			updateURL,
 			bytes.NewReader(compressedBody),
 		)
-
 		if err != nil {
 			log.Println(err)
 			continue
@@ -57,12 +56,13 @@ func (s *Sender) Run() {
 
 		r.Header.Set("Content-Type", "application/json; charset=utf-8")
 		r.Header.Set("Content-Encoding", "gzip")
-		resp, err := s.Client.Do(r)
 
+		resp, err := s.Client.Do(r)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
+
 		logRequest(resp, metricName, updateURL)
 		drainAndCloseResponse(resp)
 	}
@@ -91,7 +91,6 @@ func (s *Sender) Run() {
 			http.MethodPost,
 			updateURL,
 			bytes.NewReader(compressedBody))
-
 		if err != nil {
 			log.Println(err)
 			continue
@@ -99,11 +98,13 @@ func (s *Sender) Run() {
 
 		r.Header.Set("Content-Type", "application/json; charset=utf-8")
 		r.Header.Set("Content-Encoding", "gzip")
+
 		resp, err := s.Client.Do(r)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
+
 		resetCounter(resp, metricName, s.Storage)
 		logRequest(resp, metricName, updateURL)
 		drainAndCloseResponse(resp)

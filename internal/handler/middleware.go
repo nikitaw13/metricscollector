@@ -129,11 +129,8 @@ func CompressMiddleware(h http.Handler) http.Handler {
 		ae := r.Header.Get("Accept-Encoding")
 
 		if strings.Contains(ae, "gzip") {
-			gz, err := gzip.NewWriterLevel(w, gzip.BestCompression)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+			// BestCompression is a package constant, so NewWriterLevel never errors here.
+			gz, _ := gzip.NewWriterLevel(w, gzip.BestCompression)
 			cw := &compressWriter{ResponseWriter: w, Writer: gz, encoding: "gzip"}
 			h.ServeHTTP(cw, r)
 			if !cw.bypassed {
@@ -143,11 +140,8 @@ func CompressMiddleware(h http.Handler) http.Handler {
 		}
 
 		if strings.Contains(ae, "deflate") {
-			dw, err := flate.NewWriter(w, flate.BestCompression)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
+			// BestCompression is a package constant, so NewWriter never errors here.
+			dw, _ := flate.NewWriter(w, flate.BestCompression)
 			cw := &compressWriter{ResponseWriter: w, Writer: dw, encoding: "deflate"}
 			h.ServeHTTP(cw, r)
 			if !cw.bypassed {
