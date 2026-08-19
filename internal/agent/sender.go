@@ -33,7 +33,12 @@ func (s *Sender) Run() {
 		}
 
 		jsonBody, err := json.Marshal(&m)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
 
+		compressedBody, err := Compress(jsonBody)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -42,7 +47,7 @@ func (s *Sender) Run() {
 		r, err := http.NewRequest(
 			http.MethodPost,
 			updateURL,
-			bytes.NewReader(jsonBody),
+			bytes.NewReader(compressedBody),
 		)
 
 		if err != nil {
@@ -51,6 +56,7 @@ func (s *Sender) Run() {
 		}
 
 		r.Header.Set("Content-Type", "application/json; charset=utf-8")
+		r.Header.Set("Content-Encoding", "gzip")
 		resp, err := s.Client.Do(r)
 
 		if err != nil {
@@ -70,13 +76,21 @@ func (s *Sender) Run() {
 		}
 
 		jsonBody, err := json.Marshal(&m)
-
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
-		r, err := http.NewRequest(http.MethodPost, updateURL, bytes.NewReader(jsonBody))
+		compressedBody, err := Compress(jsonBody)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		r, err := http.NewRequest(
+			http.MethodPost,
+			updateURL,
+			bytes.NewReader(compressedBody))
 
 		if err != nil {
 			log.Println(err)
@@ -84,6 +98,7 @@ func (s *Sender) Run() {
 		}
 
 		r.Header.Set("Content-Type", "application/json; charset=utf-8")
+		r.Header.Set("Content-Encoding", "gzip")
 		resp, err := s.Client.Do(r)
 		if err != nil {
 			log.Println(err)

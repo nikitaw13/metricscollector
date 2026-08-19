@@ -85,8 +85,8 @@ var compressibleTypes = map[string]bool{
 type compressWriter struct {
 	http.ResponseWriter
 	Writer   io.WriteCloser // encoder instance
-	encoding string        // "gzip" or "deflate"
-	bypassed bool          // set when bypassing; prevents encoder Close
+	encoding string         // "gzip" or "deflate"
+	bypassed bool           // set when bypassing; prevents encoder Close
 }
 
 // WriteHeader checks Content-Type before headers are finalized.
