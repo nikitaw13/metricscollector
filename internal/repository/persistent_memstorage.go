@@ -101,7 +101,7 @@ func (s *PersistentMemStorage) PeriodicSave(interval int) {
 	for range ticker.C {
 		err := s.Save()
 		if err != nil {
-			fmt.Printf("Error writing file: %w", err)
+			fmt.Printf("Error writing file: %v", err)
 			continue
 		}
 	}
@@ -110,7 +110,7 @@ func (s *PersistentMemStorage) PeriodicSave(interval int) {
 func (s *PersistentMemStorage) SynchronicSave() {
 	err := s.Save()
 	if err != nil {
-		fmt.Printf("Error writing file: %w", err)
+		fmt.Printf("Error writing file: %v", err)
 	}
 
 }
