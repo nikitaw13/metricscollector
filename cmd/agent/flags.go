@@ -4,13 +4,13 @@ import (
 	"flag"
 )
 
-// flagServerAddr HTTP address of the metrics server (-a).
+// flagServerAddr holds the HTTP address of the metrics server (-a)
 var flagServerAddr string
 
-// flagReportInterval interval in seconds between metric reports (-r).
+// flagReportInterval holds the interval in seconds between metric reports (-r).
 var flagReportInterval int
 
-// flagPollInterval interval in seconds between metric collection cycles (-p).
+// flagPollInterval holds the interval in seconds between metric collection cycles (-p).
 var flagPollInterval int
 
 // parseFlags registers and parses command-line flags.

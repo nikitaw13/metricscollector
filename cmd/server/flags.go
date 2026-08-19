@@ -7,7 +7,7 @@ import (
 // flagHTTPAddr holds the HTTP listen address.
 var flagHTTPAddr string
 
-// flagLogLevel holds the server log level
+// flagLogLevel holds the server log level.
 var flagLogLevel string
 
 // parseFlags registers and parses command-line flags.
