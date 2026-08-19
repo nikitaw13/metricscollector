@@ -14,7 +14,7 @@ import (
 // Sender is responsible for sending collected metrics to the server
 // via HTTP POST requests.
 type Sender struct {
-	URL     string
+	BaseURL string
 	Storage Storage
 	Client  http.Client
 }
@@ -22,7 +22,7 @@ type Sender struct {
 // Run performs a one-shot send of all stored gauge and counter metrics to the server.
 // Counter metrics are reset to zero only after a successful (HTTP 200) response.
 func (s *Sender) Run() {
-	updateURL := fmt.Sprintf("%s/update", s.URL)
+	updateURL := fmt.Sprintf("%s/update", s.BaseURL)
 
 	// Serialize and POST every gauge metric.
 	for metricName, value := range s.Storage.GetAllGauges() {

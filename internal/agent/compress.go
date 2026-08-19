@@ -6,6 +6,7 @@ import (
 	"fmt"
 )
 
+// Compress returns a gzip-compressed copy of data using best compression.
 func Compress(data []byte) ([]byte, error) {
 	var b bytes.Buffer
 

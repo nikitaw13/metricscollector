@@ -75,7 +75,7 @@ func TestSendMetrics(t *testing.T) {
 	defer ts.Close()
 
 	sender := &Sender{
-		URL:     ts.URL,
+		BaseURL: ts.URL,
 		Storage: as,
 		Client: http.Client{
 			Timeout: 5 * time.Second,
@@ -126,7 +126,7 @@ func TestResetCounterOnSuccess(t *testing.T) {
 	defer ts.Close()
 
 	sender := &Sender{
-		URL:     ts.URL,
+		BaseURL: ts.URL,
 		Storage: as,
 		Client: http.Client{
 			Timeout: 5 * time.Second,
@@ -161,7 +161,7 @@ func TestKeepCounterOnError(t *testing.T) {
 	defer ts.Close()
 
 	sender := &Sender{
-		URL:     ts.URL,
+		BaseURL: ts.URL,
 		Storage: as,
 		Client: http.Client{
 			Timeout: 5 * time.Second,

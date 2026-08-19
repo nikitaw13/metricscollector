@@ -44,7 +44,7 @@ func requireMetricType(next http.Handler) http.Handler {
 	})
 }
 
-// loggerMiddleware logs incoming HTTP requests
+// loggerMiddleware logs incoming HTTP requests and their responses.
 func loggerMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -126,6 +126,7 @@ func (c *compressWriter) Write(b []byte) (int, error) {
 // Gzip takes priority over deflate.
 func CompressMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Vary", "Accept-Encoding")
 		ae := r.Header.Get("Accept-Encoding")
 
 		if strings.Contains(ae, "gzip") {

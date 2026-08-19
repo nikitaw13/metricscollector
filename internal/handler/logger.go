@@ -10,8 +10,8 @@ import (
 // Defaults to a no-op logger that produces no output.
 var Logger *zap.Logger = zap.NewNop()
 
-// Initialize creates a production zap logger at the given level.
-func Initialize(level string) error {
+// InitLogger creates a production zap logger at the given level.
+func InitLogger(level string) error {
 	lvl, err := zap.ParseAtomicLevel(level)
 	if err != nil {
 		return err
@@ -45,9 +45,9 @@ type (
 // Write records the response body size and defaults status to 200.
 func (r *loggingResponseWriter) Write(b []byte) (int, error) {
 	size, err := r.ResponseWriter.Write(b)
-r.responseInfo.size += size
+	r.responseInfo.size += size
 
-		if r.responseInfo.status == 0 {
+	if r.responseInfo.status == 0 {
 		r.responseInfo.status = http.StatusOK
 	}
 

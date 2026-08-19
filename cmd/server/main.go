@@ -20,7 +20,7 @@ func main() {
 }
 
 func run() error {
-	if err := handler.Initialize(flagLogLevel); err != nil {
+	if err := handler.InitLogger(flagLogLevel); err != nil {
 		return err
 	}
 

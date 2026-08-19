@@ -14,16 +14,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// okHandler returns an http.Handler that responds with the given content type and body.
-func okHandler(contentType, body string) http.Handler {
+func fixedResponseHandler(contentType, body string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", contentType)
 		w.Write([]byte(body))
 	})
 }
 
-func TestCompressMiddleware_GzipResponse(t *testing.T) {
-	handler := CompressMiddleware(okHandler("application/json", `{"status":"ok"}`))
+func TestCompressMiddlewareGzipResponse(t *testing.T) {
+	handler := CompressMiddleware(fixedResponseHandler("application/json", `{"status":"ok"}`))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -43,8 +42,8 @@ func TestCompressMiddleware_GzipResponse(t *testing.T) {
 	assert.Equal(t, `{"status":"ok"}`, string(body))
 }
 
-func TestCompressMiddleware_DeflateResponse(t *testing.T) {
-	handler := CompressMiddleware(okHandler("application/json", `{"status":"ok"}`))
+func TestCompressMiddlewareDeflateResponse(t *testing.T) {
+	handler := CompressMiddleware(fixedResponseHandler("application/json", `{"status":"ok"}`))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Accept-Encoding", "deflate")
@@ -63,8 +62,8 @@ func TestCompressMiddleware_DeflateResponse(t *testing.T) {
 	assert.Equal(t, `{"status":"ok"}`, string(body))
 }
 
-func TestCompressMiddleware_NoCompressionWithoutAcceptEncoding(t *testing.T) {
-	handler := CompressMiddleware(okHandler("application/json", `{"status":"ok"}`))
+func TestCompressMiddlewareNoCompressionWithoutAcceptEncoding(t *testing.T) {
+	handler := CompressMiddleware(fixedResponseHandler("application/json", `{"status":"ok"}`))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
@@ -76,8 +75,8 @@ func TestCompressMiddleware_NoCompressionWithoutAcceptEncoding(t *testing.T) {
 	assert.Equal(t, `{"status":"ok"}`, rec.Body.String())
 }
 
-func TestCompressMiddleware_MultipleAcceptEncoding(t *testing.T) {
-	handler := CompressMiddleware(okHandler("application/json", `{"status":"ok"}`))
+func TestCompressMiddlewareMultipleAcceptEncoding(t *testing.T) {
+	handler := CompressMiddleware(fixedResponseHandler("application/json", `{"status":"ok"}`))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Accept-Encoding", "gzip, deflate, br")
@@ -89,8 +88,8 @@ func TestCompressMiddleware_MultipleAcceptEncoding(t *testing.T) {
 	assert.Equal(t, "gzip", rec.Header().Get("Content-Encoding"))
 }
 
-func TestCompressMiddleware_SkipsNonCompressibleType(t *testing.T) {
-	handler := CompressMiddleware(okHandler("text/plain", "hello"))
+func TestCompressMiddlewareSkipsNonCompressibleType(t *testing.T) {
+	handler := CompressMiddleware(fixedResponseHandler("text/plain", "hello"))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -103,8 +102,8 @@ func TestCompressMiddleware_SkipsNonCompressibleType(t *testing.T) {
 	assert.Equal(t, "hello", rec.Body.String())
 }
 
-func TestCompressMiddleware_CompressesHTML(t *testing.T) {
-	handler := CompressMiddleware(okHandler("text/html; charset=utf-8", "<html>hi</html>"))
+func TestCompressMiddlewareCompressesHTML(t *testing.T) {
+	handler := CompressMiddleware(fixedResponseHandler("text/html; charset=utf-8", "<html>hi</html>"))
 
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Accept-Encoding", "gzip")
@@ -124,7 +123,7 @@ func TestCompressMiddleware_CompressesHTML(t *testing.T) {
 	assert.Equal(t, "<html>hi</html>", string(body))
 }
 
-func TestDecompressMiddleware_GzipBody(t *testing.T) {
+func TestDecompressMiddlewareGzipBody(t *testing.T) {
 	var buf bytes.Buffer
 	gw := gzip.NewWriter(&buf)
 	_, err := gw.Write([]byte(`{"status":"ok"}`))
@@ -149,7 +148,7 @@ func TestDecompressMiddleware_GzipBody(t *testing.T) {
 	assert.Empty(t, req.Header.Get("Content-Encoding"))
 }
 
-func TestDecompressMiddleware_DeflateBody(t *testing.T) {
+func TestDecompressMiddlewareDeflateBody(t *testing.T) {
 	var buf bytes.Buffer
 	fw, _ := flate.NewWriter(&buf, flate.BestCompression)
 	_, err := fw.Write([]byte(`{"status":"ok"}`))
@@ -174,7 +173,7 @@ func TestDecompressMiddleware_DeflateBody(t *testing.T) {
 	assert.Empty(t, req.Header.Get("Content-Encoding"))
 }
 
-func TestDecompressMiddleware_NoEncodingPassthrough(t *testing.T) {
+func TestDecompressMiddlewareNoEncodingPassthrough(t *testing.T) {
 	var gotBody string
 	handler := DecompressMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
@@ -191,7 +190,7 @@ func TestDecompressMiddleware_NoEncodingPassthrough(t *testing.T) {
 	assert.Equal(t, "raw body", gotBody)
 }
 
-func TestDecompressMiddleware_InvalidGzipBody(t *testing.T) {
+func TestDecompressMiddlewareInvalidGzipBody(t *testing.T) {
 	handler := DecompressMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -205,9 +204,7 @@ func TestDecompressMiddleware_InvalidGzipBody(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
-// TestRequireJSONContent_EmptyBody verifies that requireJSONContent rejects
-// a request with Content-Length == 0 and application/json type.
-func TestRequireJSONContent_EmptyBody(t *testing.T) {
+func TestRequireJSONContentEmptyBody(t *testing.T) {
 	handler := requireJSONContent(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
