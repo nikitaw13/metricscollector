@@ -2,10 +2,10 @@ package repository
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/PrometheRus/metricscollector/internal/model"
 )
@@ -28,7 +28,7 @@ func NewPersistentMemStorage(ms *MemStorage, fp string, s bool) *PersistentMemSt
 func (s *PersistentMemStorage) Restore() error {
 	file, err := os.Open(s.FilePath)
 
-	if errors.Is(err, os.ErrNotExist) {
+	if err != nil {
 		return fmt.Errorf("Error opening file: %w", err)
 	}
 
@@ -58,11 +58,60 @@ func (s *PersistentMemStorage) Restore() error {
 
 }
 
-func (s *PersistentMemStorage) PeriodicSave(interval int) {
+func (s *PersistentMemStorage) Save() error {
+	file, err := os.OpenFile(s.FilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 
+	if err != nil {
+		return fmt.Errorf("Error opening file: %w", err)
+	}
+
+	defer file.Close()
+
+	gaugesMap := s.GetAllGauges()
+	countersMap := s.GetAllCounters()
+	var resultSlice []model.Metric
+
+	for key, value := range gaugesMap {
+		metric := model.Metric{ID: key, Type: "gauge", Value: &value}
+		resultSlice = append(resultSlice, metric)
+	}
+
+	for key, value := range countersMap {
+		metric := model.Metric{ID: key, Type: "counter", Delta: &value}
+		resultSlice = append(resultSlice, metric)
+	}
+
+	data, err := json.Marshal(&resultSlice)
+	if err != nil {
+		return fmt.Errorf("Error marshaling data: %w", err)
+	}
+
+	_, err = file.Write(data)
+	if err != nil {
+		return fmt.Errorf("Error writing file: %w", err)
+	}
+
+	return nil
+}
+
+func (s *PersistentMemStorage) PeriodicSave(interval int) {
+	ticker := time.NewTicker(time.Duration(interval) * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		err := s.Save()
+		if err != nil {
+			fmt.Printf("Error writing file: %w", err)
+			continue
+		}
+	}
 }
 
 func (s *PersistentMemStorage) SynchronicSave() {
+	err := s.Save()
+	if err != nil {
+		fmt.Printf("Error writing file: %w", err)
+	}
 
 }
 
