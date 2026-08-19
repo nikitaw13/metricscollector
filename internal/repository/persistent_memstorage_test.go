@@ -134,6 +134,18 @@ func TestRestore_EmptyFile(t *testing.T) {
 
 	_, err := pms.GetGauge("anything")
 	assert.Error(t, err, "expected gauge not found after restoring empty file")
+
+	_, err = pms.GetCounter("anything")
+	assert.Error(t, err, "expected counter not found after restoring empty file")
+}
+
+func TestGetCounter_NotFound(t *testing.T) {
+	t.Parallel()
+
+	pms := newTestPersistentStorage(tempFilePath(t), false)
+
+	_, err := pms.GetCounter("nonexistent")
+	assert.Error(t, err, "expected counter not found for missing key")
 }
 
 // ---------- Save ----------
@@ -377,7 +389,7 @@ func TestSaveSync(t *testing.T) {
 
 // ---------- PeriodicSave (smoke test with cancellation) ----------
 
-func TestPeriodicSave_StopsOnChannelClose(t *testing.T) {
+func TestPeriodicSave_NoPanicOnStart(t *testing.T) {
 	t.Parallel()
 
 	fp := tempFilePath(t)

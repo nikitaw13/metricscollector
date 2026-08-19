@@ -146,14 +146,14 @@ var validationTests = []testCase{
 	{
 		"Invalid gauge metric name", http.MethodGet, "/value/gauge/unknown", expectedResponse{
 			http.StatusNotFound,
-			"Gauge unknown not found\n",
+			"gauge unknown not found\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Invalid counter metric name", http.MethodGet, "/value/counter/unknown", expectedResponse{
 			http.StatusNotFound,
-			"Counter unknown not found\n",
+			"counter unknown not found\n",
 			"text/plain; charset=utf-8",
 		},
 	},
