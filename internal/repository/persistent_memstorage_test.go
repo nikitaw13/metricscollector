@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/stretchr/testify/assert"
@@ -36,8 +37,8 @@ func readMetricsFile(t *testing.T, path string) []model.Metric {
 	return metrics
 }
 
-func newTestPersistentStorage(fp string, synchronic bool) *PersistentMemStorage {
-	return NewPersistentMemStorage(NewMemStorage(), fp, synchronic)
+func newTestPersistentStorage(filePath string, syncWrite bool) *PersistentMemStorage {
+	return NewPersistentMemStorage(NewMemStorage(), filePath, syncWrite)
 }
 
 // ---------- NewPersistentMemStorage ----------
@@ -50,7 +51,7 @@ func TestNewPersistentMemStorage(t *testing.T) {
 
 	assert.Equal(t, ms, pms.MemStorage)
 	assert.Equal(t, "/tmp/test.json", pms.FilePath)
-	assert.True(t, pms.Synchronic)
+	assert.True(t, pms.SyncWrite)
 }
 
 // ---------- Restore ----------
@@ -200,7 +201,7 @@ func TestSave_InvalidPath(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ---------- SetGauge (with Synchronic) ----------
+// ---------- SetGauge (with SyncWrite) ----------
 
 func TestSetGauge_SyncOff(t *testing.T) {
 	t.Parallel()
@@ -248,7 +249,7 @@ func TestSetGauge_OverwritesPrevious(t *testing.T) {
 	assert.InDelta(t, 20.0, g, 0.001)
 }
 
-// ---------- AddCounter (with Synchronic) ----------
+// ---------- AddCounter (with SyncWrite) ----------
 
 func TestAddCounter_SyncOff(t *testing.T) {
 	t.Parallel()
@@ -358,16 +359,16 @@ func TestRoundTrip_MultipleSaveCycles(t *testing.T) {
 	assert.Equal(t, int64(10), c)
 }
 
-// ---------- SynchronicSave ----------
+// ---------- SaveSync ----------
 
-func TestSynchronicSave(t *testing.T) {
+func TestSaveSync(t *testing.T) {
 	t.Parallel()
 
 	fp := tempFilePath(t)
 	pms := newTestPersistentStorage(fp, false)
 
 	require.NoError(t, pms.SetGauge("mem", 80.0))
-	pms.SynchronicSave()
+	pms.SaveSync()
 
 	metrics := readMetricsFile(t, fp)
 	assert.Len(t, metrics, 1)
@@ -387,7 +388,7 @@ func TestPeriodicSave_StopsOnChannelClose(t *testing.T) {
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		pms.PeriodicSave(1)
+		pms.PeriodicSave(time.Second)
 	}()
 
 	// PeriodicSave runs forever; we can't stop it from outside.

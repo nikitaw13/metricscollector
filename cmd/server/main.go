@@ -26,9 +26,9 @@ func run() error {
 		return err
 	}
 
-	isSynchronic := flagStoreInterval == 0
+	isSyncWrite := flagStoreInterval == 0
 	memStorage := repository.NewMemStorage()
-	persistentMemStorage := repository.NewPersistentMemStorage(memStorage, flagFileStoragePath, isSynchronic)
+	persistentMemStorage := repository.NewPersistentMemStorage(memStorage, flagFileStoragePath, isSyncWrite)
 
 	if flagRestore {
 		err := persistentMemStorage.Restore()
@@ -51,8 +51,8 @@ func run() error {
 		Handler:      router,
 	}
 
-	if !isSynchronic {
-		go persistentMemStorage.PeriodicSave(flagStoreInterval)
+	if !isSyncWrite {
+		go persistentMemStorage.PeriodicSave(time.Duration(flagStoreInterval) * time.Second)
 	}
 
 	handler.Logger.Info("Running server", zap.String("address", flagHTTPAddr), zap.String("logLevel", flagLogLevel))
