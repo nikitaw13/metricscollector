@@ -9,6 +9,8 @@ import (
 func (h *MetricsHandler) New() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(loggerMiddleware)
+	router.Use(DecompressMiddleware)
+	router.Use(CompressMiddleware)
 
 	router.Get("/", h.handleListMetrics)
 	router.Route("/value/{TYPE}", func(r chi.Router) {
