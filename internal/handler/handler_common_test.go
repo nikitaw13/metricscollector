@@ -15,7 +15,7 @@ const defaultCounterValue = 234
 // GetTestServer returns an httptest.Server backed by a fresh MemStorage
 // pre-populated with one gauge and one counter metric named "___test___".
 func GetTestServer() (server *httptest.Server) {
-	var s = repository.New()
+	var s = repository.NewMemStorage()
 	s.SetGauge("___test___", defaultGaugeValue)
 	s.AddCounter("___test___", defaultCounterValue)
 	var h = MetricsHandler{Storage: s}

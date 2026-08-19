@@ -85,17 +85,12 @@ var updateTests = []testCase{
 	},
 }
 
-var htmlResponse = `<html><body>
-<h1>List of names and results of all currently known metrics</h1>
-<b>___test___</b>:   <code>234</code><br><b>___test___</b>:   <code>123</code><br><hr></body></html>
-`
-
 // Read: successful fetching metric values and lists
 var readTests = []testCase{
 	{
 		"Read all metrics", http.MethodGet, "/", expectedResponse{
 			http.StatusOK,
-			htmlResponse,
+			expectedHTMLResponse,
 			"text/html; charset=UTF-8",
 		},
 	},
