@@ -22,7 +22,7 @@ func NewPersistentMemStorage(memStorage *MemStorage, filePath string, syncWrite 
 	return &PersistentMemStorage{
 		MemStorage: memStorage,
 		FilePath:   filePath,
-		SyncWrite: syncWrite,
+		SyncWrite:  syncWrite,
 	}
 }
 
@@ -46,6 +46,9 @@ func (s *PersistentMemStorage) Restore() error {
 	if err != nil {
 		return fmt.Errorf("error unmarshaling metrics %v, %w", data, err)
 	}
+
+	clear(s.gauge)
+	clear(s.counter)
 
 	for _, m := range metrics {
 		switch m.Type {
