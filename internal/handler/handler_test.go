@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/PrometheRus/metricscollector/internal/repository"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -86,17 +85,12 @@ var updateTests = []testCase{
 	},
 }
 
-var htmlResponse = `<html><body>
-<h1>List of names and results of all currently known metrics</h1>
-<b>___test___</b>:   <code>234</code><br><b>___test___</b>:   <code>123</code><br><hr></body></html>
-`
-
 // Read: successful fetching metric values and lists
 var readTests = []testCase{
 	{
 		"Read all metrics", http.MethodGet, "/", expectedResponse{
 			http.StatusOK,
-			htmlResponse,
+			expectedHTMLResponse,
 			"text/html; charset=UTF-8",
 		},
 	},
@@ -152,14 +146,14 @@ var validationTests = []testCase{
 	{
 		"Invalid gauge metric name", http.MethodGet, "/value/gauge/unknown", expectedResponse{
 			http.StatusNotFound,
-			"Gauge unknown not found\n",
+			"gauge unknown not found\n",
 			"text/plain; charset=utf-8",
 		},
 	},
 	{
 		"Invalid counter metric name", http.MethodGet, "/value/counter/unknown", expectedResponse{
 			http.StatusNotFound,
-			"Counter unknown not found\n",
+			"counter unknown not found\n",
 			"text/plain; charset=utf-8",
 		},
 	},
@@ -209,18 +203,8 @@ var validationTests = []testCase{
 	},
 }
 
-func newTestServer() (server *httptest.Server) {
-	var s = repository.New()
-	s.SetGauge("___test___", 123)
-	s.AddCounter("___test___", 234)
-	var h = MetricsHandler{Storage: s}
-	router := h.New()
-	server = httptest.NewServer(router)
-	return
-}
-
 func runTableTests(t *testing.T, cases []testCase) {
-	ts := newTestServer()
+	ts := GetTestServer()
 	defer ts.Close()
 
 	for _, v := range cases {

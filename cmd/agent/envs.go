@@ -1,0 +1,36 @@
+package main
+
+import (
+	"log"
+	"os"
+	"strconv"
+)
+
+// parseEnvs overrides flag variables with values from environment variables.
+func parseEnvs() {
+	envAddress, found := os.LookupEnv("ADDRESS")
+	if found {
+		flagServerAddr = envAddress
+	}
+
+	envReportInterval, found := os.LookupEnv("REPORT_INTERVAL")
+	if found {
+		result, err := strconv.Atoi(envReportInterval)
+
+		if err != nil {
+			log.Fatal("Can't convert REPORT_INTERVAL")
+		}
+		flagReportInterval = result
+	}
+
+	envPollInterval, found := os.LookupEnv("POLL_INTERVAL")
+	if found {
+		result, err := strconv.Atoi(envPollInterval)
+
+		if err != nil {
+			log.Fatal("Can't convert POLL_INTERVAL")
+		}
+
+		flagPollInterval = result
+	}
+}

@@ -11,8 +11,8 @@ type MemStorage struct {
 	counter map[string]int64
 }
 
-// New creates and returns an initialized MemStorage with empty metric maps.
-func New() *MemStorage {
+// NewMemStorage creates and returns an initialized MemStorage with empty metric maps.
+func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		gauge:   map[string]float64{},
 		counter: map[string]int64{},
@@ -37,7 +37,7 @@ func (ms *MemStorage) GetGauge(name string) (value float64, err error) {
 	if _, ok := ms.gauge[name]; ok {
 		return ms.gauge[name], nil
 	}
-	return 0, fmt.Errorf("Gauge %s not found", name)
+	return 0, fmt.Errorf("gauge %s not found", name)
 }
 
 // GetCounter returns the value of the named counter metric.
@@ -46,15 +46,15 @@ func (ms *MemStorage) GetCounter(name string) (value int64, err error) {
 	if _, ok := ms.counter[name]; ok {
 		return ms.counter[name], nil
 	}
-	return 0, fmt.Errorf("Counter %s not found", name)
+	return 0, fmt.Errorf("counter %s not found", name)
 }
 
 // GetAllGauges returns a shallow copy of all gauge metrics to prevent external mutation.
-func (ms *MemStorage) GetAllGauges() (m map[string]float64) {
+func (ms *MemStorage) GetAllGauges() (result map[string]float64) {
 	return maps.Clone(ms.gauge)
 }
 
 // GetAllCounters returns a shallow copy of all counter metrics to prevent external mutation.
-func (ms *MemStorage) GetAllCounters() (m map[string]int64) {
+func (ms *MemStorage) GetAllCounters() (result map[string]int64) {
 	return maps.Clone(ms.counter)
 }

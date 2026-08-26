@@ -1,17 +1,20 @@
 package agent
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"strconv"
+
+	"github.com/PrometheRus/metricscollector/internal/model"
 )
 
 // Sender is responsible for sending collected metrics to the server
 // via HTTP POST requests.
 type Sender struct {
-	URL     string
+	BaseURL string
 	Storage Storage
 	Client  http.Client
 }
@@ -19,48 +22,91 @@ type Sender struct {
 // Run performs a one-shot send of all stored gauge and counter metrics to the server.
 // Counter metrics are reset to zero only after a successful (HTTP 200) response.
 func (s *Sender) Run() {
+	updateURL := fmt.Sprintf("%s/update", s.BaseURL)
 
-	// Send all gauges
-	for metric, value := range s.Storage.GetAllGauges() {
-		endpointURL := fmt.Sprintf("%s/update/gauge/%s/%s", s.URL, metric, strconv.FormatFloat(value, 'f', -1, 64))
+	// Serialize and POST every gauge metric.
+	for metricName, value := range s.Storage.GetAllGauges() {
+		m := model.Metric{
+			Type:  model.Gauge,
+			ID:    metricName,
+			Value: &value,
+		}
 
-		request, err := http.NewRequest(http.MethodPost, endpointURL, nil)
-
+		jsonBody, err := json.Marshal(&m)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
-		request.Header.Add("Content-Type", "text/plain; charset=utf-8")
-		resp, err := s.Client.Do(request)
-
+		compressedBody, err := Compress(jsonBody)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		logRequest(resp, metric, endpointURL)
+
+		r, err := http.NewRequest(
+			http.MethodPost,
+			updateURL,
+			bytes.NewReader(compressedBody),
+		)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		r.Header.Set("Content-Type", "application/json; charset=utf-8")
+		r.Header.Set("Content-Encoding", "gzip")
+
+		resp, err := s.Client.Do(r)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		logRequest(resp, metricName, updateURL)
 		drainAndCloseResponse(resp)
 	}
 
-	// Send all counters
-	for metric, value := range s.Storage.GetAllCounters() {
-		endpointURL := fmt.Sprintf("%s/update/counter/%s/%s", s.URL, metric, strconv.FormatInt(value, 10))
+	// Serialize and POST every counter metric; reset on 200.
+	for metricName, value := range s.Storage.GetAllCounters() {
+		m := model.Metric{
+			Type:  model.Counter,
+			ID:    metricName,
+			Delta: &value,
+		}
 
-		request, err := http.NewRequest(http.MethodPost, endpointURL, nil)
-
+		jsonBody, err := json.Marshal(&m)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
 
-		request.Header.Add("Content-Type", "text/plain; charset=utf-8")
-		resp, err := s.Client.Do(request)
+		compressedBody, err := Compress(jsonBody)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		resetCounter(resp, metric, s.Storage)
-		logRequest(resp, metric, endpointURL)
+
+		r, err := http.NewRequest(
+			http.MethodPost,
+			updateURL,
+			bytes.NewReader(compressedBody))
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		r.Header.Set("Content-Type", "application/json; charset=utf-8")
+		r.Header.Set("Content-Encoding", "gzip")
+
+		resp, err := s.Client.Do(r)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+
+		resetCounter(resp, metricName, s.Storage)
+		logRequest(resp, metricName, updateURL)
 		drainAndCloseResponse(resp)
 	}
 }
