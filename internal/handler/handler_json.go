@@ -17,9 +17,9 @@ type apiError struct {
 
 // writeJSONError marshals an apiError and writes it with the given HTTP status code.
 func writeJSONError(w http.ResponseWriter, status int, err error) {
-	body, err := json.Marshal(apiError{Code: status, Message: err.Error()})
+	body, marshalErr := json.Marshal(apiError{Code: status, Message: err.Error()})
 
-	if err != nil {
+	if marshalErr != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Internal error"))
 		return
