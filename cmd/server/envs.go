@@ -8,15 +8,18 @@ import (
 
 // parseEnvs overrides flag variables with values from environment variables.
 func parseEnvs() {
-	if envAddress := os.Getenv("ADDRESS"); envAddress != "" {
+	envAddress, found := os.LookupEnv("ADDRESS")
+	if found {
 		flagHTTPAddr = envAddress
 	}
 
-	if envLogLevel := os.Getenv("LOG_LEVEL"); envLogLevel != "" {
+	envLogLevel, found := os.LookupEnv("LOG_LEVEL")
+	if found {
 		flagLogLevel = envLogLevel
 	}
 
-	if envStoreInterval := os.Getenv("STORE_INTERVAL"); envStoreInterval != "" {
+	envStoreInterval, found := os.LookupEnv("STORE_INTERVAL")
+	if found {
 		intervalSec, err := strconv.Atoi(envStoreInterval)
 
 		if err != nil {
@@ -25,11 +28,13 @@ func parseEnvs() {
 		flagStoreInterval = intervalSec
 	}
 
-	if envFileStoragePath := os.Getenv("FILE_STORAGE_PATH"); envFileStoragePath != "" {
+	envFileStoragePath, found := os.LookupEnv("FILE_STORAGE_PATH")
+	if found {
 		flagFileStoragePath = envFileStoragePath
 	}
 
-	if envRestore := os.Getenv("RESTORE"); envRestore != "" {
+	envRestore, found := os.LookupEnv("RESTORE")
+	if found {
 		shouldRestore, err := strconv.ParseBool(envRestore)
 
 		if err != nil {

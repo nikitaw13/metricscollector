@@ -8,11 +8,13 @@ import (
 
 // parseEnvs overrides flag variables with values from environment variables.
 func parseEnvs() {
-	if envAddress := os.Getenv("ADDRESS"); envAddress != "" {
+	envAddress, found := os.LookupEnv("ADDRESS")
+	if found {
 		flagServerAddr = envAddress
 	}
 
-	if envReportInterval := os.Getenv("REPORT_INTERVAL"); envReportInterval != "" {
+	envReportInterval, found := os.LookupEnv("REPORT_INTERVAL")
+	if found {
 		result, err := strconv.Atoi(envReportInterval)
 
 		if err != nil {
@@ -21,7 +23,8 @@ func parseEnvs() {
 		flagReportInterval = result
 	}
 
-	if envPollInterval := os.Getenv("POLL_INTERVAL"); envPollInterval != "" {
+	envPollInterval, found := os.LookupEnv("POLL_INTERVAL")
+	if found {
 		result, err := strconv.Atoi(envPollInterval)
 
 		if err != nil {
