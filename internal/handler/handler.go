@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/go-chi/chi"
@@ -11,7 +13,8 @@ import (
 
 // MetricsHandler serves HTTP requests for reading and updating metrics.
 type MetricsHandler struct {
-	Storage Repository
+	Storage  Repository
+	Database Database
 }
 
 // handleListMetrics returns an HTML page listing all known metrics.
@@ -89,4 +92,19 @@ func (h *MetricsHandler) handleURLUpdate(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Metric '%s' updated\n", chi.URLParam(r, "METRIC"))
+}
+
+// handleDatabasePing responds to GET /ping by checking the database connectivity
+func (h *MetricsHandler) handleDatabasePing(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
+
+	if err := h.Database.PingContext(ctx); err != nil {
+		http.Error(w, "Failed to ping database", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, "Pong\n")
 }
