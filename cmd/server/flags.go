@@ -19,7 +19,7 @@ var flagFileStoragePath string
 // flagRestore determines whether previously saved metrics are loaded from file on server startup.
 var flagRestore bool
 
-// flagDatabaseDSN holds the PostgreSQL connection string (DSN)
+// flagDatabaseDSN holds the PostgreSQL connection string (DSN).
 var flagDatabaseDSN string
 
 // parseFlags registers and parses command-line flags.

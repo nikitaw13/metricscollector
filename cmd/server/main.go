@@ -49,11 +49,11 @@ func run() error {
 	}
 	defer db.Close()
 
-	postgresClient := repository.NewPostgresStorage(db)
+	postgresStorage := repository.NewPostgresStorage(db)
 
 	metricsHandler := handler.MetricsHandler{
 		Storage:  persistentMemStorage,
-		Database: postgresClient,
+		Database: postgresStorage,
 	}
 	router := metricsHandler.New()
 

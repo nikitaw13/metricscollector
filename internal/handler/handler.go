@@ -94,7 +94,7 @@ func (h *MetricsHandler) handleURLUpdate(w http.ResponseWriter, r *http.Request)
 	fmt.Fprintf(w, "Metric '%s' updated\n", chi.URLParam(r, "METRIC"))
 }
 
-// handleDatabasePing responds to GET /ping by checking the database connectivity
+// handleDatabasePing responds to GET /ping by checking the database connectivity.
 func (h *MetricsHandler) handleDatabasePing(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()

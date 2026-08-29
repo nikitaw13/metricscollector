@@ -10,7 +10,7 @@ type PostgresStorage struct {
 	db *sql.DB
 }
 
-// NewPostgresStorage creates a new PostgresStorage instance
+// NewPostgresStorage creates a new PostgresStorage instance.
 func NewPostgresStorage(db *sql.DB) *PostgresStorage {
 	return &PostgresStorage{
 		db: db,
