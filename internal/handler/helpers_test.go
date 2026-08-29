@@ -14,11 +14,28 @@ const defaultCounterValue = 234
 
 // GetTestServer returns an httptest.Server backed by a fresh MemStorage
 // pre-populated with one gauge and one counter metric named "___test___".
+// Database is nil; use GetTestServerWithDatabase for DB-dependent tests.
 func GetTestServer() (server *httptest.Server) {
 	var s = repository.NewMemStorage()
 	s.SetGauge("___test___", defaultGaugeValue)
 	s.AddCounter("___test___", defaultCounterValue)
-	var h = MetricsHandler{Storage: s}
+	var h = MetricsHandler{
+		Storage:  s,
+		Database: nil,
+	}
+	router := h.New()
+	server = httptest.NewServer(router)
+	return
+}
+
+// GetTestServerWithDatabase returns an httptest.Server backed by a fresh MemStorage
+// and the provided Database for testing routes that require DB connectivity.
+func GetTestServerWithDatabase(db Database) (server *httptest.Server) {
+	var s = repository.NewMemStorage()
+	var h = MetricsHandler{
+		Storage:  s,
+		Database: db,
+	}
 	router := h.New()
 	server = httptest.NewServer(router)
 	return

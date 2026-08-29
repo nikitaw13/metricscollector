@@ -1,11 +1,14 @@
 package main
 
 import (
+	"database/sql"
 	"errors"
 	"log"
 	"net/http"
 	"os"
 	"time"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	"github.com/PrometheRus/metricscollector/internal/handler"
 	"github.com/PrometheRus/metricscollector/internal/repository"
@@ -40,7 +43,18 @@ func run() error {
 		}
 	}
 
-	metricsHandler := handler.MetricsHandler{Storage: persistentMemStorage}
+	db, err := sql.Open("pgx", flagDatabaseDSN)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	postgresStorage := repository.NewPostgresStorage(db)
+
+	metricsHandler := handler.MetricsHandler{
+		Storage:  persistentMemStorage,
+		Database: postgresStorage,
+	}
 	router := metricsHandler.New()
 
 	srv := &http.Server{

@@ -42,4 +42,9 @@ func parseEnvs() {
 		}
 		flagRestore = shouldRestore
 	}
+
+	envDatabaseDSN, found := os.LookupEnv("DATABASE_DSN")
+	if found {
+		flagDatabaseDSN = envDatabaseDSN
+	}
 }
