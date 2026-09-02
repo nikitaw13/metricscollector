@@ -13,7 +13,7 @@ func ptrFloat64(v float64) *float64 { return &v }
 // ptrInt64 returns a pointer to v, used to build *int64 for test expectations.
 func ptrInt64(v int64) *int64 { return &v }
 
-func TestMetrics_ValidateForUpdate(t *testing.T) {
+func TestMetric_ValidateForUpdate(t *testing.T) {
 	type fields struct {
 		ID    string
 		Type  string
@@ -144,7 +144,7 @@ func TestMetrics_ValidateForUpdate(t *testing.T) {
 	}
 }
 
-func TestMetrics_ValidateForRead(t *testing.T) {
+func TestMetric_ValidateForRead(t *testing.T) {
 	type fields struct {
 		ID    string
 		Type  string

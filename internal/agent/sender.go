@@ -112,19 +112,18 @@ func (s *Sender) Run() {
 }
 
 // resetCounter zeroes the named counter after a successful (HTTP 200) send.
-func resetCounter(resp *http.Response, m string, s Storage) {
-	// Reset the counter to zero if 200
+func resetCounter(resp *http.Response, metricName string, storage Storage) {
 	if resp.StatusCode == http.StatusOK {
-		s.ResetCounter(m)
+		storage.ResetCounter(metricName)
 	}
 }
 
 // logRequest logs the outcome of sending a single metric.
-func logRequest(resp *http.Response, m string, url string) {
+func logRequest(resp *http.Response, metricName string, url string) {
 	if resp.StatusCode == http.StatusOK {
-		log.Printf("Metric '%s' sent to %s", m, url)
+		log.Printf("Metric '%s' sent to %s", metricName, url)
 	} else {
-		log.Printf("Metric '%s' failed to send to %s, status: %d", m, url, resp.StatusCode)
+		log.Printf("Metric '%s' failed to send to %s, status: %d", metricName, url, resp.StatusCode)
 	}
 }
 

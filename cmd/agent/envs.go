@@ -18,7 +18,7 @@ func parseEnvs() {
 		result, err := strconv.Atoi(envReportInterval)
 
 		if err != nil {
-			log.Fatal("Can't convert REPORT_INTERVAL")
+			log.Fatal("failed to parse REPORT_INTERVAL")
 		}
 		flagReportInterval = result
 	}
@@ -28,7 +28,7 @@ func parseEnvs() {
 		result, err := strconv.Atoi(envPollInterval)
 
 		if err != nil {
-			log.Fatal("Can't convert POLL_INTERVAL")
+			log.Fatal("failed to parse POLL_INTERVAL")
 		}
 
 		flagPollInterval = result

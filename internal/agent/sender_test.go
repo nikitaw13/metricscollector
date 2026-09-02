@@ -27,13 +27,13 @@ func TestSendMetrics(t *testing.T) {
 	as := NewAgentStorage()
 
 	for _, v := range GaugeMetrics {
-		rv := rand.Float64()
-		as.SetGauge(v, rv)
+		initialValue := rand.Float64()
+		as.SetGauge(v, initialValue)
 	}
 
 	for _, v := range CounterMetrics {
-		rv := rand.Int64()
-		as.AddCounter(v, rv)
+		initialValue := rand.Int64()
+		as.AddCounter(v, initialValue)
 	}
 
 	received := map[string]bool{}
@@ -113,9 +113,9 @@ func TestSendMetrics(t *testing.T) {
 func TestResetCounterOnSuccess(t *testing.T) {
 	as := NewAgentStorage()
 
-	rv := rand.Int64()
+	initialValue := rand.Int64()
 	for _, v := range CounterMetrics {
-		as.AddCounter(v, rv)
+		as.AddCounter(v, initialValue)
 	}
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -136,7 +136,7 @@ func TestResetCounterOnSuccess(t *testing.T) {
 	sender.Run()
 
 	for _, m := range CounterMetrics {
-		t.Run(fmt.Sprintf("Received %v", m), func(t *testing.T) {
+		t.Run(fmt.Sprintf("counter %v reset to zero", m), func(t *testing.T) {
 			val, _ := as.GetCounter(m)
 			assert.Equal(t, int64(0), val)
 		})
@@ -148,9 +148,9 @@ func TestResetCounterOnSuccess(t *testing.T) {
 func TestKeepCounterOnError(t *testing.T) {
 	as := NewAgentStorage()
 
-	rv := rand.Int64()
+	initialValue := rand.Int64()
 	for _, v := range CounterMetrics {
-		as.AddCounter(v, rv)
+		as.AddCounter(v, initialValue)
 	}
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -171,9 +171,9 @@ func TestKeepCounterOnError(t *testing.T) {
 	sender.Run()
 
 	for _, m := range CounterMetrics {
-		t.Run(fmt.Sprintf("Received %v", m), func(t *testing.T) {
+		t.Run(fmt.Sprintf("counter %v preserved on error", m), func(t *testing.T) {
 			val, _ := as.GetCounter(m)
-			assert.Equal(t, rv, val)
+			assert.Equal(t, initialValue, val)
 		})
 	}
 }

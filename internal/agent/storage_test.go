@@ -1,7 +1,6 @@
 package agent
 
 import (
-	"fmt"
 	"math/rand/v2"
 	"testing"
 
@@ -74,7 +73,7 @@ func TestGetGaugeError(t *testing.T) {
 	ms := NewAgentStorage()
 	t.Run("nonexistent gauge", func(t *testing.T) {
 		_, err := ms.GetGauge("__nonexistent__")
-		require.EqualError(t, err, fmt.Sprintf("Gauge %s not found", "__nonexistent__"))
+		require.ErrorIs(t, err, ErrMetricNotFound)
 	})
 }
 
@@ -83,7 +82,7 @@ func TestGetCounterError(t *testing.T) {
 	ms := NewAgentStorage()
 	t.Run("nonexistent counter", func(t *testing.T) {
 		_, err := ms.GetCounter("__nonexistent__")
-		require.EqualError(t, err, fmt.Sprintf("Counter %s not found", "__nonexistent__"))
+		require.ErrorIs(t, err, ErrMetricNotFound)
 	})
 }
 
@@ -128,8 +127,8 @@ func TestGetAllGauges(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range GaugeMetrics {
 		t.Run(m, func(t *testing.T) {
-			rv := rand.Float64()
-			ms.SetGauge(m, rv)
+			initialValue := rand.Float64()
+			ms.SetGauge(m, initialValue)
 			got, err := ms.GetGauge(m)
 
 			gauges := ms.GetAllGauges()
@@ -145,8 +144,8 @@ func TestGetAllCounters(t *testing.T) {
 	ms := NewAgentStorage()
 	for _, m := range CounterMetrics {
 		t.Run(m, func(t *testing.T) {
-			rv := rand.Int64()
-			ms.AddCounter(m, rv)
+			initialValue := rand.Int64()
+			ms.AddCounter(m, initialValue)
 			got, err := ms.GetCounter(m)
 
 			counters := ms.GetAllCounters()

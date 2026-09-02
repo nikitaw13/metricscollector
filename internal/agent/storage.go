@@ -1,9 +1,13 @@
 package agent
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 )
+
+// ErrMetricNotFound is returned when a requested metric does not exist in storage.
+var ErrMetricNotFound = errors.New("not found")
 
 // StorageGetter defines read-only operations for retrieving metrics.
 type StorageGetter interface {
@@ -53,7 +57,7 @@ func (ms *AgentStorage) AddCounter(name string, value int64) {
 	ms.counter[name] += value
 }
 
-// ResetCounter resets the counter metric to zero after successful report
+// ResetCounter resets the counter metric to zero after a successful report.
 func (ms *AgentStorage) ResetCounter(name string) {
 	ms.counter[name] = 0
 }
@@ -64,7 +68,7 @@ func (ms *AgentStorage) GetGauge(name string) (value float64, err error) {
 	if _, ok := ms.gauge[name]; ok {
 		return ms.gauge[name], nil
 	}
-	return 0, fmt.Errorf("Gauge %s not found", name)
+	return 0, fmt.Errorf("gauge %s %w", name, ErrMetricNotFound)
 }
 
 // GetCounter returns the value of the counter metric by name.
@@ -73,7 +77,7 @@ func (ms *AgentStorage) GetCounter(name string) (value int64, err error) {
 	if _, ok := ms.counter[name]; ok {
 		return ms.counter[name], nil
 	}
-	return 0, fmt.Errorf("Counter %s not found", name)
+	return 0, fmt.Errorf("counter %s %w", name, ErrMetricNotFound)
 }
 
 // GetAllGauges returns a copy of all gauge metrics to prevent external mutation.
