@@ -12,10 +12,9 @@ const (
 )
 
 var (
-	ErrMissingType = errors.New("Metric type is required")
-	ErrInvalidType = errors.New("Invalid metric type")
-	ErrMissingID   = errors.New("Metric ID is required")
-	// ErrInvalidID    = errors.New("Invalid ID")
+	ErrMissingType  = errors.New("Metric type is required")
+	ErrInvalidType  = errors.New("Invalid metric type")
+	ErrMissingID    = errors.New("Metric ID is required")
 	ErrMissingValue = errors.New("Metric value is required")
 	ErrInvalidValue = errors.New("Invalid metric value")
 )

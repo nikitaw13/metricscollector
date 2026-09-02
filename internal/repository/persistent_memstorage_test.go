@@ -12,14 +12,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// helper: creates a temp file path without creating the file itself.
+// tempFilePath returns a path in a temp directory without creating the file.
 func tempFilePath(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	return filepath.Join(dir, "metrics.json")
 }
 
-// helper: writes given metrics as JSON to the specified path.
+// writeMetricsFile writes given metrics as JSON to the specified path.
 func writeMetricsFile(t *testing.T, path string, metrics []model.Metric) {
 	t.Helper()
 	data, err := json.Marshal(metrics)
@@ -27,7 +27,7 @@ func writeMetricsFile(t *testing.T, path string, metrics []model.Metric) {
 	require.NoError(t, os.WriteFile(path, data, 0644))
 }
 
-// helper: reads the file at path and unmarshals into []model.Metric.
+// readMetricsFile reads the file at path and unmarshals into []model.Metric.
 func readMetricsFile(t *testing.T, path string) []model.Metric {
 	t.Helper()
 	data, err := os.ReadFile(path)
@@ -50,8 +50,8 @@ func TestNewPersistentMemStorage(t *testing.T) {
 	pms := NewPersistentMemStorage(ms, "/tmp/test.json", true)
 
 	assert.Equal(t, ms, pms.MemStorage)
-	assert.Equal(t, "/tmp/test.json", pms.FilePath)
-	assert.True(t, pms.SyncWrite)
+	assert.Equal(t, "/tmp/test.json", pms.filePath)
+	assert.True(t, pms.syncWrite)
 }
 
 // ---------- Restore ----------
@@ -84,10 +84,10 @@ func TestRestore_OverwritesExisting(t *testing.T) {
 
 	fp := tempFilePath(t)
 	gaugeVal := 99.9
-	deltaVal := int64(5)
+	counterVal := int64(5)
 	writeMetricsFile(t, fp, []model.Metric{
 		{ID: "cpu", Type: "gauge", Value: &gaugeVal},
-		{ID: "hits", Type: "counter", Delta: &deltaVal},
+		{ID: "hits", Type: "counter", Delta: &counterVal},
 	})
 
 	pms := newTestPersistentStorage(fp, false)
@@ -97,11 +97,11 @@ func TestRestore_OverwritesExisting(t *testing.T) {
 
 	require.NoError(t, pms.Restore())
 
-	g, _ := pms.GetGauge("cpu")
-	assert.InDelta(t, 99.9, g, 0.001)
+	gaugeVal, _ = pms.GetGauge("cpu")
+	assert.InDelta(t, 99.9, gaugeVal, 0.001)
 
-	c, _ := pms.GetCounter("hits")
-	assert.Equal(t, int64(5), c)
+	counterVal, _ = pms.GetCounter("hits")
+	assert.Equal(t, int64(5), counterVal)
 }
 
 func TestRestore_FileNotFound(t *testing.T) {
@@ -133,10 +133,10 @@ func TestRestore_EmptyFile(t *testing.T) {
 	require.NoError(t, pms.Restore())
 
 	_, err := pms.GetGauge("anything")
-	assert.Error(t, err, "expected gauge not found after restoring empty file")
+	assert.ErrorIs(t, err, ErrMetricNotFound)
 
 	_, err = pms.GetCounter("anything")
-	assert.Error(t, err, "expected counter not found after restoring empty file")
+	assert.ErrorIs(t, err, ErrMetricNotFound)
 }
 
 func TestGetCounter_NotFound(t *testing.T) {
@@ -145,7 +145,7 @@ func TestGetCounter_NotFound(t *testing.T) {
 	pms := newTestPersistentStorage(tempFilePath(t), false)
 
 	_, err := pms.GetCounter("nonexistent")
-	assert.Error(t, err, "expected counter not found for missing key")
+	assert.ErrorIs(t, err, ErrMetricNotFound)
 }
 
 // ---------- Save ----------
@@ -364,11 +364,11 @@ func TestRoundTrip_MultipleSaveCycles(t *testing.T) {
 	pms2 := newTestPersistentStorage(fp, false)
 	require.NoError(t, pms2.Restore())
 
-	g, _ := pms2.GetGauge("cpu")
-	assert.InDelta(t, 20.0, g, 0.001)
+	gaugeVal, _ := pms2.GetGauge("cpu")
+	assert.InDelta(t, 20.0, gaugeVal, 0.001)
 
-	c, _ := pms2.GetCounter("hits")
-	assert.Equal(t, int64(10), c)
+	counterVal, _ := pms2.GetCounter("hits")
+	assert.Equal(t, int64(10), counterVal)
 }
 
 // ---------- SaveSync ----------

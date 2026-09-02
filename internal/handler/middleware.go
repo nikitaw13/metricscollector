@@ -62,7 +62,7 @@ func loggerMiddleware(h http.Handler) http.Handler {
 		h.ServeHTTP(&lwr, r)
 
 		Logger.Info("got incoming HTTP request",
-			zap.String("URI", r.RequestURI),
+			zap.String("uri", r.RequestURI),
 			zap.String("method", r.Method),
 			zap.Duration("duration", time.Since(start)),
 		)

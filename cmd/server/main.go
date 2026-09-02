@@ -26,21 +26,51 @@ func run() error {
 		return err
 	}
 
+	var storageToUse handler.Repository
+	var dbToUse handler.DBPinger
+
 	isSyncWrite := flagStoreInterval == 0
-	memStorage := repository.NewMemStorage()
-	persistentMemStorage := repository.NewPersistentMemStorage(memStorage, flagFileStoragePath, isSyncWrite)
 
-	if flagRestore {
-		err := persistentMemStorage.Restore()
+	switch {
+	// Database storage
+	case flagDatabaseDSN != "":
+		ps, err := repository.NewPostgresStorageFromDSN(flagDatabaseDSN, flagMigrationPath)
 
-		if errors.Is(err, os.ErrNotExist) {
-			handler.Logger.Warn("File not exist", zap.Error(err))
-		} else if err != nil {
-			handler.Logger.Error("Error while restoring the file", zap.Error(err))
+		if err != nil {
+			handler.Logger.Error("failed to initialize postgres storage", zap.Error(err))
+			return err
 		}
+		defer ps.Close()
+
+		storageToUse = ps
+		dbToUse = ps
+
+	// Persistent storage
+	case flagFileStoragePath != "":
+		memStorage := repository.NewMemStorage()
+		persistentMemStorage := repository.NewPersistentMemStorage(memStorage, flagFileStoragePath, isSyncWrite)
+
+		if flagRestore {
+			err := persistentMemStorage.Restore()
+
+			if errors.Is(err, os.ErrNotExist) {
+				handler.Logger.Warn("file does not exist", zap.Error(err))
+			} else if err != nil {
+				handler.Logger.Error("failed to restore metrics from file", zap.Error(err))
+			}
+		}
+
+		storageToUse = persistentMemStorage
+		dbToUse = nil
+
+	// In-memory storage
+	default:
+		storageToUse = repository.NewMemStorage()
+		dbToUse = nil
 	}
 
-	metricsHandler := handler.MetricsHandler{Storage: persistentMemStorage}
+	metricsHandler := handler.NewMetricsHandler(storageToUse, dbToUse)
+
 	router := metricsHandler.New()
 
 	srv := &http.Server{
@@ -51,10 +81,12 @@ func run() error {
 		Handler:      router,
 	}
 
-	if !isSyncWrite {
-		go persistentMemStorage.PeriodicSave(time.Duration(flagStoreInterval) * time.Second)
+	if pms, ok := storageToUse.(*repository.PersistentMemStorage); ok {
+		if !isSyncWrite {
+			go pms.PeriodicSave(time.Duration(flagStoreInterval) * time.Second)
+		}
 	}
 
-	handler.Logger.Info("Running server", zap.String("address", flagHTTPAddr), zap.String("logLevel", flagLogLevel))
+	handler.Logger.Info("server is running", zap.String("address", flagHTTPAddr), zap.String("log_level", flagLogLevel))
 	return srv.ListenAndServe()
 }

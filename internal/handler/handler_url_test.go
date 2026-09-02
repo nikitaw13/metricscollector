@@ -39,7 +39,7 @@ type expectedResponse struct {
 	contentType string
 }
 
-// Update: successful metric updates
+// updateTests covers successful metric updates.
 var updateTests = []testCase{
 	{
 		"Counter positive int", http.MethodPost, "/update/counter/test/1000", expectedResponse{
@@ -85,7 +85,7 @@ var updateTests = []testCase{
 	},
 }
 
-// Read: successful fetching metric values and lists
+// readTests covers successful reads of metric values and the metric list.
 var readTests = []testCase{
 	{
 		"Read all metrics", http.MethodGet, "/", expectedResponse{
@@ -110,7 +110,7 @@ var readTests = []testCase{
 	},
 }
 
-// Validation: invalid type, name, or value
+// validationTests covers requests with an invalid type, name, or value.
 var validationTests = []testCase{
 	// Missing or invalid metric type
 	{

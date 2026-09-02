@@ -35,5 +35,7 @@ func (h *MetricsHandler) New() *chi.Mux {
 		r.Post("/{METRIC}/{VALUE}", h.handleURLUpdate)
 	})
 
+	router.Get("/ping", h.handleDatabasePing)
+
 	return router
 }
