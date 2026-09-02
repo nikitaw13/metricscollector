@@ -47,4 +47,9 @@ func parseEnvs() {
 	if found {
 		flagDatabaseDSN = envDatabaseDSN
 	}
+
+	envMigrationPath, found := os.LookupEnv("MIGRATION_PATH")
+	if found {
+		flagMigrationPath = envMigrationPath
+	}
 }

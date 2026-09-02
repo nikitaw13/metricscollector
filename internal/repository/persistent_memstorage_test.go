@@ -50,8 +50,8 @@ func TestNewPersistentMemStorage(t *testing.T) {
 	pms := NewPersistentMemStorage(ms, "/tmp/test.json", true)
 
 	assert.Equal(t, ms, pms.MemStorage)
-	assert.Equal(t, "/tmp/test.json", pms.FilePath)
-	assert.True(t, pms.SyncWrite)
+	assert.Equal(t, "/tmp/test.json", pms.filePath)
+	assert.True(t, pms.syncWrite)
 }
 
 // ---------- Restore ----------

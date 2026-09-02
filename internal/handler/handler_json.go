@@ -71,22 +71,22 @@ func (h *MetricsHandler) handleJSONUpdate(w http.ResponseWriter, r *http.Request
 
 	switch m.Type {
 	case model.Gauge:
-		if err := h.Storage.SetGauge(m.ID, *m.Value); err != nil {
+		if err := h.storage.SetGauge(m.ID, *m.Value); err != nil {
 			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
-		newVal, err := h.Storage.GetGauge(m.ID)
+		newVal, err := h.storage.GetGauge(m.ID)
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
 		m.Value = &newVal
 	case model.Counter:
-		if err := h.Storage.AddCounter(m.ID, *m.Delta); err != nil {
+		if err := h.storage.AddCounter(m.ID, *m.Delta); err != nil {
 			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
-		newVal, err := h.Storage.GetCounter(m.ID)
+		newVal, err := h.storage.GetCounter(m.ID)
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, err)
 			return
@@ -122,7 +122,7 @@ func (h *MetricsHandler) handleJSONRead(w http.ResponseWriter, r *http.Request) 
 
 	switch m.Type {
 	case model.Gauge:
-		result, err := h.Storage.GetGauge(m.ID)
+		result, err := h.storage.GetGauge(m.ID)
 		if err != nil {
 			writeJSONError(w, http.StatusNotFound, err)
 			return
@@ -130,7 +130,7 @@ func (h *MetricsHandler) handleJSONRead(w http.ResponseWriter, r *http.Request) 
 		m.Value = &result
 
 	case model.Counter:
-		result, err := h.Storage.GetCounter(m.ID)
+		result, err := h.storage.GetCounter(m.ID)
 		if err != nil {
 			writeJSONError(w, http.StatusNotFound, err)
 			return

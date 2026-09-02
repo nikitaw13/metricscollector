@@ -20,8 +20,8 @@ func GetTestServer() (server *httptest.Server) {
 	s.SetGauge("___test___", defaultGaugeValue)
 	s.AddCounter("___test___", defaultCounterValue)
 	var h = MetricsHandler{
-		Storage:  s,
-		Database: nil,
+		storage:  s,
+		database: nil,
 	}
 	router := h.New()
 	server = httptest.NewServer(router)
@@ -30,12 +30,9 @@ func GetTestServer() (server *httptest.Server) {
 
 // GetTestServerWithDatabase returns an httptest.Server backed by a fresh MemStorage
 // and the provided Database for testing routes that require DB connectivity.
-func GetTestServerWithDatabase(db Database) (server *httptest.Server) {
+func GetTestServerWithDatabase(db DBPinger) (server *httptest.Server) {
 	var s = repository.NewMemStorage()
-	var h = MetricsHandler{
-		Storage:  s,
-		Database: db,
-	}
+	var h = NewMetricsHandler(s, db)
 	router := h.New()
 	server = httptest.NewServer(router)
 	return

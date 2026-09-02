@@ -2,7 +2,7 @@ package handler
 
 import "context"
 
-// Database defines the methods required for database operations used by handlers.
-type Database interface {
+// DBPinger defines the ping method required to check database connectivity from handlers.
+type DBPinger interface {
 	PingContext(ctx context.Context) error
 }

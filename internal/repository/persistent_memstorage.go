@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"time"
 
@@ -13,22 +14,22 @@ import (
 // PersistentMemStorage wraps MemStorage with file-based persistence capabilities.
 type PersistentMemStorage struct {
 	*MemStorage
-	FilePath  string
-	SyncWrite bool
+	filePath  string
+	syncWrite bool
 }
 
 // NewPersistentMemStorage creates a PersistentMemStorage with the given underlying storage, file path, and sync-write mode.
 func NewPersistentMemStorage(memStorage *MemStorage, filePath string, syncWrite bool) *PersistentMemStorage {
 	return &PersistentMemStorage{
 		MemStorage: memStorage,
-		FilePath:   filePath,
-		SyncWrite:  syncWrite,
+		filePath:   filePath,
+		syncWrite:  syncWrite,
 	}
 }
 
 // Restore loads previously saved metrics from the file into in-memory maps.
 func (s *PersistentMemStorage) Restore() error {
-	file, err := os.Open(s.FilePath)
+	file, err := os.Open(s.filePath)
 
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)
@@ -65,7 +66,7 @@ func (s *PersistentMemStorage) Restore() error {
 
 // Save writes all current metrics to the file, replacing any previous contents.
 func (s *PersistentMemStorage) Save() error {
-	file, err := os.OpenFile(s.FilePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(s.filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)
@@ -73,8 +74,8 @@ func (s *PersistentMemStorage) Save() error {
 
 	defer file.Close()
 
-	gaugesMap := s.GetAllGauges()
-	countersMap := s.GetAllCounters()
+	gaugesMap, _ := s.GetAllGauges()
+	countersMap, _ := s.GetAllCounters()
 	var metrics []model.Metric
 
 	for key, value := range gaugesMap {
@@ -108,7 +109,7 @@ func (s *PersistentMemStorage) PeriodicSave(interval time.Duration) {
 	for range ticker.C {
 		err := s.Save()
 		if err != nil {
-			fmt.Printf("error writing file: %v", err)
+			log.Printf("error writing file: %v", err)
 			continue
 		}
 	}
@@ -118,15 +119,14 @@ func (s *PersistentMemStorage) PeriodicSave(interval time.Duration) {
 func (s *PersistentMemStorage) SaveSync() {
 	err := s.Save()
 	if err != nil {
-		fmt.Printf("error writing file: %v", err)
+		log.Printf("error writing file: %v", err)
 	}
-
 }
 
 // SetGauge sets the named gauge metric to the specified value, overwriting any previous value.
 func (s *PersistentMemStorage) SetGauge(name string, value float64) error {
 	s.gauge[name] = value
-	if s.SyncWrite {
+	if s.syncWrite {
 		s.SaveSync()
 	}
 	return nil
@@ -135,7 +135,7 @@ func (s *PersistentMemStorage) SetGauge(name string, value float64) error {
 // AddCounter increments the named counter metric by the specified delta.
 func (s *PersistentMemStorage) AddCounter(name string, value int64) error {
 	s.counter[name] += value
-	if s.SyncWrite {
+	if s.syncWrite {
 		s.SaveSync()
 	}
 	return nil

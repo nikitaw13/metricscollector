@@ -16,32 +16,32 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockDatabase is a mock of Database interface.
-type MockDatabase struct {
+// MockDBPinger is a mock of DBPinger interface.
+type MockDBPinger struct {
 	ctrl     *gomock.Controller
-	recorder *MockDatabaseMockRecorder
+	recorder *MockDBPingerMockRecorder
 	isgomock struct{}
 }
 
-// MockDatabaseMockRecorder is the mock recorder for MockDatabase.
-type MockDatabaseMockRecorder struct {
-	mock *MockDatabase
+// MockDBPingerMockRecorder is the mock recorder for MockDBPinger.
+type MockDBPingerMockRecorder struct {
+	mock *MockDBPinger
 }
 
-// NewMockDatabase creates a new mock instance.
-func NewMockDatabase(ctrl *gomock.Controller) *MockDatabase {
-	mock := &MockDatabase{ctrl: ctrl}
-	mock.recorder = &MockDatabaseMockRecorder{mock}
+// NewMockDBPinger creates a new mock instance.
+func NewMockDBPinger(ctrl *gomock.Controller) *MockDBPinger {
+	mock := &MockDBPinger{ctrl: ctrl}
+	mock.recorder = &MockDBPingerMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockDatabase) EXPECT() *MockDatabaseMockRecorder {
+func (m *MockDBPinger) EXPECT() *MockDBPingerMockRecorder {
 	return m.recorder
 }
 
 // PingContext mocks base method.
-func (m *MockDatabase) PingContext(ctx context.Context) error {
+func (m *MockDBPinger) PingContext(ctx context.Context) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PingContext", ctx)
 	ret0, _ := ret[0].(error)
@@ -49,7 +49,7 @@ func (m *MockDatabase) PingContext(ctx context.Context) error {
 }
 
 // PingContext indicates an expected call of PingContext.
-func (mr *MockDatabaseMockRecorder) PingContext(ctx any) *gomock.Call {
+func (mr *MockDBPingerMockRecorder) PingContext(ctx any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingContext", reflect.TypeOf((*MockDatabase)(nil).PingContext), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PingContext", reflect.TypeOf((*MockDBPinger)(nil).PingContext), ctx)
 }
