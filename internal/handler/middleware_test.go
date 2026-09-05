@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// fixedResponseHandler returns a handler replying with the given Content-Type and body.
 func fixedResponseHandler(contentType, body string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", contentType)
@@ -21,6 +22,7 @@ func fixedResponseHandler(contentType, body string) http.Handler {
 	})
 }
 
+// TestCompressMiddlewareGzipResponse verifies that responses are gzip-compressed for gzip-capable clients.
 func TestCompressMiddlewareGzipResponse(t *testing.T) {
 	handler := CompressMiddleware(fixedResponseHandler("application/json", `{"status":"ok"}`))
 
@@ -42,6 +44,7 @@ func TestCompressMiddlewareGzipResponse(t *testing.T) {
 	assert.Equal(t, `{"status":"ok"}`, string(body))
 }
 
+// TestCompressMiddlewareDeflateResponse verifies deflate compression when only deflate is accepted.
 func TestCompressMiddlewareDeflateResponse(t *testing.T) {
 	handler := CompressMiddleware(fixedResponseHandler("application/json", `{"status":"ok"}`))
 
@@ -62,6 +65,7 @@ func TestCompressMiddlewareDeflateResponse(t *testing.T) {
 	assert.Equal(t, `{"status":"ok"}`, string(body))
 }
 
+// TestCompressMiddlewareNoCompressionWithoutAcceptEncoding verifies the uncompressed passthrough when no encoding is accepted.
 func TestCompressMiddlewareNoCompressionWithoutAcceptEncoding(t *testing.T) {
 	handler := CompressMiddleware(fixedResponseHandler("application/json", `{"status":"ok"}`))
 
@@ -75,6 +79,7 @@ func TestCompressMiddlewareNoCompressionWithoutAcceptEncoding(t *testing.T) {
 	assert.Equal(t, `{"status":"ok"}`, rec.Body.String())
 }
 
+// TestCompressMiddlewareMultipleAcceptEncoding verifies that gzip wins when several encodings are accepted.
 func TestCompressMiddlewareMultipleAcceptEncoding(t *testing.T) {
 	handler := CompressMiddleware(fixedResponseHandler("application/json", `{"status":"ok"}`))
 
@@ -88,6 +93,7 @@ func TestCompressMiddlewareMultipleAcceptEncoding(t *testing.T) {
 	assert.Equal(t, "gzip", rec.Header().Get("Content-Encoding"))
 }
 
+// TestCompressMiddlewareSkipsNonCompressibleType verifies that text/plain responses bypass compression.
 func TestCompressMiddlewareSkipsNonCompressibleType(t *testing.T) {
 	handler := CompressMiddleware(fixedResponseHandler("text/plain", "hello"))
 
@@ -102,6 +108,7 @@ func TestCompressMiddlewareSkipsNonCompressibleType(t *testing.T) {
 	assert.Equal(t, "hello", rec.Body.String())
 }
 
+// TestCompressMiddlewareCompressesHTML verifies that text/html responses are gzip-compressed.
 func TestCompressMiddlewareCompressesHTML(t *testing.T) {
 	handler := CompressMiddleware(fixedResponseHandler("text/html; charset=utf-8", "<html>hi</html>"))
 
@@ -123,6 +130,7 @@ func TestCompressMiddlewareCompressesHTML(t *testing.T) {
 	assert.Equal(t, "<html>hi</html>", string(body))
 }
 
+// TestDecompressMiddlewareGzipBody verifies that gzip request bodies are decompressed before reaching the handler.
 func TestDecompressMiddlewareGzipBody(t *testing.T) {
 	var buf bytes.Buffer
 	gzipWriter := gzip.NewWriter(&buf)
@@ -148,6 +156,7 @@ func TestDecompressMiddlewareGzipBody(t *testing.T) {
 	assert.Empty(t, req.Header.Get("Content-Encoding"))
 }
 
+// TestDecompressMiddlewareDeflateBody verifies that deflate request bodies are decompressed before reaching the handler.
 func TestDecompressMiddlewareDeflateBody(t *testing.T) {
 	var buf bytes.Buffer
 	flateWriter, _ := flate.NewWriter(&buf, flate.BestCompression)
@@ -173,6 +182,7 @@ func TestDecompressMiddlewareDeflateBody(t *testing.T) {
 	assert.Empty(t, req.Header.Get("Content-Encoding"))
 }
 
+// TestDecompressMiddlewareNoEncodingPassthrough verifies that raw bodies pass through unchanged.
 func TestDecompressMiddlewareNoEncodingPassthrough(t *testing.T) {
 	var gotBody string
 	handler := DecompressMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -190,6 +200,7 @@ func TestDecompressMiddlewareNoEncodingPassthrough(t *testing.T) {
 	assert.Equal(t, "raw body", gotBody)
 }
 
+// TestDecompressMiddlewareInvalidGzipBody verifies that a broken gzip body is rejected with 500.
 func TestDecompressMiddlewareInvalidGzipBody(t *testing.T) {
 	handler := DecompressMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -204,6 +215,7 @@ func TestDecompressMiddlewareInvalidGzipBody(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rec.Code)
 }
 
+// TestRequireJSONContentEmptyBody verifies that an empty JSON request body is rejected with 400.
 func TestRequireJSONContentEmptyBody(t *testing.T) {
 	handler := requireJSONContent(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

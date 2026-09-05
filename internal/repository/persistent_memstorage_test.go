@@ -37,12 +37,14 @@ func readMetricsFile(t *testing.T, path string) []model.Metric {
 	return metrics
 }
 
+// newTestPersistentStorage returns a PersistentMemStorage over a fresh MemStorage.
 func newTestPersistentStorage(filePath string, syncWrite bool) *PersistentMemStorage {
 	return NewPersistentMemStorage(NewMemStorage(), filePath, syncWrite)
 }
 
 // ---------- NewPersistentMemStorage ----------
 
+// TestNewPersistentMemStorage verifies that the constructor wires the storage, file path, and sync flag.
 func TestNewPersistentMemStorage(t *testing.T) {
 	t.Parallel()
 
@@ -56,6 +58,7 @@ func TestNewPersistentMemStorage(t *testing.T) {
 
 // ---------- Restore ----------
 
+// TestRestore_GaugesAndCounters verifies that both gauges and counters are loaded from the file.
 func TestRestore_GaugesAndCounters(t *testing.T) {
 	t.Parallel()
 
@@ -79,6 +82,7 @@ func TestRestore_GaugesAndCounters(t *testing.T) {
 	assert.Equal(t, int64(10), gotCounter)
 }
 
+// TestRestore_OverwritesExisting verifies that restore replaces pre-existing in-memory values.
 func TestRestore_OverwritesExisting(t *testing.T) {
 	t.Parallel()
 
@@ -104,6 +108,7 @@ func TestRestore_OverwritesExisting(t *testing.T) {
 	assert.Equal(t, int64(5), counterVal)
 }
 
+// TestRestore_FileNotFound verifies that a missing file produces an error.
 func TestRestore_FileNotFound(t *testing.T) {
 	t.Parallel()
 
@@ -112,6 +117,7 @@ func TestRestore_FileNotFound(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// TestRestore_InvalidJSON verifies that a malformed file produces an error.
 func TestRestore_InvalidJSON(t *testing.T) {
 	t.Parallel()
 
@@ -123,6 +129,7 @@ func TestRestore_InvalidJSON(t *testing.T) {
 	assert.Error(t, err)
 }
 
+// TestRestore_EmptyFile verifies that an empty file leaves the storage empty.
 func TestRestore_EmptyFile(t *testing.T) {
 	t.Parallel()
 
@@ -139,6 +146,7 @@ func TestRestore_EmptyFile(t *testing.T) {
 	assert.ErrorIs(t, err, model.ErrMetricNotFound)
 }
 
+// TestGetCounter_NotFound verifies the model.ErrMetricNotFound error for an unknown counter.
 func TestGetCounter_NotFound(t *testing.T) {
 	t.Parallel()
 
@@ -150,6 +158,7 @@ func TestGetCounter_NotFound(t *testing.T) {
 
 // ---------- Save ----------
 
+// TestSave_WritesGaugesAndCounters verifies that both metric types are written to the file as JSON.
 func TestSave_WritesGaugesAndCounters(t *testing.T) {
 	t.Parallel()
 
@@ -166,8 +175,8 @@ func TestSave_WritesGaugesAndCounters(t *testing.T) {
 	assert.Len(t, metrics, 2)
 
 	metricMap := map[string]model.Metric{}
-	for _, m := range metrics {
-		metricMap[m.ID] = m
+	for _, metric := range metrics {
+		metricMap[metric.ID] = metric
 	}
 
 	assert.Equal(t, "gauge", metricMap["mem"].Type)
@@ -177,6 +186,7 @@ func TestSave_WritesGaugesAndCounters(t *testing.T) {
 	assert.Equal(t, int64(5), *metricMap["req"].Delta)
 }
 
+// TestSave_EmptyStorage verifies that an empty storage produces an empty JSON array.
 func TestSave_EmptyStorage(t *testing.T) {
 	t.Parallel()
 
@@ -188,6 +198,7 @@ func TestSave_EmptyStorage(t *testing.T) {
 	assert.Len(t, metrics, 0)
 }
 
+// TestSave_OverwritesExistingFile verifies that a save replaces previous file contents.
 func TestSave_OverwritesExistingFile(t *testing.T) {
 	t.Parallel()
 
@@ -207,6 +218,7 @@ func TestSave_OverwritesExistingFile(t *testing.T) {
 	assert.Equal(t, "new_metric", metrics[0].ID)
 }
 
+// TestSave_InvalidPath verifies that an unwritable path produces an error.
 func TestSave_InvalidPath(t *testing.T) {
 	t.Parallel()
 
@@ -217,6 +229,7 @@ func TestSave_InvalidPath(t *testing.T) {
 
 // ---------- SetGauge (with SyncWrite) ----------
 
+// TestSetGauge_SyncOff verifies that no file is created when sync-write is disabled.
 func TestSetGauge_SyncOff(t *testing.T) {
 	t.Parallel()
 
@@ -234,6 +247,7 @@ func TestSetGauge_SyncOff(t *testing.T) {
 	assert.True(t, os.IsNotExist(err), "file should not exist when sync is off")
 }
 
+// TestSetGauge_SyncOn verifies that the file is written automatically after each update.
 func TestSetGauge_SyncOn(t *testing.T) {
 	t.Parallel()
 
@@ -249,6 +263,7 @@ func TestSetGauge_SyncOn(t *testing.T) {
 	assert.InDelta(t, 36.6, *metrics[0].Value, 0.001)
 }
 
+// TestSetGauge_OverwritesPrevious verifies that a later value overwrites the previous one.
 func TestSetGauge_OverwritesPrevious(t *testing.T) {
 	t.Parallel()
 
@@ -265,6 +280,7 @@ func TestSetGauge_OverwritesPrevious(t *testing.T) {
 
 // ---------- AddCounter (with SyncWrite) ----------
 
+// TestAddCounter_SyncOff verifies that no file is created when sync-write is disabled.
 func TestAddCounter_SyncOff(t *testing.T) {
 	t.Parallel()
 
@@ -284,6 +300,7 @@ func TestAddCounter_SyncOff(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 }
 
+// TestAddCounter_SyncOn verifies that the file is written automatically after each update.
 func TestAddCounter_SyncOn(t *testing.T) {
 	t.Parallel()
 
@@ -300,6 +317,7 @@ func TestAddCounter_SyncOn(t *testing.T) {
 	assert.Equal(t, int64(3), *metrics[0].Delta)
 }
 
+// TestAddCounter_IncrementsExisting verifies that deltas accumulate on top of existing values.
 func TestAddCounter_IncrementsExisting(t *testing.T) {
 	t.Parallel()
 
@@ -321,6 +339,7 @@ func TestAddCounter_IncrementsExisting(t *testing.T) {
 
 // ---------- Round-trip: Save → Restore ----------
 
+// TestRoundTrip verifies that values survive a Save followed by a Restore.
 func TestRoundTrip(t *testing.T) {
 	t.Parallel()
 
@@ -365,6 +384,7 @@ func TestRoundTrip(t *testing.T) {
 	assert.Equal(t, int64(2), gotCounter2)
 }
 
+// TestRoundTrip_MultipleSaveCycles verifies that only the latest save cycle is restored.
 func TestRoundTrip_MultipleSaveCycles(t *testing.T) {
 	t.Parallel()
 
@@ -402,6 +422,7 @@ func TestRoundTrip_MultipleSaveCycles(t *testing.T) {
 
 // ---------- SaveSync ----------
 
+// TestSaveSync verifies that SaveSync writes the current metrics to disk.
 func TestSaveSync(t *testing.T) {
 	t.Parallel()
 
@@ -469,8 +490,8 @@ func TestUpdateMetrics_SyncOn(t *testing.T) {
 	assert.Len(t, metricsOnDisk, 2)
 
 	metricMap := map[string]model.Metric{}
-	for _, m := range metricsOnDisk {
-		metricMap[m.ID] = m
+	for _, metric := range metricsOnDisk {
+		metricMap[metric.ID] = metric
 	}
 
 	assert.Equal(t, "gauge", metricMap["batch_gauge"].Type)
@@ -504,6 +525,7 @@ func TestUpdateMetrics_CounterAccumulates(t *testing.T) {
 
 // ---------- PeriodicSave (smoke test) ----------
 
+// TestPeriodicSave_NoPanicOnStart verifies that the periodic saver starts and ticks without panicking.
 func TestPeriodicSave_NoPanicOnStart(t *testing.T) {
 	t.Parallel()
 

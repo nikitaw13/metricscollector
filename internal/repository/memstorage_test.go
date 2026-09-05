@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TestNewMemStorage verifies that the constructor returns an initialized empty storage.
 func TestNewMemStorage(t *testing.T) {
 	tests := []struct {
 		name string
@@ -32,6 +33,7 @@ func TestNewMemStorage(t *testing.T) {
 	}
 }
 
+// TestSetGauge verifies that SetGauge accepts values of any sign without error.
 func TestSetGauge(t *testing.T) {
 	type fields struct {
 		gauge   map[string]float64
@@ -88,6 +90,7 @@ func TestSetGauge(t *testing.T) {
 	}
 }
 
+// TestAddCounter verifies that deltas accumulate and the new total is returned.
 func TestAddCounter(t *testing.T) {
 	type fields struct {
 		gauge   map[string]float64

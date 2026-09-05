@@ -144,10 +144,10 @@ func (ps *PostgresStorage) AddCounter(name string, delta int64) (newDelta int64,
 
 // GetGauge returns the value of the named gauge metric.
 // Returns an error if the metric does not exist.
-func (ps *PostgresStorage) GetGauge(name string) (value float64, err error) {
+func (ps *PostgresStorage) GetGauge(name string) (float64, error) {
 	row := ps.db.QueryRow(getGaugeQuery, name)
 	var result gaugeRow
-	err = row.Scan(&result.value)
+	err := row.Scan(&result.value)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, fmt.Errorf("gauge %s %w", name, model.ErrMetricNotFound)
@@ -162,10 +162,10 @@ func (ps *PostgresStorage) GetGauge(name string) (value float64, err error) {
 
 // GetCounter returns the value of the named counter metric.
 // Returns an error if the metric does not exist.
-func (ps *PostgresStorage) GetCounter(name string) (value int64, err error) {
+func (ps *PostgresStorage) GetCounter(name string) (int64, error) {
 	row := ps.db.QueryRow(getCounterQuery, name)
 	var result counterRow
-	err = row.Scan(&result.delta)
+	err := row.Scan(&result.delta)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, fmt.Errorf("counter %s %w", name, model.ErrMetricNotFound)

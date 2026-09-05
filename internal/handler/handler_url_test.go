@@ -25,6 +25,7 @@ func doRequest(t *testing.T, ts *httptest.Server, method, path string) (*http.Re
 	return resp, string(respBody)
 }
 
+// testCase holds a single table-driven test case for URL endpoint tests.
 type testCase struct {
 	name   string
 	method string
@@ -203,6 +204,7 @@ var validationTests = []testCase{
 	},
 }
 
+// runTableTests executes table-driven cases against a test server and asserts status, body, and Content-Type.
 func runTableTests(t *testing.T, cases []testCase) {
 	ts := GetTestServer()
 	defer ts.Close()
@@ -217,13 +219,17 @@ func runTableTests(t *testing.T, cases []testCase) {
 	}
 }
 
+// TestUpdate verifies that valid URL update requests return 200 and store the metric.
 func TestUpdate(t *testing.T) {
 	runTableTests(t, updateTests)
 }
 
+// TestRead verifies the metric list page and single metric value reads.
 func TestRead(t *testing.T) {
 	runTableTests(t, readTests)
 }
+
+// TestValidate verifies that requests with an invalid type, name, or value are rejected with 4xx.
 func TestValidate(t *testing.T) {
 	runTableTests(t, validationTests)
 }

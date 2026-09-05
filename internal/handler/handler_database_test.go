@@ -10,6 +10,7 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+// TestPing verifies that /ping returns "Pong" on success and 500 when the database is unreachable.
 func TestPing(t *testing.T) {
 	t.Run("Successful /ping", func(t *testing.T) {
 		t.Parallel()

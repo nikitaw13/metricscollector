@@ -2,15 +2,19 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	handlermock "github.com/nikitaw13/metricscollector/internal/handler/mock"
 	"github.com/nikitaw13/metricscollector/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 )
 
 // expectedJSONContentType is the expected Content-Type header for all JSON responses.
@@ -185,6 +189,50 @@ var jsonValidationTests = []jsonTestCase{
 		"application/json",
 		jsonTestWant{
 			http.StatusNotFound,
+			expectedJSONContentType,
+		},
+	},
+	{
+		"Value invalid JSON syntax",
+		http.MethodPost,
+		"/value",
+		"{\"type\":\"gauge\", \"id\":",
+		"application/json",
+		jsonTestWant{
+			http.StatusBadRequest,
+			expectedJSONContentType,
+		},
+	},
+	{
+		"Value missing metric type",
+		http.MethodPost,
+		"/value",
+		"{}",
+		"application/json",
+		jsonTestWant{
+			http.StatusBadRequest,
+			expectedJSONContentType,
+		},
+	},
+	{
+		"Value invalid metric type",
+		http.MethodPost,
+		"/value",
+		"{\"type\":\"random\",\"id\":\"test\"}",
+		"application/json",
+		jsonTestWant{
+			http.StatusBadRequest,
+			expectedJSONContentType,
+		},
+	},
+	{
+		"Value missing metric name",
+		http.MethodPost,
+		"/value",
+		"{\"type\":\"gauge\"}",
+		"application/json",
+		jsonTestWant{
+			http.StatusBadRequest,
 			expectedJSONContentType,
 		},
 	},
@@ -488,3 +536,114 @@ func ptrFloat64(value float64) *float64 { return &value }
 
 // ptrInt64 returns a pointer to value, used to build *int64 for test expectations.
 func ptrInt64(value int64) *int64 { return &value }
+
+// TestJSONStorageErrors verifies that storage failures are mapped to HTTP 500
+// across the JSON endpoints, while a wrapped model.ErrMetricNotFound still
+// maps to 404 on reads.
+func TestJSONStorageErrors(t *testing.T) {
+	t.Parallel()
+
+	storageErr := errors.New("storage is unavailable")
+	notFoundGauge := fmt.Errorf("gauge err_gauge %w", model.ErrMetricNotFound)
+	notFoundCounter := fmt.Errorf("counter err_counter %w", model.ErrMetricNotFound)
+
+	tests := []struct {
+		name  string
+		setup func(ctrl *gomock.Controller) Repository
+		path  string
+		body  string
+		want  int
+	}{
+		{
+			name: "update gauge storage error returns 500",
+			setup: func(ctrl *gomock.Controller) Repository {
+				repo := handlermock.NewMockRepository(ctrl)
+				repo.EXPECT().SetGauge("err_gauge", 42.5).Return(storageErr)
+				return repo
+			},
+			path: "/update",
+			body: `{"type":"gauge","id":"err_gauge","value":42.5}`,
+			want: http.StatusInternalServerError,
+		},
+		{
+			name: "update counter storage error returns 500",
+			setup: func(ctrl *gomock.Controller) Repository {
+				repo := handlermock.NewMockRepository(ctrl)
+				repo.EXPECT().AddCounter("err_counter", int64(5)).Return(int64(0), storageErr)
+				return repo
+			},
+			path: "/update",
+			body: `{"type":"counter","id":"err_counter","delta":5}`,
+			want: http.StatusInternalServerError,
+		},
+		{
+			name: "updates batch storage error returns 500",
+			setup: func(ctrl *gomock.Controller) Repository {
+				repo := handlermock.NewMockRepository(ctrl)
+				repo.EXPECT().UpdateMetrics(gomock.Any(), gomock.Any()).Return(storageErr)
+				return repo
+			},
+			path: "/updates/",
+			body: `[{"type":"gauge","id":"err_gauge","value":42.5}]`,
+			want: http.StatusInternalServerError,
+		},
+		{
+			name: "value gauge storage error returns 500",
+			setup: func(ctrl *gomock.Controller) Repository {
+				repo := handlermock.NewMockRepository(ctrl)
+				repo.EXPECT().GetGauge("err_gauge").Return(float64(0), storageErr)
+				return repo
+			},
+			path: "/value",
+			body: `{"type":"gauge","id":"err_gauge"}`,
+			want: http.StatusInternalServerError,
+		},
+		{
+			name: "value gauge metric not found returns 404",
+			setup: func(ctrl *gomock.Controller) Repository {
+				repo := handlermock.NewMockRepository(ctrl)
+				repo.EXPECT().GetGauge("err_gauge").Return(float64(0), notFoundGauge)
+				return repo
+			},
+			path: "/value",
+			body: `{"type":"gauge","id":"err_gauge"}`,
+			want: http.StatusNotFound,
+		},
+		{
+			name: "value counter storage error returns 500",
+			setup: func(ctrl *gomock.Controller) Repository {
+				repo := handlermock.NewMockRepository(ctrl)
+				repo.EXPECT().GetCounter("err_counter").Return(int64(0), storageErr)
+				return repo
+			},
+			path: "/value",
+			body: `{"type":"counter","id":"err_counter"}`,
+			want: http.StatusInternalServerError,
+		},
+		{
+			name: "value counter metric not found returns 404",
+			setup: func(ctrl *gomock.Controller) Repository {
+				repo := handlermock.NewMockRepository(ctrl)
+				repo.EXPECT().GetCounter("err_counter").Return(int64(0), notFoundCounter)
+				return repo
+			},
+			path: "/value",
+			body: `{"type":"counter","id":"err_counter"}`,
+			want: http.StatusNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+			ts := GetTestServerWithRepository(tc.setup(ctrl))
+			t.Cleanup(ts.Close)
+
+			resp, _ := testJSONRequest(t, ts, http.MethodPost, tc.path, tc.body, "application/json")
+			assert.Equal(t, tc.want, resp.StatusCode)
+			assert.Equal(t, expectedJSONContentType, resp.Header.Get("Content-Type"))
+		})
+	}
+}

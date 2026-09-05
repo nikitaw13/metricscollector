@@ -40,6 +40,7 @@ func newMockStorage(t *testing.T) (*PostgresStorage, sqlmock.Sqlmock) {
 	return NewPostgresStorage(db), mock
 }
 
+// TestPostgresStorage_SetGauge verifies the gauge upsert and error wrapping on database failures.
 func TestPostgresStorage_SetGauge(t *testing.T) {
 	t.Parallel()
 
@@ -77,6 +78,7 @@ func TestPostgresStorage_SetGauge(t *testing.T) {
 	}
 }
 
+// TestPostgresStorage_AddCounter verifies that the RETURNING delta is propagated and failures are wrapped.
 func TestPostgresStorage_AddCounter(t *testing.T) {
 	t.Parallel()
 
@@ -118,6 +120,7 @@ func TestPostgresStorage_AddCounter(t *testing.T) {
 	}
 }
 
+// TestPostgresStorage_GetGauge verifies value lookup, the not-found mapping, and scan error wrapping.
 func TestPostgresStorage_GetGauge(t *testing.T) {
 	t.Parallel()
 
@@ -170,6 +173,7 @@ func TestPostgresStorage_GetGauge(t *testing.T) {
 	}
 }
 
+// TestPostgresStorage_GetCounter verifies delta lookup, the not-found mapping, and scan error wrapping.
 func TestPostgresStorage_GetCounter(t *testing.T) {
 	t.Parallel()
 
@@ -222,6 +226,7 @@ func TestPostgresStorage_GetCounter(t *testing.T) {
 	}
 }
 
+// TestPostgresStorage_GetAllGauges verifies multi-row and empty-table result mapping.
 func TestPostgresStorage_GetAllGauges(t *testing.T) {
 	t.Parallel()
 
@@ -258,6 +263,7 @@ func TestPostgresStorage_GetAllGauges(t *testing.T) {
 	}
 }
 
+// TestPostgresStorage_GetAllCounters verifies multi-row and empty-table result mapping.
 func TestPostgresStorage_GetAllCounters(t *testing.T) {
 	t.Parallel()
 
@@ -294,7 +300,7 @@ func TestPostgresStorage_GetAllCounters(t *testing.T) {
 	}
 }
 
-// Rows with an injected error on the second row exercise the rows.Err() branch.
+// TestPostgresStorage_GetAllGauges_IterationError verifies that a row iteration failure is wrapped.
 func TestPostgresStorage_GetAllGauges_IterationError(t *testing.T) {
 	t.Parallel()
 
@@ -313,6 +319,7 @@ func TestPostgresStorage_GetAllGauges_IterationError(t *testing.T) {
 	assert.ErrorContains(t, err, "error encountered during iteration")
 }
 
+// TestPostgresStorage_GetAllCounters_QueryError verifies that a query failure is wrapped.
 func TestPostgresStorage_GetAllCounters_QueryError(t *testing.T) {
 	t.Parallel()
 
@@ -326,6 +333,7 @@ func TestPostgresStorage_GetAllCounters_QueryError(t *testing.T) {
 	assert.ErrorContains(t, err, "error executing query")
 }
 
+// TestPostgresStorage_GetAllGauges_ScanError verifies that a scan failure is wrapped.
 func TestPostgresStorage_GetAllGauges_ScanError(t *testing.T) {
 	t.Parallel()
 
@@ -340,6 +348,7 @@ func TestPostgresStorage_GetAllGauges_ScanError(t *testing.T) {
 	assert.ErrorContains(t, err, "error scanning row")
 }
 
+// TestPostgresStorage_GetAllCounters_ScanError verifies that a scan failure is wrapped.
 func TestPostgresStorage_GetAllCounters_ScanError(t *testing.T) {
 	t.Parallel()
 
@@ -354,6 +363,7 @@ func TestPostgresStorage_GetAllCounters_ScanError(t *testing.T) {
 	assert.ErrorContains(t, err, "error scanning row")
 }
 
+// TestPostgresStorage_GetAllGauges_QueryError verifies that a query failure is wrapped.
 func TestPostgresStorage_GetAllGauges_QueryError(t *testing.T) {
 	t.Parallel()
 
@@ -367,6 +377,7 @@ func TestPostgresStorage_GetAllGauges_QueryError(t *testing.T) {
 	assert.ErrorContains(t, err, "error executing query")
 }
 
+// TestPostgresStorage_GetAllCounters_IterationError verifies that a row iteration failure is wrapped.
 func TestPostgresStorage_GetAllCounters_IterationError(t *testing.T) {
 	t.Parallel()
 

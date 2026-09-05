@@ -11,6 +11,7 @@ const (
 	Gauge   = "gauge"
 )
 
+// Errors describing invalid metric payloads and missing metrics.
 var (
 	ErrMissingType    = errors.New("Metric type is required")
 	ErrInvalidType    = errors.New("Invalid metric type")

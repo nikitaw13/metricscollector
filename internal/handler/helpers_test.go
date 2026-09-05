@@ -43,3 +43,8 @@ var expectedHTMLResponse = `<html><body>
 <h1>List of names and results of all currently known metrics</h1>
 <b>___test___</b>:   <code>234</code><br><b>___test___</b>:   <code>123</code><br><hr></body></html>
 `
+
+// GetTestServerWithRepository returns an httptest.Server backed by the provided Repository for tests needing a custom storage.
+func GetTestServerWithRepository(repo Repository) *httptest.Server {
+	return httptest.NewServer(NewMetricsHandler(repo, nil).NewRouter())
+}

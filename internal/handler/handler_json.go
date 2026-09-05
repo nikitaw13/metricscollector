@@ -184,16 +184,24 @@ func (h *MetricsHandler) handleJSONRead(w http.ResponseWriter, r *http.Request) 
 	switch metric.Type {
 	case model.Gauge:
 		value, err := h.storage.GetGauge(metric.ID)
-		if err != nil {
+		if errors.Is(err, model.ErrMetricNotFound) {
 			writeJSONError(w, http.StatusNotFound, err)
+			return
+		}
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
 		metric.Value = &value
 
 	case model.Counter:
 		delta, err := h.storage.GetCounter(metric.ID)
-		if err != nil {
+		if errors.Is(err, model.ErrMetricNotFound) {
 			writeJSONError(w, http.StatusNotFound, err)
+			return
+		}
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
 		metric.Delta = &delta
