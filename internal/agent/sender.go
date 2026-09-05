@@ -12,7 +12,7 @@ import (
 )
 
 // Sender is responsible for sending collected metrics to the server
-// via HTTP POST requests.
+// as a single batched HTTP POST request.
 type Sender struct {
 	BaseURL string
 	Storage Storage
@@ -20,110 +20,97 @@ type Sender struct {
 }
 
 // Run performs a one-shot send of all stored gauge and counter metrics to the server.
-// Counter metrics are reset to zero only after a successful (HTTP 200) response.
+// Counters are drained into the batch before sending; if delivery fails, their
+// drained values are merged back into storage for the next attempt.
 func (s *Sender) Run() {
-	updateURL := fmt.Sprintf("%s/update", s.BaseURL)
+	updatesURL := fmt.Sprintf("%s/updates", s.BaseURL)
+	var metrics []model.Metric
 
-	// Serialize and POST every gauge metric.
 	for metricName, value := range s.Storage.GetAllGauges() {
 		metric := model.Metric{
 			Type:  model.Gauge,
 			ID:    metricName,
 			Value: &value,
 		}
-
-		jsonBody, err := json.Marshal(&metric)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		compressedBody, err := Compress(jsonBody)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		req, err := http.NewRequest(
-			http.MethodPost,
-			updateURL,
-			bytes.NewReader(compressedBody),
-		)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		req.Header.Set("Content-Type", "application/json; charset=utf-8")
-		req.Header.Set("Content-Encoding", "gzip")
-
-		resp, err := s.Client.Do(req)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-
-		logRequest(resp, metricName, updateURL)
-		drainAndCloseResponse(resp)
+		metrics = append(metrics, metric)
 	}
 
-	// Serialize and POST every counter metric; reset on 200.
-	for metricName, value := range s.Storage.GetAllCounters() {
+	drained := s.Storage.DrainCounters()
+	for metricName, value := range drained {
 		metric := model.Metric{
 			Type:  model.Counter,
 			ID:    metricName,
 			Delta: &value,
 		}
+		metrics = append(metrics, metric)
+	}
 
-		jsonBody, err := json.Marshal(&metric)
-		if err != nil {
-			log.Println(err)
-			continue
+	// If delivery fails, merge the drained counter values back into storage.
+	committed := false
+	defer func() {
+		if !committed {
+			restoreCounters(s.Storage, drained)
 		}
+	}()
 
-		compressedBody, err := Compress(jsonBody)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
+	if len(metrics) == 0 {
+		log.Println("no metrics to send")
+		return
+	}
 
-		req, err := http.NewRequest(
-			http.MethodPost,
-			updateURL,
-			bytes.NewReader(compressedBody))
-		if err != nil {
-			log.Println(err)
-			continue
-		}
+	jsonBody, err := json.Marshal(&metrics)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-		req.Header.Set("Content-Type", "application/json; charset=utf-8")
-		req.Header.Set("Content-Encoding", "gzip")
+	compressedBody, err := Compress(jsonBody)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	req, err := http.NewRequest(
+		http.MethodPost,
+		updatesURL,
+		bytes.NewReader(compressedBody),
+	)
+	if err != nil {
+		log.Println(err)
+		return
+	}
 
-		resp, err := s.Client.Do(req)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	req.Header.Set("Content-Encoding", "gzip")
 
-		resetCounter(resp, metricName, s.Storage)
-		logRequest(resp, metricName, updateURL)
-		drainAndCloseResponse(resp)
+	resp, err := s.Client.Do(req)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	logRequest(resp, updatesURL)
+	drainAndCloseResponse(resp)
+
+	if resp.StatusCode >= http.StatusMultipleChoices {
+		return
+	}
+	committed = true
+}
+
+// restoreCounters merges drained counter values back into storage after a
+// failed send; the additive merge preserves increments collected in flight.
+func restoreCounters(storage Storage, drained map[string]int64) {
+	for name, value := range drained {
+		storage.AddCounter(name, value)
 	}
 }
 
-// resetCounter zeroes the named counter after a successful (HTTP 200) send.
-func resetCounter(resp *http.Response, metricName string, storage Storage) {
-	if resp.StatusCode == http.StatusOK {
-		storage.ResetCounter(metricName)
-	}
-}
-
-// logRequest logs the outcome of sending a single metric.
-func logRequest(resp *http.Response, metricName string, url string) {
-	if resp.StatusCode == http.StatusOK {
-		log.Printf("Metric '%s' sent to %s", metricName, url)
+// logRequest logs the outcome of sending a metrics batch.
+func logRequest(resp *http.Response, url string) {
+	if resp.StatusCode < 300 {
+		log.Printf("Metrics sent to %s", url)
 	} else {
-		log.Printf("Metric '%s' failed to send to %s, status: %d", metricName, url, resp.StatusCode)
+		log.Printf("Metrics failed to send to %s, status: %d", url, resp.StatusCode)
 	}
 }
 

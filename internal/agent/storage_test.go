@@ -4,6 +4,7 @@ import (
 	"math/rand/v2"
 	"testing"
 
+	"github.com/nikitaw13/metricscollector/internal/model"
 	"github.com/stretchr/testify/require"
 )
 
@@ -47,33 +48,12 @@ func TestAddCounter(t *testing.T) {
 	}
 }
 
-// TestResetCounter verifies that ResetCounter sets the counter value to zero.
-func TestResetCounter(t *testing.T) {
-	ms := NewAgentStorage()
-	for _, metricName := range CounterMetrics {
-		t.Run(metricName, func(t *testing.T) {
-			// Set random value for metricName and compare
-			randomValue := rand.Int64N(100)
-			ms.AddCounter(metricName, randomValue)
-			got, err := ms.GetCounter(metricName)
-			require.NoError(t, err)
-			require.Equal(t, randomValue, got)
-
-			// Set zero for metricName and compare
-			ms.ResetCounter(metricName)
-			got, err = ms.GetCounter(metricName)
-			require.NoError(t, err)
-			require.Equal(t, int64(0), got)
-		})
-	}
-}
-
 // TestGetGaugeError verifies that GetGauge returns an error for a nonexistent key.
 func TestGetGaugeError(t *testing.T) {
 	ms := NewAgentStorage()
 	t.Run("nonexistent gauge", func(t *testing.T) {
 		_, err := ms.GetGauge("__nonexistent__")
-		require.ErrorIs(t, err, ErrMetricNotFound)
+		require.ErrorIs(t, err, model.ErrMetricNotFound)
 	})
 }
 
@@ -82,7 +62,7 @@ func TestGetCounterError(t *testing.T) {
 	ms := NewAgentStorage()
 	t.Run("nonexistent counter", func(t *testing.T) {
 		_, err := ms.GetCounter("__nonexistent__")
-		require.ErrorIs(t, err, ErrMetricNotFound)
+		require.ErrorIs(t, err, model.ErrMetricNotFound)
 	})
 }
 
