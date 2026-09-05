@@ -8,9 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/PrometheRus/metricscollector/internal/model"
-	"github.com/PrometheRus/metricscollector/internal/repository"
 	"github.com/go-chi/chi"
+	"github.com/nikitaw13/metricscollector/internal/model"
 	"go.uber.org/zap"
 )
 
@@ -30,14 +29,14 @@ func NewMetricsHandler(storage Repository, db DBPinger) *MetricsHandler {
 
 // handleListMetrics returns an HTML page listing all known metrics.
 func (h *MetricsHandler) handleListMetrics(w http.ResponseWriter, r *http.Request) {
-	countersMap, err := h.storage.GetAllCounters()
+	counters, err := h.storage.GetAllCounters()
 	if err != nil {
 		Logger.Error("failed to get all counters", zap.Error(err))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	gaugesMap, err := h.storage.GetAllGauges()
+	gauges, err := h.storage.GetAllGauges()
 	if err != nil {
 		Logger.Error("failed to get all gauges", zap.Error(err))
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -48,12 +47,12 @@ func (h *MetricsHandler) handleListMetrics(w http.ResponseWriter, r *http.Reques
 	fmt.Fprintln(w, "<html><body>")
 	fmt.Fprintln(w, "<h1>List of names and results of all currently known metrics</h1>")
 
-	for k, v := range countersMap {
-		fmt.Fprintf(w, "<b>%v</b>:   <code>%v</code><br>", k, v)
+	for name, value := range counters {
+		fmt.Fprintf(w, "<b>%v</b>:   <code>%v</code><br>", name, value)
 	}
 
-	for k, v := range gaugesMap {
-		fmt.Fprintf(w, "<b>%v</b>:   <code>%v</code><br>", k, v)
+	for name, value := range gauges {
+		fmt.Fprintf(w, "<b>%v</b>:   <code>%v</code><br>", name, value)
 	}
 	fmt.Fprintln(w, "<hr></body></html>")
 }
@@ -64,8 +63,8 @@ func (h *MetricsHandler) handleURLRead(w http.ResponseWriter, r *http.Request) {
 	metricName := chi.URLParam(r, "METRIC")
 	switch chi.URLParam(r, "TYPE") {
 	case model.Gauge:
-		result, err := h.storage.GetGauge(metricName)
-		if errors.Is(err, repository.ErrMetricNotFound) {
+		value, err := h.storage.GetGauge(metricName)
+		if errors.Is(err, model.ErrMetricNotFound) {
 			Logger.Info("gauge not found", zap.String("metric", metricName))
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -75,11 +74,11 @@ func (h *MetricsHandler) handleURLRead(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		fmt.Fprintf(w, "%g\n", result)
+		fmt.Fprintf(w, "%g\n", value)
 
 	case model.Counter:
-		result, err := h.storage.GetCounter(metricName)
-		if errors.Is(err, repository.ErrMetricNotFound) {
+		delta, err := h.storage.GetCounter(metricName)
+		if errors.Is(err, model.ErrMetricNotFound) {
 			Logger.Info("counter not found", zap.String("metric", metricName))
 			http.Error(w, err.Error(), http.StatusNotFound)
 			return
@@ -90,7 +89,7 @@ func (h *MetricsHandler) handleURLRead(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		fmt.Fprintf(w, "%d\n", result)
+		fmt.Fprintf(w, "%d\n", delta)
 	}
 }
 

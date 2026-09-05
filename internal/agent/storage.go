@@ -64,7 +64,7 @@ func (ms *AgentStorage) ResetCounter(name string) {
 
 // GetGauge returns the value of the gauge metric by name.
 // Returns an error if the metric does not exist.
-func (ms *AgentStorage) GetGauge(name string) (value float64, err error) {
+func (ms *AgentStorage) GetGauge(name string) (float64, error) {
 	if _, ok := ms.gauge[name]; ok {
 		return ms.gauge[name], nil
 	}
@@ -73,7 +73,7 @@ func (ms *AgentStorage) GetGauge(name string) (value float64, err error) {
 
 // GetCounter returns the value of the counter metric by name.
 // Returns an error if the metric does not exist.
-func (ms *AgentStorage) GetCounter(name string) (value int64, err error) {
+func (ms *AgentStorage) GetCounter(name string) (int64, error) {
 	if _, ok := ms.counter[name]; ok {
 		return ms.counter[name], nil
 	}
@@ -81,11 +81,11 @@ func (ms *AgentStorage) GetCounter(name string) (value int64, err error) {
 }
 
 // GetAllGauges returns a copy of all gauge metrics to prevent external mutation.
-func (ms *AgentStorage) GetAllGauges() (m map[string]float64) {
+func (ms *AgentStorage) GetAllGauges() map[string]float64 {
 	return maps.Clone(ms.gauge)
 }
 
 // GetAllCounters returns a copy of all counter metrics to prevent external mutation.
-func (ms *AgentStorage) GetAllCounters() (m map[string]int64) {
+func (ms *AgentStorage) GetAllCounters() map[string]int64 {
 	return maps.Clone(ms.counter)
 }

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/nikitaw13/metricscollector/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -51,23 +52,23 @@ func TestPostgresStorage_SetGauge(t *testing.T) {
 		{name: "upsert succeeds"},
 		{name: "database error is wrapped", execErr: dbFailure},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			ps, mock := newMockStorage(t)
 			exec := mock.ExpectExec(qInsertGauge).
 				WithArgs("test_gauge", 42.5)
-			if tt.execErr != nil {
-				exec.WillReturnError(tt.execErr)
+			if tc.execErr != nil {
+				exec.WillReturnError(tc.execErr)
 			} else {
 				exec.WillReturnResult(sqlmock.NewResult(0, 1))
 			}
 
 			err := ps.SetGauge("test_gauge", 42.5)
 
-			if tt.execErr != nil {
-				assert.ErrorIs(t, err, tt.execErr)
+			if tc.execErr != nil {
+				assert.ErrorIs(t, err, tc.execErr)
 				assert.ErrorContains(t, err, "error writing gauge")
 			} else {
 				assert.NoError(t, err)
@@ -88,26 +89,30 @@ func TestPostgresStorage_AddCounter(t *testing.T) {
 		{name: "increment upsert succeeds"},
 		{name: "database error is wrapped", execErr: dbFailure},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			ps, mock := newMockStorage(t)
-			exec := mock.ExpectExec(qInsertCounter).
+			// AddCounter uses QueryRow (INSERT ... RETURNING delta),
+			// so the mock must expect a query, not an exec.
+			query := mock.ExpectQuery(qInsertCounter).
 				WithArgs("test_counter", int64(5))
-			if tt.execErr != nil {
-				exec.WillReturnError(tt.execErr)
+			if tc.execErr != nil {
+				query.WillReturnError(tc.execErr)
 			} else {
-				exec.WillReturnResult(sqlmock.NewResult(0, 1))
+				query.WillReturnRows(sqlmock.NewRows([]string{"delta"}).AddRow(int64(10)))
 			}
 
-			err := ps.AddCounter("test_counter", 5)
+			newDelta, err := ps.AddCounter("test_counter", 5)
 
-			if tt.execErr != nil {
-				assert.ErrorIs(t, err, tt.execErr)
+			if tc.execErr != nil {
+				assert.ErrorIs(t, err, tc.execErr)
 				assert.ErrorContains(t, err, "error writing counter")
+				assert.Zero(t, newDelta)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
+				assert.Equal(t, int64(10), newDelta, "RETURNING delta must be propagated")
 			}
 		})
 	}
@@ -129,9 +134,9 @@ func TestPostgresStorage_GetGauge(t *testing.T) {
 			want: 42.5,
 		},
 		{
-			name:    "missing gauge maps sql.ErrNoRows to ErrMetricNotFound",
+			name:    "missing gauge maps sql.ErrNoRows to model.ErrMetricNotFound",
 			rows:    sqlmock.NewRows([]string{"value"}),
-			wantErr: ErrMetricNotFound,
+			wantErr: model.ErrMetricNotFound,
 		},
 		{
 			name:       "scan failure is wrapped",
@@ -139,27 +144,27 @@ func TestPostgresStorage_GetGauge(t *testing.T) {
 			wantErrMsg: "error scanning row",
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			ps, mock := newMockStorage(t)
 			mock.ExpectQuery(qSelectGauge).
 				WithArgs("test_gauge").
-				WillReturnRows(tt.rows)
+				WillReturnRows(tc.rows)
 
 			value, err := ps.GetGauge("test_gauge")
 
 			switch {
-			case tt.wantErr != nil:
-				assert.ErrorIs(t, err, tt.wantErr)
+			case tc.wantErr != nil:
+				assert.ErrorIs(t, err, tc.wantErr)
 				assert.Zero(t, value)
-			case tt.wantErrMsg != "":
-				assert.ErrorContains(t, err, tt.wantErrMsg)
+			case tc.wantErrMsg != "":
+				assert.ErrorContains(t, err, tc.wantErrMsg)
 				assert.Zero(t, value)
 			default:
 				require.NoError(t, err)
-				assert.Equal(t, tt.want, value)
+				assert.Equal(t, tc.want, value)
 			}
 		})
 	}
@@ -181,9 +186,9 @@ func TestPostgresStorage_GetCounter(t *testing.T) {
 			want: 7,
 		},
 		{
-			name:    "missing counter maps sql.ErrNoRows to ErrMetricNotFound",
+			name:    "missing counter maps sql.ErrNoRows to model.ErrMetricNotFound",
 			rows:    sqlmock.NewRows([]string{"delta"}),
-			wantErr: ErrMetricNotFound,
+			wantErr: model.ErrMetricNotFound,
 		},
 		{
 			name:       "scan failure is wrapped",
@@ -191,27 +196,27 @@ func TestPostgresStorage_GetCounter(t *testing.T) {
 			wantErrMsg: "error scanning row",
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			ps, mock := newMockStorage(t)
 			mock.ExpectQuery(qSelectCounter).
 				WithArgs("test_counter").
-				WillReturnRows(tt.rows)
+				WillReturnRows(tc.rows)
 
-			value, err := ps.GetCounter("test_counter")
+			delta, err := ps.GetCounter("test_counter")
 
 			switch {
-			case tt.wantErr != nil:
-				assert.ErrorIs(t, err, tt.wantErr)
-				assert.Zero(t, value)
-			case tt.wantErrMsg != "":
-				assert.ErrorContains(t, err, tt.wantErrMsg)
-				assert.Zero(t, value)
+			case tc.wantErr != nil:
+				assert.ErrorIs(t, err, tc.wantErr)
+				assert.Zero(t, delta)
+			case tc.wantErrMsg != "":
+				assert.ErrorContains(t, err, tc.wantErrMsg)
+				assert.Zero(t, delta)
 			default:
 				require.NoError(t, err)
-				assert.Equal(t, tt.want, value)
+				assert.Equal(t, tc.want, delta)
 			}
 		})
 	}
@@ -238,17 +243,17 @@ func TestPostgresStorage_GetAllGauges(t *testing.T) {
 			want: map[string]float64{},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			ps, mock := newMockStorage(t)
-			mock.ExpectQuery(qSelectAllGauges).WillReturnRows(tt.rows)
+			mock.ExpectQuery(qSelectAllGauges).WillReturnRows(tc.rows)
 
-			result, err := ps.GetAllGauges()
+			gauges, err := ps.GetAllGauges()
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, result)
+			assert.Equal(t, tc.want, gauges)
 		})
 	}
 }
@@ -274,17 +279,17 @@ func TestPostgresStorage_GetAllCounters(t *testing.T) {
 			want: map[string]int64{},
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
 			ps, mock := newMockStorage(t)
-			mock.ExpectQuery(qSelectAllCounters).WillReturnRows(tt.rows)
+			mock.ExpectQuery(qSelectAllCounters).WillReturnRows(tc.rows)
 
-			result, err := ps.GetAllCounters()
+			counters, err := ps.GetAllCounters()
 
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, result)
+			assert.Equal(t, tc.want, counters)
 		})
 	}
 }
@@ -302,9 +307,9 @@ func TestPostgresStorage_GetAllGauges_IterationError(t *testing.T) {
 
 	mock.ExpectQuery(qSelectAllGauges).WillReturnRows(rows)
 
-	result, err := ps.GetAllGauges()
+	gauges, err := ps.GetAllGauges()
 
-	assert.Nil(t, result)
+	assert.Nil(t, gauges)
 	assert.ErrorContains(t, err, "error encountered during iteration")
 }
 
@@ -315,9 +320,9 @@ func TestPostgresStorage_GetAllCounters_QueryError(t *testing.T) {
 	mock.ExpectQuery(qSelectAllCounters).
 		WillReturnError(errors.New("db is down"))
 
-	result, err := ps.GetAllCounters()
+	counters, err := ps.GetAllCounters()
 
-	assert.Nil(t, result)
+	assert.Nil(t, counters)
 	assert.ErrorContains(t, err, "error executing query")
 }
 
@@ -329,9 +334,9 @@ func TestPostgresStorage_GetAllGauges_ScanError(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"name", "value"}).
 			AddRow("g1", "not-a-number"))
 
-	result, err := ps.GetAllGauges()
+	gauges, err := ps.GetAllGauges()
 
-	assert.Nil(t, result)
+	assert.Nil(t, gauges)
 	assert.ErrorContains(t, err, "error scanning row")
 }
 
@@ -343,9 +348,9 @@ func TestPostgresStorage_GetAllCounters_ScanError(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"name", "delta"}).
 			AddRow("c1", "not-a-number"))
 
-	result, err := ps.GetAllCounters()
+	counters, err := ps.GetAllCounters()
 
-	assert.Nil(t, result)
+	assert.Nil(t, counters)
 	assert.ErrorContains(t, err, "error scanning row")
 }
 
@@ -356,9 +361,9 @@ func TestPostgresStorage_GetAllGauges_QueryError(t *testing.T) {
 	mock.ExpectQuery(qSelectAllGauges).
 		WillReturnError(errors.New("db is down"))
 
-	result, err := ps.GetAllGauges()
+	gauges, err := ps.GetAllGauges()
 
-	assert.Nil(t, result)
+	assert.Nil(t, gauges)
 	assert.ErrorContains(t, err, "error executing query")
 }
 
@@ -374,15 +379,139 @@ func TestPostgresStorage_GetAllCounters_IterationError(t *testing.T) {
 
 	mock.ExpectQuery(qSelectAllCounters).WillReturnRows(rows)
 
-	result, err := ps.GetAllCounters()
+	counters, err := ps.GetAllCounters()
 
-	assert.Nil(t, result)
+	assert.Nil(t, counters)
 	assert.ErrorContains(t, err, "error encountered during iteration")
 }
 
-// TestPostgres_AddCounter_Integration runs only when TEST_DATABASE_DSN is set
+// ---------- UpdateMetrics ----------
+
+// TestPostgresStorage_UpdateMetrics_Success verifies that a mixed batch of
+// gauge and counter metrics is written inside a single transaction and committed.
+func TestPostgresStorage_UpdateMetrics_Success(t *testing.T) {
+	t.Parallel()
+
+	ps, mock := newMockStorage(t)
+
+	gaugeVal := 42.5
+	counterVal := int64(7)
+	metrics := []model.Metric{
+		{ID: "test_gauge", Type: model.Gauge, Value: &gaugeVal},
+		{ID: "test_counter", Type: model.Counter, Delta: &counterVal},
+	}
+
+	mock.ExpectBegin()
+	mock.ExpectExec(qInsertGauge).
+		WithArgs("test_gauge", 42.5).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(qInsertCounter).
+		WithArgs("test_counter", int64(7)).
+		WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectCommit()
+
+	err := ps.UpdateMetrics(t.Context(), metrics)
+
+	require.NoError(t, err)
+}
+
+// TestPostgresStorage_UpdateMetrics_RollbackOnError verifies that a failed
+// statement inside the batch aborts the whole transaction with a rollback.
+func TestPostgresStorage_UpdateMetrics_RollbackOnError(t *testing.T) {
+	t.Parallel()
+
+	dbFailure := errors.New("connection refused")
+
+	tests := []struct {
+		name        string
+		failCounter bool // fail the counter statement instead of the gauge one
+		wantMsg     string
+	}{
+		{name: "gauge exec failure rolls back", wantMsg: "error executing setGauge"},
+		{name: "counter exec failure rolls back", failCounter: true, wantMsg: "error executing addCounter"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ps, mock := newMockStorage(t)
+
+			gaugeVal := 1.5
+			counterVal := int64(3)
+			metrics := []model.Metric{
+				{ID: "test_gauge", Type: model.Gauge, Value: &gaugeVal},
+				{ID: "test_counter", Type: model.Counter, Delta: &counterVal},
+			}
+
+			mock.ExpectBegin()
+			if tc.failCounter {
+				mock.ExpectExec(qInsertGauge).
+					WithArgs("test_gauge", 1.5).
+					WillReturnResult(sqlmock.NewResult(0, 1))
+				mock.ExpectExec(qInsertCounter).
+					WithArgs("test_counter", int64(3)).
+					WillReturnError(dbFailure)
+			} else {
+				mock.ExpectExec(qInsertGauge).
+					WithArgs("test_gauge", 1.5).
+					WillReturnError(dbFailure)
+			}
+			mock.ExpectRollback()
+
+			err := ps.UpdateMetrics(t.Context(), metrics)
+
+			assert.ErrorIs(t, err, dbFailure)
+			assert.ErrorContains(t, err, tc.wantMsg)
+		})
+	}
+}
+
+// TestPostgresStorage_UpdateMetrics_TxLifecycleErrors verifies wrapping of
+// Begin and Commit failures; a metric with an unknown type is skipped silently.
+func TestPostgresStorage_UpdateMetrics_TxLifecycleErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		setup   func(sqlmock.Sqlmock)
+		wantMsg string
+	}{
+		{
+			name: "begin failure is wrapped",
+			setup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin().WillReturnError(errors.New("conn closed"))
+			},
+			wantMsg: "error beginning a transaction",
+		},
+		{
+			name: "commit failure is wrapped",
+			setup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectBegin()
+				mock.ExpectCommit().WillReturnError(errors.New("conn closed"))
+			},
+			wantMsg: "error committing a transaction",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			ps, mock := newMockStorage(t)
+			tc.setup(mock)
+
+			// Unknown metric type produces no statement; the transaction still runs.
+			err := ps.UpdateMetrics(t.Context(), []model.Metric{
+				{ID: "unknown", Type: "random"},
+			})
+
+			assert.ErrorContains(t, err, tc.wantMsg)
+		})
+	}
+}
+
+// TestPostgresStorage_AddCounter_Integration runs only when TEST_DATABASE_DSN is set
 // and verifies real upsert semantics (delta accumulation) that sqlmock cannot check.
-func TestPostgres_AddCounter_Integration(t *testing.T) {
+func TestPostgresStorage_AddCounter_Integration(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_DSN")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_DSN not set - skipping integration test")
@@ -390,15 +519,58 @@ func TestPostgres_AddCounter_Integration(t *testing.T) {
 
 	ps, err := NewPostgresStorageFromDSN(dsn, "../../migrations")
 	require.NoError(t, err)
-	defer ps.Close()
+	t.Cleanup(func() { assert.NoError(t, ps.Close()) })
 
 	// Unique name keeps the test repeatable: previous runs never affect the sum.
 	name := fmt.Sprintf("integration_test_counter_%d", time.Now().UnixNano())
 
-	require.NoError(t, ps.AddCounter(name, 5))
-	require.NoError(t, ps.AddCounter(name, 3))
+	newDelta, err := ps.AddCounter(name, 5)
+	require.NoError(t, err)
+	assert.Equal(t, int64(5), newDelta)
+
+	newDelta, err = ps.AddCounter(name, 5)
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), newDelta)
 
 	delta, err := ps.GetCounter(name)
 	require.NoError(t, err)
-	assert.Equal(t, int64(8), delta, "counter must accumulate via ON CONFLICT upsert")
+	assert.Equal(t, int64(10), delta, "counter must accumulate via ON CONFLICT upsert")
+}
+
+// TestPostgresStorage_UpdateMetrics_Integration runs only when TEST_DATABASE_DSN is set
+// and verifies real batch upsert semantics (counter accumulation, gauge overwrite)
+// within a single transaction.
+func TestPostgresStorage_UpdateMetrics_Integration(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_DSN")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_DSN not set - skipping integration test")
+	}
+
+	ps, err := NewPostgresStorageFromDSN(dsn, "../../migrations")
+	require.NoError(t, err)
+	t.Cleanup(func() { assert.NoError(t, ps.Close()) })
+
+	// Unique names keep the test repeatable: previous runs never affect the sum.
+	suffix := time.Now().UnixNano()
+	gaugeName := fmt.Sprintf("integration_test_gauge_%d", suffix)
+	counterName := fmt.Sprintf("integration_test_counter_%d", suffix)
+
+	gaugeVal := 12.5
+	counterVal := int64(5)
+	batch := []model.Metric{
+		{ID: gaugeName, Type: model.Gauge, Value: &gaugeVal},
+		{ID: counterName, Type: model.Counter, Delta: &counterVal},
+	}
+
+	require.NoError(t, ps.UpdateMetrics(t.Context(), batch))
+	// The same batch again: the counter must accumulate, the gauge must overwrite.
+	require.NoError(t, ps.UpdateMetrics(t.Context(), batch))
+
+	value, err := ps.GetGauge(gaugeName)
+	require.NoError(t, err)
+	assert.InDelta(t, 12.5, value, 0.001)
+
+	delta, err := ps.GetCounter(counterName)
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), delta, "counter must accumulate via batched ON CONFLICT upsert")
 }

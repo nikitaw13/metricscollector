@@ -5,8 +5,8 @@ import (
 	"github.com/go-chi/chi/middleware"
 )
 
-// New builds and returns a chi router with all metric API routes.
-func (h *MetricsHandler) New() *chi.Mux {
+// NewRouter builds and returns a chi router with all metric API routes.
+func (h *MetricsHandler) NewRouter() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(loggerMiddleware)
 	router.Use(DecompressMiddleware)

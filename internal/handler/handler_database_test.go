@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	handler "github.com/PrometheRus/metricscollector/internal/handler/mock"
+	handlermock "github.com/nikitaw13/metricscollector/internal/handler/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 )
@@ -15,10 +15,10 @@ func TestPing(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-		m := handler.NewMockDBPinger(ctrl)
-		ts := GetTestServerWithDatabase(m)
+		mockDB := handlermock.NewMockDBPinger(ctrl)
+		ts := GetTestServerWithDatabase(mockDB)
 		defer ts.Close()
-		m.EXPECT().PingContext(gomock.Any()).Return(nil)
+		mockDB.EXPECT().PingContext(gomock.Any()).Return(nil)
 
 		resp, body := doRequest(t, ts, http.MethodGet, "/ping")
 		require.Equal(t, http.StatusOK, resp.StatusCode)
@@ -30,10 +30,10 @@ func TestPing(t *testing.T) {
 		t.Parallel()
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-		m := handler.NewMockDBPinger(ctrl)
-		ts := GetTestServerWithDatabase(m)
+		mockDB := handlermock.NewMockDBPinger(ctrl)
+		ts := GetTestServerWithDatabase(mockDB)
 		defer ts.Close()
-		m.EXPECT().PingContext(gomock.Any()).Return(errors.New("connection refused"))
+		mockDB.EXPECT().PingContext(gomock.Any()).Return(errors.New("connection refused"))
 
 		resp, body := doRequest(t, ts, http.MethodGet, "/ping")
 		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)

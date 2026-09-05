@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/PrometheRus/metricscollector/internal/model"
+	"github.com/nikitaw13/metricscollector/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -306,6 +306,148 @@ func TestJSONUpdate(t *testing.T) {
 	runJSONTests(t, jsonUpdateTests)
 }
 
+// jsonUpdatesTests covers POST /updates: batch metric updates. Successful
+// batches return 204 without a Content-Type header; validation failures
+// return a JSON error body.
+var jsonUpdatesTests = []jsonTestCase{
+	{
+		"Valid batch with gauge and counter",
+		http.MethodPost,
+		"/updates/",
+		`[{"type":"gauge","id":"batch_gauge","value":42.5},{"type":"counter","id":"batch_counter","delta":7}]`,
+		"application/json",
+		jsonTestWant{http.StatusNoContent, ""},
+	},
+	{
+		"Empty batch returns no content",
+		http.MethodPost,
+		"/updates/",
+		`[]`,
+		"application/json",
+		jsonTestWant{http.StatusNoContent, ""},
+	},
+	{
+		"Batch with invalid metric type",
+		http.MethodPost,
+		"/updates/",
+		`[{"type":"gauge","id":"batch_gauge","value":1.0},{"type":"random","id":"batch_unknown"}]`,
+		"application/json",
+		jsonTestWant{http.StatusBadRequest, expectedJSONContentType},
+	},
+	{
+		"Batch with missing gauge value",
+		http.MethodPost,
+		"/updates/",
+		`[{"type":"gauge","id":"batch_gauge"}]`,
+		"application/json",
+		jsonTestWant{http.StatusBadRequest, expectedJSONContentType},
+	},
+	{
+		"Batch with missing metric name",
+		http.MethodPost,
+		"/updates/",
+		`[{"type":"counter","delta":5}]`,
+		"application/json",
+		jsonTestWant{http.StatusBadRequest, expectedJSONContentType},
+	},
+	{
+		"Non-array JSON body",
+		http.MethodPost,
+		"/updates/",
+		`{"type":"gauge","id":"batch_gauge","value":1.0}`,
+		"application/json",
+		jsonTestWant{http.StatusBadRequest, expectedJSONContentType},
+	},
+	{
+		"Invalid JSON syntax",
+		http.MethodPost,
+		"/updates/",
+		`[{invalid json`,
+		"application/json",
+		jsonTestWant{http.StatusBadRequest, expectedJSONContentType},
+	},
+	{
+		"Empty request body",
+		http.MethodPost,
+		"/updates/",
+		"",
+		"application/json",
+		jsonTestWant{http.StatusBadRequest, expectedJSONContentType},
+	},
+}
+
+// TestJSONUpdates verifies that POST /updates accepts valid metric batches
+// and rejects invalid payloads with 400.
+func TestJSONUpdates(t *testing.T) {
+	ts := GetTestServer()
+	defer ts.Close()
+
+	for _, tc := range jsonUpdatesTests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, _ := testJSONRequest(t, ts, tc.method, tc.path, tc.body, tc.contentType)
+			assert.Equal(t, tc.want.code, resp.StatusCode)
+			// 204 responses carry no body, so no Content-Type is set.
+			if tc.want.contentType != "" {
+				assert.Equal(t, tc.want.contentType, resp.Header.Get("Content-Type"))
+			}
+		})
+	}
+}
+
+// TestJSONUpdates_PersistsBatch verifies that a valid batch is fully stored
+// and readable via POST /value.
+func TestJSONUpdates_PersistsBatch(t *testing.T) {
+	ts := GetTestServer()
+	defer ts.Close()
+
+	batch := `[{"type":"gauge","id":"batch_gauge","value":42.5},{"type":"counter","id":"batch_counter","delta":7}]`
+	resp, _ := testJSONRequest(t, ts, http.MethodPost, "/updates/", batch, "application/json")
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+	tests := []struct {
+		name string
+		body string
+		want model.Metric
+	}{
+		{
+			"Read batch gauge",
+			`{"type":"gauge","id":"batch_gauge"}`,
+			model.Metric{ID: "batch_gauge", Type: "gauge", Value: ptrFloat64(42.5)},
+		},
+		{
+			"Read batch counter",
+			`{"type":"counter","id":"batch_counter"}`,
+			model.Metric{ID: "batch_counter", Type: "counter", Delta: ptrInt64(7)},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, body := testJSONRequest(t, ts, http.MethodPost, "/value", tc.body, "application/json")
+			require.Equal(t, http.StatusOK, resp.StatusCode)
+
+			var got model.Metric
+			require.NoError(t, json.Unmarshal([]byte(body), &got))
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+// TestJSONUpdates_RejectsBatchAtomically verifies that a batch containing an
+// invalid metric is rejected entirely: no metric from the batch is stored.
+func TestJSONUpdates_RejectsBatchAtomically(t *testing.T) {
+	ts := GetTestServer()
+	defer ts.Close()
+
+	batch := `[{"type":"gauge","id":"atomic_gauge","value":1.5},{"type":"random","id":"atomic_unknown"}]`
+	resp, _ := testJSONRequest(t, ts, http.MethodPost, "/updates/", batch, "application/json")
+	require.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+	// The valid metric from the rejected batch must not be stored.
+	resp, _ = testJSONRequest(t, ts, http.MethodPost, "/value", `{"type":"gauge","id":"atomic_gauge"}`, "application/json")
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
 // TestJSONRead verifies that /value returns the correct stored metric values in JSON.
 func TestJSONRead(t *testing.T) {
 	ts := GetTestServer()
@@ -328,21 +470,21 @@ func TestJSONRead(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			resp, body := testJSONRequest(t, ts, http.MethodPost, "/value", tt.body, "application/json")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, body := testJSONRequest(t, ts, http.MethodPost, "/value", tc.body, "application/json")
 			assert.Equal(t, http.StatusOK, resp.StatusCode)
 			assert.Equal(t, expectedJSONContentType, resp.Header.Get("Content-Type"))
 
 			var got model.Metric
 			require.NoError(t, json.Unmarshal([]byte(body), &got))
-			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
 
-// ptrFloat64 returns a pointer to v, used to build *float64 for test expectations.
-func ptrFloat64(v float64) *float64 { return &v }
+// ptrFloat64 returns a pointer to value, used to build *float64 for test expectations.
+func ptrFloat64(value float64) *float64 { return &value }
 
-// ptrInt64 returns a pointer to v, used to build *int64 for test expectations.
-func ptrInt64(v int64) *int64 { return &v }
+// ptrInt64 returns a pointer to value, used to build *int64 for test expectations.
+func ptrInt64(value int64) *int64 { return &value }

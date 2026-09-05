@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	"github.com/nikitaw13/metricscollector/internal/model"
 
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -20,12 +20,12 @@ const (
 	counterTableName = "counters"
 )
 
-type gauge struct {
+type gaugeRow struct {
 	name  string
 	value float64
 }
 
-type counter struct {
+type counterRow struct {
 	name  string
 	delta int64
 }
@@ -92,7 +92,7 @@ func NewPostgresStorageFromDSN(dsn, migrationsPath string) (*PostgresStorage, er
 		return nil, fmt.Errorf("failed to create migration driver: %w", err)
 	}
 
-	m, err := migrate.NewWithDatabaseInstance(
+	migrator, err := migrate.NewWithDatabaseInstance(
 		fmt.Sprintf("file://%s", migrationsPath),
 		"pgx",
 		driver,
@@ -102,7 +102,7 @@ func NewPostgresStorageFromDSN(dsn, migrationsPath string) (*PostgresStorage, er
 	}
 
 	log.Println("Applying migrations...")
-	if err := m.Up(); err != nil {
+	if err := migrator.Up(); err != nil {
 		if errors.Is(err, migrate.ErrNoChange) {
 			log.Println("No new migrations to apply.")
 		} else {
@@ -133,8 +133,8 @@ func (ps *PostgresStorage) SetGauge(name string, value float64) error {
 }
 
 // AddCounter increments the named counter metric by the specified delta.
-func (ps *PostgresStorage) AddCounter(name string, value int64) (newDelta int64, err error) {
-	err = ps.db.QueryRow(addCounterExec, name, value).Scan(&newDelta)
+func (ps *PostgresStorage) AddCounter(name string, delta int64) (newDelta int64, err error) {
+	err = ps.db.QueryRow(addCounterExec, name, delta).Scan(&newDelta)
 
 	if err != nil {
 		return 0, fmt.Errorf("error writing counter: %w", err)
@@ -146,11 +146,11 @@ func (ps *PostgresStorage) AddCounter(name string, value int64) (newDelta int64,
 // Returns an error if the metric does not exist.
 func (ps *PostgresStorage) GetGauge(name string) (value float64, err error) {
 	row := ps.db.QueryRow(getGaugeQuery, name)
-	var result gauge
+	var result gaugeRow
 	err = row.Scan(&result.value)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, fmt.Errorf("gauge %s %w", name, ErrMetricNotFound)
+		return 0, fmt.Errorf("gauge %s %w", name, model.ErrMetricNotFound)
 	}
 
 	if err != nil {
@@ -164,11 +164,11 @@ func (ps *PostgresStorage) GetGauge(name string) (value float64, err error) {
 // Returns an error if the metric does not exist.
 func (ps *PostgresStorage) GetCounter(name string) (value int64, err error) {
 	row := ps.db.QueryRow(getCounterQuery, name)
-	var result counter
+	var result counterRow
 	err = row.Scan(&result.delta)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return 0, fmt.Errorf("counter %s %w", name, ErrMetricNotFound)
+		return 0, fmt.Errorf("counter %s %w", name, model.ErrMetricNotFound)
 	}
 
 	if err != nil {
@@ -179,23 +179,23 @@ func (ps *PostgresStorage) GetCounter(name string) (value int64, err error) {
 }
 
 // GetAllGauges returns a shallow copy of all gauge metrics to prevent external mutation.
-func (ps *PostgresStorage) GetAllGauges() (result map[string]float64, err error) {
+func (ps *PostgresStorage) GetAllGauges() (gauges map[string]float64, err error) {
 	rows, err := ps.db.Query(getAllGaugesQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}
 	defer rows.Close()
 
-	result = make(map[string]float64)
+	gauges = make(map[string]float64)
 
 	for rows.Next() {
-		var g gauge
+		var g gaugeRow
 		err = rows.Scan(&g.name, &g.value)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
 
-		result[g.name] = g.value
+		gauges[g.name] = g.value
 	}
 
 	err = rows.Err()
@@ -203,27 +203,27 @@ func (ps *PostgresStorage) GetAllGauges() (result map[string]float64, err error)
 		return nil, fmt.Errorf("error encountered during iteration: %w", err)
 	}
 
-	return result, nil
+	return gauges, nil
 }
 
 // GetAllCounters returns a shallow copy of all counter metrics to prevent external mutation.
-func (ps *PostgresStorage) GetAllCounters() (result map[string]int64, err error) {
+func (ps *PostgresStorage) GetAllCounters() (counters map[string]int64, err error) {
 	rows, err := ps.db.Query(getAllCountersQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}
 	defer rows.Close()
 
-	result = make(map[string]int64)
+	counters = make(map[string]int64)
 
 	for rows.Next() {
-		var c counter
+		var c counterRow
 		err = rows.Scan(&c.name, &c.delta)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning row: %w", err)
 		}
 
-		result[c.name] = c.delta
+		counters[c.name] = c.delta
 	}
 
 	err = rows.Err()
@@ -231,9 +231,10 @@ func (ps *PostgresStorage) GetAllCounters() (result map[string]int64, err error)
 		return nil, fmt.Errorf("error encountered during iteration: %w", err)
 	}
 
-	return result, nil
+	return counters, nil
 }
 
+// UpdateMetrics applies a batch of metric updates in a single database transaction.
 func (ps *PostgresStorage) UpdateMetrics(ctx context.Context, metrics []model.Metric) (err error) {
 	tx, err := ps.db.BeginTx(ctx, nil)
 	if err != nil {

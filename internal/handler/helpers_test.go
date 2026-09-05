@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http/httptest"
 
-	"github.com/PrometheRus/metricscollector/internal/repository"
+	"github.com/nikitaw13/metricscollector/internal/repository"
 )
 
 // defaultGaugeValue is the pre-seeded gauge value used across handler tests.
@@ -16,14 +16,14 @@ const defaultCounterValue = 234
 // pre-populated with one gauge and one counter metric named "___test___".
 // Database is nil; use GetTestServerWithDatabase for DB-dependent tests.
 func GetTestServer() (server *httptest.Server) {
-	var s = repository.NewMemStorage()
-	s.SetGauge("___test___", defaultGaugeValue)
-	s.AddCounter("___test___", defaultCounterValue)
-	var h = MetricsHandler{
-		storage:  s,
+	storage := repository.NewMemStorage()
+	storage.SetGauge("___test___", defaultGaugeValue)
+	storage.AddCounter("___test___", defaultCounterValue)
+	metricsHandler := MetricsHandler{
+		storage:  storage,
 		database: nil,
 	}
-	router := h.New()
+	router := metricsHandler.NewRouter()
 	server = httptest.NewServer(router)
 	return
 }
@@ -31,9 +31,9 @@ func GetTestServer() (server *httptest.Server) {
 // GetTestServerWithDatabase returns an httptest.Server backed by a fresh MemStorage
 // and the provided Database for testing routes that require DB connectivity.
 func GetTestServerWithDatabase(db DBPinger) (server *httptest.Server) {
-	var s = repository.NewMemStorage()
-	var h = NewMetricsHandler(s, db)
-	router := h.New()
+	storage := repository.NewMemStorage()
+	metricsHandler := NewMetricsHandler(storage, db)
+	router := metricsHandler.NewRouter()
 	server = httptest.NewServer(router)
 	return
 }

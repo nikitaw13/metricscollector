@@ -33,11 +33,11 @@ func TestCompressMiddlewareGzipResponse(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "gzip", rec.Header().Get("Content-Encoding"))
 
-	gr, err := gzip.NewReader(rec.Body)
+	gzipReader, err := gzip.NewReader(rec.Body)
 	require.NoError(t, err)
-	defer gr.Close()
+	defer gzipReader.Close()
 
-	body, err := io.ReadAll(gr)
+	body, err := io.ReadAll(gzipReader)
 	require.NoError(t, err)
 	assert.Equal(t, `{"status":"ok"}`, string(body))
 }
@@ -54,10 +54,10 @@ func TestCompressMiddlewareDeflateResponse(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "deflate", rec.Header().Get("Content-Encoding"))
 
-	fr := flate.NewReader(rec.Body)
-	defer fr.Close()
+	flateReader := flate.NewReader(rec.Body)
+	defer flateReader.Close()
 
-	body, err := io.ReadAll(fr)
+	body, err := io.ReadAll(flateReader)
 	require.NoError(t, err)
 	assert.Equal(t, `{"status":"ok"}`, string(body))
 }
@@ -114,21 +114,21 @@ func TestCompressMiddlewareCompressesHTML(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "gzip", rec.Header().Get("Content-Encoding"))
 
-	gr, err := gzip.NewReader(rec.Body)
+	gzipReader, err := gzip.NewReader(rec.Body)
 	require.NoError(t, err)
-	defer gr.Close()
+	defer gzipReader.Close()
 
-	body, err := io.ReadAll(gr)
+	body, err := io.ReadAll(gzipReader)
 	require.NoError(t, err)
 	assert.Equal(t, "<html>hi</html>", string(body))
 }
 
 func TestDecompressMiddlewareGzipBody(t *testing.T) {
 	var buf bytes.Buffer
-	gw := gzip.NewWriter(&buf)
-	_, err := gw.Write([]byte(`{"status":"ok"}`))
+	gzipWriter := gzip.NewWriter(&buf)
+	_, err := gzipWriter.Write([]byte(`{"status":"ok"}`))
 	require.NoError(t, err)
-	require.NoError(t, gw.Close())
+	require.NoError(t, gzipWriter.Close())
 
 	var gotBody string
 	handler := DecompressMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -150,10 +150,10 @@ func TestDecompressMiddlewareGzipBody(t *testing.T) {
 
 func TestDecompressMiddlewareDeflateBody(t *testing.T) {
 	var buf bytes.Buffer
-	fw, _ := flate.NewWriter(&buf, flate.BestCompression)
-	_, err := fw.Write([]byte(`{"status":"ok"}`))
+	flateWriter, _ := flate.NewWriter(&buf, flate.BestCompression)
+	_, err := flateWriter.Write([]byte(`{"status":"ok"}`))
 	require.NoError(t, err)
-	require.NoError(t, fw.Close())
+	require.NoError(t, flateWriter.Close())
 
 	var gotBody string
 	handler := DecompressMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

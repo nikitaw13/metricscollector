@@ -207,12 +207,12 @@ func runTableTests(t *testing.T, cases []testCase) {
 	ts := GetTestServer()
 	defer ts.Close()
 
-	for _, v := range cases {
-		t.Run(v.name, func(t *testing.T) {
-			resp, body := doRequest(t, ts, v.method, v.path)
-			assert.Equal(t, v.want.code, resp.StatusCode)
-			assert.Equal(t, v.want.response, body)
-			assert.Equal(t, v.want.contentType, resp.Header.Get("Content-Type"))
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, body := doRequest(t, ts, tc.method, tc.path)
+			assert.Equal(t, tc.want.code, resp.StatusCode)
+			assert.Equal(t, tc.want.response, body)
+			assert.Equal(t, tc.want.contentType, resp.Header.Get("Content-Type"))
 		})
 	}
 }

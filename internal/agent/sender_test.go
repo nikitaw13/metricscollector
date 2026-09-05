@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/PrometheRus/metricscollector/internal/model"
+	"github.com/nikitaw13/metricscollector/internal/model"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,16 +24,16 @@ const expectedContentType = "application/json; charset=utf-8"
 //   - the HTTP method is POST,
 //   - the Content-Type header is "application/json; charset=utf-8".
 func TestSendMetrics(t *testing.T) {
-	as := NewAgentStorage()
+	storage := NewAgentStorage()
 
-	for _, v := range GaugeMetrics {
+	for _, metricName := range GaugeMetrics {
 		initialValue := rand.Float64()
-		as.SetGauge(v, initialValue)
+		storage.SetGauge(metricName, initialValue)
 	}
 
-	for _, v := range CounterMetrics {
+	for _, metricName := range CounterMetrics {
 		initialValue := rand.Int64()
-		as.AddCounter(v, initialValue)
+		storage.AddCounter(metricName, initialValue)
 	}
 
 	received := map[string]bool{}
@@ -41,7 +41,7 @@ func TestSendMetrics(t *testing.T) {
 	method := map[string]string{}
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var m model.Metric
+		var metric model.Metric
 
 		if r.Header.Get("Content-Encoding") == "gzip" {
 
@@ -59,14 +59,14 @@ func TestSendMetrics(t *testing.T) {
 
 		}
 
-		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&metric); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 
-		received[m.ID] = true
-		method[m.ID] = r.Method
-		contentType[m.ID] = r.Header.Get("Content-Type")
+		received[metric.ID] = true
+		method[metric.ID] = r.Method
+		contentType[metric.ID] = r.Header.Get("Content-Type")
 
 		w.WriteHeader(http.StatusOK)
 	})
@@ -76,7 +76,7 @@ func TestSendMetrics(t *testing.T) {
 
 	sender := &Sender{
 		BaseURL: ts.URL,
-		Storage: as,
+		Storage: storage,
 		Client: http.Client{
 			Timeout: 5 * time.Second,
 		},
@@ -84,26 +84,26 @@ func TestSendMetrics(t *testing.T) {
 
 	sender.Run()
 
-	for _, m := range GaugeMetrics {
-		t.Run(fmt.Sprintf("Received %v", m), func(t *testing.T) {
-			assert.Equal(t, true, received[m])
+	for _, metricName := range GaugeMetrics {
+		t.Run(fmt.Sprintf("Received %v", metricName), func(t *testing.T) {
+			assert.Equal(t, true, received[metricName])
 		})
-		t.Run(fmt.Sprintf("Method %v", m), func(t *testing.T) {
-			assert.Equal(t, http.MethodPost, method[m])
+		t.Run(fmt.Sprintf("Method %v", metricName), func(t *testing.T) {
+			assert.Equal(t, http.MethodPost, method[metricName])
 		})
-		t.Run(fmt.Sprintf("Content-Type %v", m), func(t *testing.T) {
-			assert.Equal(t, expectedContentType, contentType[m])
+		t.Run(fmt.Sprintf("Content-Type %v", metricName), func(t *testing.T) {
+			assert.Equal(t, expectedContentType, contentType[metricName])
 		})
 	}
-	for _, m := range CounterMetrics {
-		t.Run(fmt.Sprintf("Received %v", m), func(t *testing.T) {
-			assert.Equal(t, true, received[m])
+	for _, metricName := range CounterMetrics {
+		t.Run(fmt.Sprintf("Received %v", metricName), func(t *testing.T) {
+			assert.Equal(t, true, received[metricName])
 		})
-		t.Run(fmt.Sprintf("Method %v", m), func(t *testing.T) {
-			assert.Equal(t, http.MethodPost, method[m])
+		t.Run(fmt.Sprintf("Method %v", metricName), func(t *testing.T) {
+			assert.Equal(t, http.MethodPost, method[metricName])
 		})
-		t.Run(fmt.Sprintf("Content-Type %v", m), func(t *testing.T) {
-			assert.Equal(t, expectedContentType, contentType[m])
+		t.Run(fmt.Sprintf("Content-Type %v", metricName), func(t *testing.T) {
+			assert.Equal(t, expectedContentType, contentType[metricName])
 		})
 	}
 }
@@ -111,11 +111,11 @@ func TestSendMetrics(t *testing.T) {
 // TestResetCounterOnSuccess verifies that counter metrics are reset to zero
 // only after successful delivery (HTTP 200).
 func TestResetCounterOnSuccess(t *testing.T) {
-	as := NewAgentStorage()
+	storage := NewAgentStorage()
 
 	initialValue := rand.Int64()
-	for _, v := range CounterMetrics {
-		as.AddCounter(v, initialValue)
+	for _, metricName := range CounterMetrics {
+		storage.AddCounter(metricName, initialValue)
 	}
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -127,7 +127,7 @@ func TestResetCounterOnSuccess(t *testing.T) {
 
 	sender := &Sender{
 		BaseURL: ts.URL,
-		Storage: as,
+		Storage: storage,
 		Client: http.Client{
 			Timeout: 5 * time.Second,
 		},
@@ -135,10 +135,10 @@ func TestResetCounterOnSuccess(t *testing.T) {
 
 	sender.Run()
 
-	for _, m := range CounterMetrics {
-		t.Run(fmt.Sprintf("counter %v reset to zero", m), func(t *testing.T) {
-			val, _ := as.GetCounter(m)
-			assert.Equal(t, int64(0), val)
+	for _, metricName := range CounterMetrics {
+		t.Run(fmt.Sprintf("counter %v reset to zero", metricName), func(t *testing.T) {
+			value, _ := storage.GetCounter(metricName)
+			assert.Equal(t, int64(0), value)
 		})
 	}
 }
@@ -146,11 +146,11 @@ func TestResetCounterOnSuccess(t *testing.T) {
 // TestKeepCounterOnError verifies that counter metrics are NOT reset
 // when delivery fails (non-200 response), preserving them for retry.
 func TestKeepCounterOnError(t *testing.T) {
-	as := NewAgentStorage()
+	storage := NewAgentStorage()
 
 	initialValue := rand.Int64()
-	for _, v := range CounterMetrics {
-		as.AddCounter(v, initialValue)
+	for _, metricName := range CounterMetrics {
+		storage.AddCounter(metricName, initialValue)
 	}
 
 	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +162,7 @@ func TestKeepCounterOnError(t *testing.T) {
 
 	sender := &Sender{
 		BaseURL: ts.URL,
-		Storage: as,
+		Storage: storage,
 		Client: http.Client{
 			Timeout: 5 * time.Second,
 		},
@@ -170,10 +170,10 @@ func TestKeepCounterOnError(t *testing.T) {
 
 	sender.Run()
 
-	for _, m := range CounterMetrics {
-		t.Run(fmt.Sprintf("counter %v preserved on error", m), func(t *testing.T) {
-			val, _ := as.GetCounter(m)
-			assert.Equal(t, initialValue, val)
+	for _, metricName := range CounterMetrics {
+		t.Run(fmt.Sprintf("counter %v preserved on error", metricName), func(t *testing.T) {
+			value, _ := storage.GetCounter(metricName)
+			assert.Equal(t, initialValue, value)
 		})
 	}
 }

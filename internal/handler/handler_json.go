@@ -7,7 +7,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/PrometheRus/metricscollector/internal/model"
+	"github.com/nikitaw13/metricscollector/internal/model"
 	"go.uber.org/zap"
 )
 

@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/PrometheRus/metricscollector/internal/model"
+	"github.com/nikitaw13/metricscollector/internal/model"
 )
 
 // Sender is responsible for sending collected metrics to the server
@@ -26,13 +26,13 @@ func (s *Sender) Run() {
 
 	// Serialize and POST every gauge metric.
 	for metricName, value := range s.Storage.GetAllGauges() {
-		m := model.Metric{
+		metric := model.Metric{
 			Type:  model.Gauge,
 			ID:    metricName,
 			Value: &value,
 		}
 
-		jsonBody, err := json.Marshal(&m)
+		jsonBody, err := json.Marshal(&metric)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -44,7 +44,7 @@ func (s *Sender) Run() {
 			continue
 		}
 
-		r, err := http.NewRequest(
+		req, err := http.NewRequest(
 			http.MethodPost,
 			updateURL,
 			bytes.NewReader(compressedBody),
@@ -54,10 +54,10 @@ func (s *Sender) Run() {
 			continue
 		}
 
-		r.Header.Set("Content-Type", "application/json; charset=utf-8")
-		r.Header.Set("Content-Encoding", "gzip")
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		req.Header.Set("Content-Encoding", "gzip")
 
-		resp, err := s.Client.Do(r)
+		resp, err := s.Client.Do(req)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -69,13 +69,13 @@ func (s *Sender) Run() {
 
 	// Serialize and POST every counter metric; reset on 200.
 	for metricName, value := range s.Storage.GetAllCounters() {
-		m := model.Metric{
+		metric := model.Metric{
 			Type:  model.Counter,
 			ID:    metricName,
 			Delta: &value,
 		}
 
-		jsonBody, err := json.Marshal(&m)
+		jsonBody, err := json.Marshal(&metric)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -87,7 +87,7 @@ func (s *Sender) Run() {
 			continue
 		}
 
-		r, err := http.NewRequest(
+		req, err := http.NewRequest(
 			http.MethodPost,
 			updateURL,
 			bytes.NewReader(compressedBody))
@@ -96,10 +96,10 @@ func (s *Sender) Run() {
 			continue
 		}
 
-		r.Header.Set("Content-Type", "application/json; charset=utf-8")
-		r.Header.Set("Content-Encoding", "gzip")
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+		req.Header.Set("Content-Encoding", "gzip")
 
-		resp, err := s.Client.Do(r)
+		resp, err := s.Client.Do(req)
 		if err != nil {
 			log.Println(err)
 			continue

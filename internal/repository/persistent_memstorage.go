@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/PrometheRus/metricscollector/internal/model"
+	"github.com/nikitaw13/metricscollector/internal/model"
 )
 
 // PersistentMemStorage wraps MemStorage with file-based persistence capabilities.
@@ -68,17 +68,17 @@ func (ps *PersistentMemStorage) Save() error {
 
 	defer file.Close()
 
-	gaugesMap, _ := ps.GetAllGauges()
-	countersMap, _ := ps.GetAllCounters()
+	gauges, _ := ps.GetAllGauges()
+	counters, _ := ps.GetAllCounters()
 	var metrics []model.Metric
 
-	for key, value := range gaugesMap {
-		metric := model.Metric{ID: key, Type: "gauge", Value: &value}
+	for name, value := range gauges {
+		metric := model.Metric{ID: name, Type: "gauge", Value: &value}
 		metrics = append(metrics, metric)
 	}
 
-	for key, value := range countersMap {
-		metric := model.Metric{ID: key, Type: "counter", Delta: &value}
+	for name, value := range counters {
+		metric := model.Metric{ID: name, Type: "counter", Delta: &value}
 		metrics = append(metrics, metric)
 	}
 
@@ -143,6 +143,7 @@ func (ps *PersistentMemStorage) AddCounter(name string, delta int64) (newDelta i
 	return ps.MemStorage.counter[name], nil
 }
 
+// UpdateMetrics applies a batch of metric updates and saves to disk when sync-write is enabled.
 func (ps *PersistentMemStorage) UpdateMetrics(ctx context.Context, metrics []model.Metric) (err error) {
 	err = ps.MemStorage.UpdateMetrics(ctx, metrics)
 	if err != nil {

@@ -3,7 +3,7 @@ package handler
 import (
 	"context"
 
-	"github.com/PrometheRus/metricscollector/internal/model"
+	"github.com/nikitaw13/metricscollector/internal/model"
 )
 
 // StorageGetter defines read-only operations for metric storage used by the handler.
@@ -17,7 +17,7 @@ type StorageGetter interface {
 // StorageSetter defines write operations for metric storage used by the handler.
 type StorageSetter interface {
 	SetGauge(name string, value float64) error
-	AddCounter(name string, value int64) (int64, error)
+	AddCounter(name string, delta int64) (int64, error)
 	UpdateMetrics(ctx context.Context, metrics []model.Metric) error
 }
 

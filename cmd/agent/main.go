@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/PrometheRus/metricscollector/internal/agent"
+	"github.com/nikitaw13/metricscollector/internal/agent"
 )
 
 func main() {

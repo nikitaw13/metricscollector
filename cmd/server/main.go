@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/PrometheRus/metricscollector/internal/handler"
-	"github.com/PrometheRus/metricscollector/internal/repository"
+	"github.com/nikitaw13/metricscollector/internal/handler"
+	"github.com/nikitaw13/metricscollector/internal/repository"
 	"go.uber.org/zap"
 )
 
@@ -71,7 +71,7 @@ func run() error {
 
 	metricsHandler := handler.NewMetricsHandler(storageToUse, dbToUse)
 
-	router := metricsHandler.New()
+	router := metricsHandler.NewRouter()
 
 	srv := &http.Server{
 		Addr:         flagHTTPAddr,
@@ -81,9 +81,9 @@ func run() error {
 		Handler:      router,
 	}
 
-	if pms, ok := storageToUse.(*repository.PersistentMemStorage); ok {
+	if persistentStorage, ok := storageToUse.(*repository.PersistentMemStorage); ok {
 		if !isSyncWrite {
-			go pms.PeriodicSave(time.Duration(flagStoreInterval) * time.Second)
+			go persistentStorage.PeriodicSave(time.Duration(flagStoreInterval) * time.Second)
 		}
 	}
 

@@ -1,4 +1,4 @@
-module github.com/PrometheRus/metricscollector
+module github.com/nikitaw13/metricscollector
 
 go 1.25.1
 
