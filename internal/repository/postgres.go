@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/PrometheRus/metricscollector/internal/model"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/pgx/v5"
 
@@ -15,8 +16,8 @@ import (
 )
 
 const (
-	gaugeTable   = "gauges"
-	counterTable = "counters"
+	gaugeTableName   = "gauges"
+	counterTableName = "counters"
 )
 
 type gauge struct {
@@ -40,35 +41,36 @@ func (ps *PostgresStorage) Close() error {
 }
 
 var (
-	addCounterQuery = fmt.Sprintf(`
+	addCounterExec = fmt.Sprintf(`
     INSERT INTO %s (name, delta)
     VALUES ($1, $2)
     ON CONFLICT (name) DO UPDATE
-    SET delta = %s.delta + EXCLUDED.delta`, counterTable, counterTable)
+    SET delta = %s.delta + EXCLUDED.delta
+	RETURNING delta;`, counterTableName, counterTableName)
 
-	setGaugeQuery = fmt.Sprintf(`
+	setGaugeExec = fmt.Sprintf(`
 	INSERT INTO %s (name, value) 
 	VALUES ($1, $2) 
 	ON CONFLICT (name) DO UPDATE 
-	SET value = $2;`, gaugeTable)
+	SET value = $2;`, gaugeTableName)
 
 	getCounterQuery = fmt.Sprintf(`
 	SELECT delta 
 	FROM %s
-	WHERE NAME = $1;`, counterTable)
+	WHERE NAME = $1;`, counterTableName)
 
 	getGaugeQuery = fmt.Sprintf(`
 	SELECT value 
 	FROM %s
-	WHERE NAME = $1;`, gaugeTable)
+	WHERE NAME = $1;`, gaugeTableName)
 
 	getAllCountersQuery = fmt.Sprintf(`
 	SELECT name, delta 
-	FROM %s;`, counterTable)
+	FROM %s;`, counterTableName)
 
 	getAllGaugesQuery = fmt.Sprintf(`
 	SELECT name, value 
-	FROM %s;`, gaugeTable)
+	FROM %s;`, gaugeTableName)
 )
 
 // NewPostgresStorage creates a new PostgresStorage instance.
@@ -121,7 +123,7 @@ func (ps *PostgresStorage) PingContext(ctx context.Context) error {
 
 // SetGauge sets the named gauge metric to the specified value, overwriting any previous value.
 func (ps *PostgresStorage) SetGauge(name string, value float64) error {
-	_, err := ps.db.Exec(setGaugeQuery, name, value)
+	_, err := ps.db.Exec(setGaugeExec, name, value)
 
 	if err != nil {
 		return fmt.Errorf("error writing gauge: %w", err)
@@ -131,13 +133,13 @@ func (ps *PostgresStorage) SetGauge(name string, value float64) error {
 }
 
 // AddCounter increments the named counter metric by the specified delta.
-func (ps *PostgresStorage) AddCounter(name string, value int64) error {
-	_, err := ps.db.Exec(addCounterQuery, name, value)
+func (ps *PostgresStorage) AddCounter(name string, value int64) (newDelta int64, err error) {
+	err = ps.db.QueryRow(addCounterExec, name, value).Scan(&newDelta)
 
 	if err != nil {
-		return fmt.Errorf("error writing counter: %w", err)
+		return 0, fmt.Errorf("error writing counter: %w", err)
 	}
-	return nil
+	return newDelta, nil
 }
 
 // GetGauge returns the value of the named gauge metric.
@@ -230,4 +232,36 @@ func (ps *PostgresStorage) GetAllCounters() (result map[string]int64, err error)
 	}
 
 	return result, nil
+}
+
+func (ps *PostgresStorage) UpdateMetrics(ctx context.Context, metrics []model.Metric) (err error) {
+	tx, err := ps.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("error beginning a transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	for _, metric := range metrics {
+		switch metric.Type {
+		case model.Counter:
+			_, err = tx.ExecContext(ctx, addCounterExec, metric.ID, *metric.Delta)
+			if err != nil {
+				return fmt.Errorf("error executing addCounter: %w", err)
+			}
+		case model.Gauge:
+			_, err = tx.ExecContext(ctx, setGaugeExec, metric.ID, *metric.Value)
+			if err != nil {
+				return fmt.Errorf("error executing setGauge: %w", err)
+			}
+		default:
+			log.Printf("unknown metric type: %s\n", metric.Type)
+		}
+
+	}
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error committing a transaction: %w", err)
+	}
+
+	return nil
 }

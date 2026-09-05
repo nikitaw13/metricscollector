@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,8 +29,8 @@ func NewPersistentMemStorage(memStorage *MemStorage, filePath string, syncWrite 
 }
 
 // Restore loads previously saved metrics from the file into in-memory maps.
-func (s *PersistentMemStorage) Restore() error {
-	file, err := os.Open(s.filePath)
+func (ps *PersistentMemStorage) Restore() error {
+	file, err := os.Open(ps.filePath)
 
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)
@@ -48,16 +49,9 @@ func (s *PersistentMemStorage) Restore() error {
 		return fmt.Errorf("error unmarshaling metrics %v, %w", data, err)
 	}
 
-	clear(s.gauge)
-	clear(s.counter)
-
-	for _, m := range metrics {
-		switch m.Type {
-		case "gauge":
-			s.gauge[m.ID] = *m.Value
-		case "counter":
-			s.counter[m.ID] = *m.Delta
-		}
+	err = ps.MemStorage.LoadMetrics(metrics)
+	if err != nil {
+		return fmt.Errorf("error restoring gauge: %w", err)
 	}
 
 	return nil
@@ -65,8 +59,8 @@ func (s *PersistentMemStorage) Restore() error {
 }
 
 // Save writes all current metrics to the file, replacing any previous contents.
-func (s *PersistentMemStorage) Save() error {
-	file, err := os.OpenFile(s.filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+func (ps *PersistentMemStorage) Save() error {
+	file, err := os.OpenFile(ps.filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 
 	if err != nil {
 		return fmt.Errorf("error opening file: %w", err)
@@ -74,8 +68,8 @@ func (s *PersistentMemStorage) Save() error {
 
 	defer file.Close()
 
-	gaugesMap, _ := s.GetAllGauges()
-	countersMap, _ := s.GetAllCounters()
+	gaugesMap, _ := ps.GetAllGauges()
+	countersMap, _ := ps.GetAllCounters()
 	var metrics []model.Metric
 
 	for key, value := range gaugesMap {
@@ -102,12 +96,12 @@ func (s *PersistentMemStorage) Save() error {
 }
 
 // PeriodicSave saves metrics to disk at the given interval until the program exits.
-func (s *PersistentMemStorage) PeriodicSave(interval time.Duration) {
+func (ps *PersistentMemStorage) PeriodicSave(interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	for range ticker.C {
-		err := s.Save()
+		err := ps.Save()
 		if err != nil {
 			log.Printf("error writing file: %v", err)
 			continue
@@ -116,27 +110,48 @@ func (s *PersistentMemStorage) PeriodicSave(interval time.Duration) {
 }
 
 // SaveSync performs a synchronous save and logs any error.
-func (s *PersistentMemStorage) SaveSync() {
-	err := s.Save()
+func (ps *PersistentMemStorage) SaveSync() {
+	err := ps.Save()
 	if err != nil {
 		log.Printf("error writing file: %v", err)
 	}
 }
 
 // SetGauge sets the named gauge metric to the specified value, overwriting any previous value.
-func (s *PersistentMemStorage) SetGauge(name string, value float64) error {
-	s.gauge[name] = value
-	if s.syncWrite {
-		s.SaveSync()
+func (ps *PersistentMemStorage) SetGauge(name string, value float64) (err error) {
+	err = ps.MemStorage.SetGauge(name, value)
+	if err != nil {
+		return fmt.Errorf("error SetGauge: %w", err)
+	}
+
+	if ps.syncWrite {
+		ps.SaveSync()
 	}
 	return nil
 }
 
 // AddCounter increments the named counter metric by the specified delta.
-func (s *PersistentMemStorage) AddCounter(name string, value int64) error {
-	s.counter[name] += value
-	if s.syncWrite {
-		s.SaveSync()
+func (ps *PersistentMemStorage) AddCounter(name string, delta int64) (newDelta int64, err error) {
+	newDelta, err = ps.MemStorage.AddCounter(name, delta)
+	if err != nil {
+		return 0, fmt.Errorf("error AddCounter: %w", err)
 	}
+
+	if ps.syncWrite {
+		ps.SaveSync()
+	}
+	return ps.MemStorage.counter[name], nil
+}
+
+func (ps *PersistentMemStorage) UpdateMetrics(ctx context.Context, metrics []model.Metric) (err error) {
+	err = ps.MemStorage.UpdateMetrics(ctx, metrics)
+	if err != nil {
+		return fmt.Errorf("error UpdateMetrics: %w", err)
+	}
+
+	if ps.syncWrite {
+		ps.SaveSync()
+	}
+
 	return nil
 }

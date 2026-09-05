@@ -108,26 +108,32 @@ func (h *MetricsHandler) handleMissingValue(w http.ResponseWriter, r *http.Reque
 func (h *MetricsHandler) handleURLUpdate(w http.ResponseWriter, r *http.Request) {
 	switch chi.URLParam(r, "TYPE") {
 	case model.Gauge:
-		gaugeValue, err := strconv.ParseFloat(chi.URLParam(r, "VALUE"), 64)
+		value := chi.URLParam(r, "VALUE")
+		metric := chi.URLParam(r, "METRIC")
+
+		parsedValue, err := strconv.ParseFloat(value, 64)
 		if err != nil {
 			Logger.Error("invalid metric value", zap.Error(err))
 			http.Error(w, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
-		if err := h.storage.SetGauge(chi.URLParam(r, "METRIC"), gaugeValue); err != nil {
+		if err := h.storage.SetGauge(metric, parsedValue); err != nil {
 			Logger.Error("failed to update gauge", zap.Error(err))
 			http.Error(w, "Failed to update gauge", http.StatusInternalServerError)
 			return
 		}
 
 	case model.Counter:
-		counterValue, err := strconv.ParseInt(chi.URLParam(r, "VALUE"), 10, 64)
+		value := chi.URLParam(r, "VALUE")
+		metric := chi.URLParam(r, "METRIC")
+
+		parsedValue, err := strconv.ParseInt(value, 10, 64)
 		if err != nil {
 			Logger.Error("invalid metric value", zap.Error(err))
 			http.Error(w, "Invalid metric value", http.StatusBadRequest)
 			return
 		}
-		if err := h.storage.AddCounter(chi.URLParam(r, "METRIC"), counterValue); err != nil {
+		if _, err := h.storage.AddCounter(metric, parsedValue); err != nil {
 			Logger.Error("failed to update counter", zap.Error(err))
 			http.Error(w, "Failed to update counter", http.StatusInternalServerError)
 			return

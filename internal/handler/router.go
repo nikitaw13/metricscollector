@@ -23,6 +23,11 @@ func (h *MetricsHandler) New() *chi.Mux {
 		r.Post("/", h.handleJSONUpdate)
 	})
 
+	router.Route("/updates", func(r chi.Router) {
+		r.Use(requireJSONContent)
+		r.Post("/", h.handleJSONUpdates)
+	})
+
 	router.Route("/value", func(r chi.Router) {
 		r.Use(middleware.AllowContentType("application/json"))
 		r.Post("/", h.handleJSONRead)
