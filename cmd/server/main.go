@@ -71,7 +71,7 @@ func run() error {
 		dbToUse = memStorage
 	}
 
-	metricsHandler := handler.NewMetricsHandler(storageToUse, dbToUse)
+	metricsHandler := handler.NewMetricsHandler(storageToUse, dbToUse, flagHashKey)
 
 	router := metricsHandler.NewRouter()
 

@@ -10,7 +10,13 @@ func (h *MetricsHandler) NewRouter() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(loggerMiddleware)
 	router.Use(DecompressMiddleware)
+	if h.hashSecretKey != "" {
+		router.Use(h.ValidateHashMiddleware)
+	}
 	router.Use(CompressMiddleware)
+	if h.hashSecretKey != "" {
+		router.Use(h.WriteHashHeaderMiddleware)
+	}
 
 	router.Get("/", h.handleListMetrics)
 	router.Route("/value/{TYPE}", func(r chi.Router) {

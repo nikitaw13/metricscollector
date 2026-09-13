@@ -34,7 +34,7 @@ func TestPing(t *testing.T) {
 	t.Run("Successful /ping with in-memory storage", func(t *testing.T) {
 		t.Parallel()
 		storage := repository.NewMemStorage()
-		ts := httptest.NewServer(NewMetricsHandler(storage, storage).NewRouter())
+		ts := httptest.NewServer(NewMetricsHandler(storage, storage, "").NewRouter())
 		defer ts.Close()
 
 		resp := doRequest(t, ts, http.MethodGet, "/ping")

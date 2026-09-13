@@ -1,9 +1,13 @@
 package handler
 
 import (
+	"bytes"
 	"compress/flate"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -182,5 +186,79 @@ func DecompressMiddleware(h http.Handler) http.Handler {
 		}
 
 		h.ServeHTTP(w, r)
+	})
+}
+
+// HashMiddleware TODO
+func (mh *MetricsHandler) ValidateHashMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hashHeader := []byte(r.Header.Get("HashSHA256"))
+		if len(hashHeader) == 0 {
+			Logger.Debug("no hash provided")
+			http.Error(w, "No hash provided", http.StatusBadRequest)
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			Logger.Error("error reading body", zap.Int("status", http.StatusInternalServerError), zap.Error(err))
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+
+		newHash := hmac.New(sha256.New, []byte(mh.hashSecretKey))
+		newHash.Write(body)
+		calculatedHash := newHash.Sum(nil)
+		calculatedHashHex := fmt.Sprintf("%x", calculatedHash)
+
+		if !hmac.Equal(hashHeader, []byte(calculatedHashHex)) {
+			Logger.Debug("wrong hash provided", zap.String("expectedHex", calculatedHashHex), zap.String("actual", fmt.Sprintf("%x", hashHeader)))
+			http.Error(w, "Wrong hash provided", http.StatusBadRequest)
+			return
+		}
+		newBodyReader := bytes.NewReader(body)
+		r.Body = io.NopCloser(newBodyReader)
+		h.ServeHTTP(w, r)
+	})
+}
+
+// TODO
+type hashBodyWriter struct {
+	http.ResponseWriter
+	body   *bytes.Buffer
+	status int
+}
+
+func (w *hashBodyWriter) Write(b []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	w.body.Write(b)
+	return len(b), nil
+}
+
+func (w *hashBodyWriter) WriteHeader(statusCode int) {
+	w.status = statusCode
+}
+
+func (mh *MetricsHandler) WriteHashHeaderMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hashBodyWriterInstance := &hashBodyWriter{
+			ResponseWriter: w,
+			body:           bytes.NewBuffer(nil),
+			status:         http.StatusOK,
+		}
+		h.ServeHTTP(hashBodyWriterInstance, r)
+
+		body := hashBodyWriterInstance.body.Bytes()
+
+		newHash := hmac.New(sha256.New, []byte(mh.hashSecretKey))
+		newHash.Write(body)
+		calculatedHash := newHash.Sum(nil)
+		calculatedHashHex := fmt.Sprintf("%x", calculatedHash)
+
+		w.Header().Set("HashSHA256", calculatedHashHex)
+		w.WriteHeader(hashBodyWriterInstance.status)
+		w.Write(body)
 	})
 }
