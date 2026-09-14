@@ -57,3 +57,12 @@ var expectedHTMLResponse = `<html><body>
 func GetTestServerWithRepository(repo Repository) *httptest.Server {
 	return httptest.NewServer(NewMetricsHandler(repo, repository.NewMemStorage(), "").NewRouter())
 }
+
+// GetTestServerWithKey TODO
+func GetTestServerWithKey(key string) (server *httptest.Server) {
+	storage := repository.NewMemStorage()
+	metricsHandler := NewMetricsHandler(storage, storage, key)
+	router := metricsHandler.NewRouter()
+	server = httptest.NewServer(router)
+	return
+}

@@ -21,7 +21,7 @@ func run() {
 		httpClient  = &http.Client{Timeout: 5 * time.Second}
 		retryClient = agent.NewClientWithRetries(timeouts, httpClient)
 		storage     = agent.NewAgentStorage()
-		sender      = agent.NewSender(baseURL, storage, retryClient)
+		sender      = agent.NewSender(baseURL, storage, retryClient, flagHashKey)
 		collector   = agent.NewCollector(storage)
 	)
 

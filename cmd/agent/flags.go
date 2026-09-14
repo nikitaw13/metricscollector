@@ -13,10 +13,14 @@ var flagReportInterval int
 // flagPollInterval holds the interval in seconds between metric collection cycles (-p).
 var flagPollInterval int
 
+// flagHashKey is the secret key used for HMAC-SHA256 request and response signing.
+var flagHashKey string
+
 // parseFlags registers and parses command-line flags.
 func parseFlags() {
 	flag.StringVar(&flagServerAddr, "a", "localhost:8080", "HTTP server endpoint address")
 	flag.IntVar(&flagReportInterval, "r", 10, "Metrics report interval in seconds")
 	flag.IntVar(&flagPollInterval, "p", 2, "Metrics poll interval in seconds")
+	flag.StringVar(&flagHashKey, "k", "", "secret key for HMAC-SHA256 body signing")
 	flag.Parse()
 }

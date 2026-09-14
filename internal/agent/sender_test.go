@@ -88,6 +88,7 @@ func TestSendMetrics(t *testing.T) {
 		ts.URL,
 		storage,
 		client,
+		"",
 	)
 
 	sender.Run()
@@ -144,6 +145,7 @@ func TestResetCounterOnSuccess(t *testing.T) {
 		ts.URL,
 		storage,
 		client,
+		"",
 	)
 
 	sender.Run()
@@ -182,6 +184,7 @@ func TestKeepCounterOnError(t *testing.T) {
 		ts.URL,
 		storage,
 		client,
+		"",
 	)
 
 	sender.Run()
@@ -215,6 +218,7 @@ func TestNoRequestsWhenStorageEmpty(t *testing.T) {
 		ts.URL,
 		storage,
 		client,
+		"",
 	)
 
 	sender.Run()
@@ -246,6 +250,7 @@ func TestKeepCounterOnNetworkError(t *testing.T) {
 		ts.URL,
 		storage,
 		client,
+		"",
 	)
 
 	sender.Run()
@@ -327,6 +332,7 @@ func TestRetrySucceedsAfterTransientFailures(t *testing.T) {
 		ts.URL,
 		storage,
 		client,
+		"",
 	)
 
 	sender.Run()
@@ -359,7 +365,7 @@ func TestRetrySucceedsOnLastAttempt(t *testing.T) {
 		&http.Client{Timeout: 5 * time.Second, Transport: rt},
 	)
 
-	sender := NewSender(ts.URL, storage, client)
+	sender := NewSender(ts.URL, storage, client, "")
 
 	sender.Run()
 
@@ -387,7 +393,7 @@ func TestRetryExhaustedRestoresCounters(t *testing.T) {
 		&http.Client{Timeout: 5 * time.Second, Transport: rt},
 	)
 
-	sender := NewSender(ts.URL, storage, client)
+	sender := NewSender(ts.URL, storage, client, "")
 
 	sender.Run()
 
@@ -425,6 +431,7 @@ func TestNoRetryOnServerErrorResponse(t *testing.T) {
 		ts.URL,
 		storage,
 		client,
+		"",
 	)
 
 	sender.Run()

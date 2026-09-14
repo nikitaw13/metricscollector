@@ -2,6 +2,9 @@ package agent
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,14 +20,16 @@ type Sender struct {
 	baseURL string
 	storage Storage
 	client  HTTPClient
+	hashKey string
 }
 
 // NewSender creates a Sender with the given base URL, storage, and HTTP client.
-func NewSender(baseURL string, storage Storage, client HTTPClient) *Sender {
+func NewSender(baseURL string, storage Storage, client HTTPClient, hashKey string) *Sender {
 	return &Sender{
 		baseURL: baseURL,
 		storage: storage,
 		client:  client,
+		hashKey: hashKey,
 	}
 }
 
@@ -73,6 +78,14 @@ func (s *Sender) Run() {
 		return
 	}
 
+	var calculatedHashHex string
+	if s.hashKey != "" {
+		hasher := hmac.New(sha256.New, []byte(s.hashKey))
+		hasher.Write(jsonBody)
+		calculatedHash := hasher.Sum(nil)
+		calculatedHashHex = hex.EncodeToString(calculatedHash)
+	}
+
 	compressedBody, err := Compress(jsonBody)
 	if err != nil {
 		log.Println(err)
@@ -88,6 +101,9 @@ func (s *Sender) Run() {
 		return
 	}
 
+	if s.hashKey != "" {
+		req.Header.Set("HashSHA256", calculatedHashHex)
+	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Content-Encoding", "gzip")
 	resp, err := s.client.Do(req)

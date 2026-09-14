@@ -9,13 +9,13 @@ import (
 func (h *MetricsHandler) NewRouter() *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(loggerMiddleware)
-	router.Use(DecompressMiddleware)
-	if h.hashSecretKey != "" {
-		router.Use(h.ValidateHashMiddleware)
+	router.Use(decompressMiddleware)
+	if h.hashKey != "" {
+		router.Use(h.validateHashMiddleware)
 	}
-	router.Use(CompressMiddleware)
-	if h.hashSecretKey != "" {
-		router.Use(h.WriteHashHeaderMiddleware)
+	router.Use(compressMiddleware)
+	if h.hashKey != "" {
+		router.Use(h.writeHashHeaderMiddleware)
 	}
 
 	router.Get("/", h.handleListMetrics)

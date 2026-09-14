@@ -33,4 +33,9 @@ func parseEnvs() {
 
 		flagPollInterval = intervalSec
 	}
+
+	envHashKey, found := os.LookupEnv("KEY")
+	if found {
+		flagHashKey = envHashKey
+	}
 }

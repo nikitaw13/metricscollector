@@ -15,17 +15,17 @@ import (
 
 // MetricsHandler serves HTTP requests for reading and updating metrics.
 type MetricsHandler struct {
-	storage       Repository
-	database      DBPinger
-	hashSecretKey string
+	storage  Repository
+	database DBPinger
+	hashKey  string
 }
 
-// NewMetricsHandler creates a MetricsHandler with the provided storage and database pinger.
-func NewMetricsHandler(storage Repository, db DBPinger, hashSecretKey string) *MetricsHandler {
+// NewMetricsHandler creates a MetricsHandler with the provided storage, database pinger, and signing key.
+func NewMetricsHandler(storage Repository, db DBPinger, hashKey string) *MetricsHandler {
 	return &MetricsHandler{
-		storage:       storage,
-		database:      db,
-		hashSecretKey: hashSecretKey,
+		storage:  storage,
+		database: db,
+		hashKey:  hashKey,
 	}
 }
 
