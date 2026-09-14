@@ -23,7 +23,7 @@ type Sender struct {
 	hashKey string
 }
 
-// NewSender creates a Sender with the given base URL, storage, and HTTP client.
+// NewSender creates a Sender with the given base URL, storage, HTTP client, and signing key.
 func NewSender(baseURL string, storage Storage, client HTTPClient, hashKey string) *Sender {
 	return &Sender{
 		baseURL: baseURL,

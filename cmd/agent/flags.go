@@ -13,7 +13,7 @@ var flagReportInterval int
 // flagPollInterval holds the interval in seconds between metric collection cycles (-p).
 var flagPollInterval int
 
-// flagHashKey is the secret key used for HMAC-SHA256 request and response signing.
+// flagHashKey is the secret key used for HMAC-SHA256 request signing.
 var flagHashKey string
 
 // parseFlags registers and parses command-line flags.

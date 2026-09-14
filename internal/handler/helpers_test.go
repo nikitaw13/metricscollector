@@ -58,9 +58,11 @@ func GetTestServerWithRepository(repo Repository) *httptest.Server {
 	return httptest.NewServer(NewMetricsHandler(repo, repository.NewMemStorage(), "").NewRouter())
 }
 
-// GetTestServerWithKey TODO
+// GetTestServerWithKey returns an httptest.Server pre-seeded like GetTestServer, with HMAC request signing and response hashing enabled for the given key.
 func GetTestServerWithKey(key string) (server *httptest.Server) {
 	storage := repository.NewMemStorage()
+	storage.SetGauge("___test___", defaultGaugeValue)
+	storage.AddCounter("___test___", defaultCounterValue)
 	metricsHandler := NewMetricsHandler(storage, storage, key)
 	router := metricsHandler.NewRouter()
 	server = httptest.NewServer(router)

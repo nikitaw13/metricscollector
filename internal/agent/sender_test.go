@@ -2,8 +2,12 @@ package agent
 
 import (
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +23,9 @@ import (
 // expectedContentType is the expected Content-Type header for all JSON requests from the agent.
 const expectedContentType = "application/json; charset=utf-8"
 
+// testHashKey is the HMAC key used by sender signing tests.
+const testHashKey = "TestKey"
+
 // TestSendMetrics verifies that the sender reports all gauge and counter
 // metrics to the server in a single batched request. It checks:
 //   - exactly one request is made per Run(),
@@ -26,6 +33,7 @@ const expectedContentType = "application/json; charset=utf-8"
 //   - the HTTP method is POST,
 //   - the Content-Type header is "application/json; charset=utf-8".
 func TestSendMetrics(t *testing.T) {
+	t.Parallel()
 	storage := NewAgentStorage()
 
 	for _, metricName := range GaugeMetrics {
@@ -122,6 +130,7 @@ func TestSendMetrics(t *testing.T) {
 // TestResetCounterOnSuccess verifies that counter metrics are reset to zero
 // only after successful delivery (HTTP 200).
 func TestResetCounterOnSuccess(t *testing.T) {
+	t.Parallel()
 	storage := NewAgentStorage()
 
 	initialValue := rand.Int64()
@@ -161,6 +170,7 @@ func TestResetCounterOnSuccess(t *testing.T) {
 // TestKeepCounterOnError verifies that counter metrics are NOT reset
 // when delivery fails (non-200 response), preserving them for retry.
 func TestKeepCounterOnError(t *testing.T) {
+	t.Parallel()
 	storage := NewAgentStorage()
 
 	initialValue := rand.Int64()
@@ -200,6 +210,7 @@ func TestKeepCounterOnError(t *testing.T) {
 // TestNoRequestsWhenStorageEmpty verifies that Run() sends nothing
 // when the storage holds no metrics.
 func TestNoRequestsWhenStorageEmpty(t *testing.T) {
+	t.Parallel()
 	storage := NewAgentStorage()
 	var requestCount atomic.Int32
 
@@ -229,6 +240,7 @@ func TestNoRequestsWhenStorageEmpty(t *testing.T) {
 // TestKeepCounterOnNetworkError verifies that counter metrics are NOT reset
 // when the server is unreachable, preserving them for retry.
 func TestKeepCounterOnNetworkError(t *testing.T) {
+	t.Parallel()
 	storage := NewAgentStorage()
 
 	initialValue := rand.Int64()
@@ -291,6 +303,7 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 // transport errors and delivers the batch on a later attempt; the retried
 // request must carry an intact gzip-compressed JSON body.
 func TestRetrySucceedsAfterTransientFailures(t *testing.T) {
+	t.Parallel()
 	storage := NewAgentStorage()
 	storage.SetGauge("retry_gauge", 42.5)
 	storage.AddCounter("retry_counter", 7)
@@ -348,6 +361,7 @@ func TestRetrySucceedsAfterTransientFailures(t *testing.T) {
 // TestRetrySucceedsOnLastAttempt verifies that the batch is delivered when
 // only the final allowed retry succeeds.
 func TestRetrySucceedsOnLastAttempt(t *testing.T) {
+	t.Parallel()
 	storage := NewAgentStorage()
 	storage.AddCounter("last_chance_counter", 3)
 
@@ -378,6 +392,7 @@ func TestRetrySucceedsOnLastAttempt(t *testing.T) {
 // retries the drained counters are merged back into storage and that the
 // configured backoff intervals are respected between attempts.
 func TestRetryExhaustedRestoresCounters(t *testing.T) {
+	t.Parallel()
 	storage := NewAgentStorage()
 	storage.AddCounter("exhausted_counter", 11)
 
@@ -412,6 +427,7 @@ func TestRetryExhaustedRestoresCounters(t *testing.T) {
 // retried: the batch is dropped until the next report interval and the
 // drained counters are preserved.
 func TestNoRetryOnServerErrorResponse(t *testing.T) {
+	t.Parallel()
 	storage := NewAgentStorage()
 	storage.AddCounter("server_error_counter", 5)
 
@@ -439,4 +455,58 @@ func TestNoRetryOnServerErrorResponse(t *testing.T) {
 	assert.Equal(t, int32(1), requestCount.Load(), "server error responses must not be retried")
 	value, _ := storage.GetCounter("server_error_counter")
 	assert.Equal(t, int64(5), value, "counter must be preserved on server error response")
+}
+
+// TestSendWithHash verifies that the sender sends the HMAC of the uncompressed JSON batch in the HashSHA256 header.
+func TestSendWithHash(t *testing.T) {
+	t.Parallel()
+	storage := NewAgentStorage()
+	storage.SetGauge("testGauge", 123.45)
+	var gotHash string
+	var plainBody []byte
+
+	testHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Encoding") != "gzip" {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		gz, err := gzip.NewReader(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer gz.Close()
+
+		plainBody, err = io.ReadAll(gz)
+		if err != nil {
+			t.Error("error while reading gz")
+			return
+		}
+
+		gotHash = r.Header.Get("HashSHA256")
+		w.WriteHeader(http.StatusOK)
+	})
+
+	ts := httptest.NewServer(testHandler)
+	defer ts.Close()
+
+	retries := []time.Duration{1 * time.Millisecond, 3 * time.Millisecond, 5 * time.Millisecond}
+	client := NewClientWithRetries(
+		retries,
+		&http.Client{Timeout: 5 * time.Second},
+	)
+
+	sender := NewSender(
+		ts.URL,
+		storage,
+		client,
+		testHashKey,
+	)
+
+	sender.Run()
+
+	hasher := hmac.New(sha256.New, []byte(testHashKey))
+	hasher.Write(plainBody)
+	assert.Equal(t, hex.EncodeToString(hasher.Sum(nil)), gotHash)
 }
