@@ -58,8 +58,8 @@ func TestNewPersistentMemStorage(t *testing.T) {
 
 // ---------- Restore ----------
 
-// TestRestore_GaugesAndCounters verifies that both gauges and counters are loaded from the file.
-func TestRestore_GaugesAndCounters(t *testing.T) {
+// TestRestoreGaugesAndCounters verifies that both gauges and counters are loaded from the file.
+func TestRestoreGaugesAndCounters(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -82,8 +82,8 @@ func TestRestore_GaugesAndCounters(t *testing.T) {
 	assert.Equal(t, int64(10), gotCounter)
 }
 
-// TestRestore_OverwritesExisting verifies that restore replaces pre-existing in-memory values.
-func TestRestore_OverwritesExisting(t *testing.T) {
+// TestRestoreOverwritesExisting verifies that restore replaces pre-existing in-memory values.
+func TestRestoreOverwritesExisting(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -108,8 +108,8 @@ func TestRestore_OverwritesExisting(t *testing.T) {
 	assert.Equal(t, int64(5), counterVal)
 }
 
-// TestRestore_FileNotFound verifies that a missing file produces an error.
-func TestRestore_FileNotFound(t *testing.T) {
+// TestRestoreFileNotFound verifies that a missing file produces an error.
+func TestRestoreFileNotFound(t *testing.T) {
 	t.Parallel()
 
 	persistentStorage := newTestPersistentStorage("/nonexistent/path/metrics.json", false)
@@ -117,8 +117,8 @@ func TestRestore_FileNotFound(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TestRestore_InvalidJSON verifies that a malformed file produces an error.
-func TestRestore_InvalidJSON(t *testing.T) {
+// TestRestoreInvalidJSON verifies that a malformed file produces an error.
+func TestRestoreInvalidJSON(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -129,8 +129,8 @@ func TestRestore_InvalidJSON(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TestRestore_EmptyFile verifies that an empty file leaves the storage empty.
-func TestRestore_EmptyFile(t *testing.T) {
+// TestRestoreEmptyFile verifies that an empty file leaves the storage empty.
+func TestRestoreEmptyFile(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -146,8 +146,8 @@ func TestRestore_EmptyFile(t *testing.T) {
 	assert.ErrorIs(t, err, model.ErrMetricNotFound)
 }
 
-// TestGetCounter_NotFound verifies the model.ErrMetricNotFound error for an unknown counter.
-func TestGetCounter_NotFound(t *testing.T) {
+// TestGetCounterNotFound verifies the model.ErrMetricNotFound error for an unknown counter.
+func TestGetCounterNotFound(t *testing.T) {
 	t.Parallel()
 
 	persistentStorage := newTestPersistentStorage(tempFilePath(t), false)
@@ -158,8 +158,8 @@ func TestGetCounter_NotFound(t *testing.T) {
 
 // ---------- Save ----------
 
-// TestSave_WritesGaugesAndCounters verifies that both metric types are written to the file as JSON.
-func TestSave_WritesGaugesAndCounters(t *testing.T) {
+// TestSaveWritesGaugesAndCounters verifies that both metric types are written to the file as JSON.
+func TestSaveWritesGaugesAndCounters(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -186,8 +186,8 @@ func TestSave_WritesGaugesAndCounters(t *testing.T) {
 	assert.Equal(t, int64(5), *metricMap["req"].Delta)
 }
 
-// TestSave_EmptyStorage verifies that an empty storage produces an empty JSON array.
-func TestSave_EmptyStorage(t *testing.T) {
+// TestSaveEmptyStorage verifies that an empty storage produces an empty JSON array.
+func TestSaveEmptyStorage(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -198,8 +198,8 @@ func TestSave_EmptyStorage(t *testing.T) {
 	assert.Len(t, metrics, 0)
 }
 
-// TestSave_OverwritesExistingFile verifies that a save replaces previous file contents.
-func TestSave_OverwritesExistingFile(t *testing.T) {
+// TestSaveOverwritesExistingFile verifies that a save replaces previous file contents.
+func TestSaveOverwritesExistingFile(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -218,8 +218,8 @@ func TestSave_OverwritesExistingFile(t *testing.T) {
 	assert.Equal(t, "new_metric", metrics[0].ID)
 }
 
-// TestSave_InvalidPath verifies that an unwritable path produces an error.
-func TestSave_InvalidPath(t *testing.T) {
+// TestSaveInvalidPath verifies that an unwritable path produces an error.
+func TestSaveInvalidPath(t *testing.T) {
 	t.Parallel()
 
 	persistentStorage := newTestPersistentStorage("/nonexistent/dir/metrics.json", false)
@@ -229,8 +229,8 @@ func TestSave_InvalidPath(t *testing.T) {
 
 // ---------- SetGauge (with SyncWrite) ----------
 
-// TestSetGauge_SyncOff verifies that no file is created when sync-write is disabled.
-func TestSetGauge_SyncOff(t *testing.T) {
+// TestSetGaugeSyncOff verifies that no file is created when sync-write is disabled.
+func TestSetGaugeSyncOff(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -247,8 +247,8 @@ func TestSetGauge_SyncOff(t *testing.T) {
 	assert.True(t, os.IsNotExist(err), "file should not exist when sync is off")
 }
 
-// TestSetGauge_SyncOn verifies that the file is written automatically after each update.
-func TestSetGauge_SyncOn(t *testing.T) {
+// TestSetGaugeSyncOn verifies that the file is written automatically after each update.
+func TestSetGaugeSyncOn(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -263,8 +263,8 @@ func TestSetGauge_SyncOn(t *testing.T) {
 	assert.InDelta(t, 36.6, *metrics[0].Value, 0.001)
 }
 
-// TestSetGauge_OverwritesPrevious verifies that a later value overwrites the previous one.
-func TestSetGauge_OverwritesPrevious(t *testing.T) {
+// TestSetGaugeOverwritesPrevious verifies that a later value overwrites the previous one.
+func TestSetGaugeOverwritesPrevious(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -280,8 +280,8 @@ func TestSetGauge_OverwritesPrevious(t *testing.T) {
 
 // ---------- AddCounter (with SyncWrite) ----------
 
-// TestAddCounter_SyncOff verifies that no file is created when sync-write is disabled.
-func TestAddCounter_SyncOff(t *testing.T) {
+// TestAddCounterSyncOff verifies that no file is created when sync-write is disabled.
+func TestAddCounterSyncOff(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -300,8 +300,8 @@ func TestAddCounter_SyncOff(t *testing.T) {
 	assert.True(t, os.IsNotExist(err))
 }
 
-// TestAddCounter_SyncOn verifies that the file is written automatically after each update.
-func TestAddCounter_SyncOn(t *testing.T) {
+// TestAddCounterSyncOn verifies that the file is written automatically after each update.
+func TestAddCounterSyncOn(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -317,8 +317,8 @@ func TestAddCounter_SyncOn(t *testing.T) {
 	assert.Equal(t, int64(3), *metrics[0].Delta)
 }
 
-// TestAddCounter_IncrementsExisting verifies that deltas accumulate on top of existing values.
-func TestAddCounter_IncrementsExisting(t *testing.T) {
+// TestAddCounterIncrementsExisting verifies that deltas accumulate on top of existing values.
+func TestAddCounterIncrementsExisting(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -384,8 +384,8 @@ func TestRoundTrip(t *testing.T) {
 	assert.Equal(t, int64(2), gotCounter2)
 }
 
-// TestRoundTrip_MultipleSaveCycles verifies that only the latest save cycle is restored.
-func TestRoundTrip_MultipleSaveCycles(t *testing.T) {
+// TestRoundTripMultipleSaveCycles verifies that only the latest save cycle is restored.
+func TestRoundTripMultipleSaveCycles(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -439,9 +439,9 @@ func TestSaveSync(t *testing.T) {
 
 // ---------- UpdateMetrics (with SyncWrite) ----------
 
-// TestUpdateMetrics_SyncOff verifies that a batch is applied to memory
+// TestUpdateMetricsSyncOff verifies that a batch is applied to memory
 // but not persisted to disk when sync-write is disabled.
-func TestUpdateMetrics_SyncOff(t *testing.T) {
+func TestUpdateMetricsSyncOff(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -469,9 +469,9 @@ func TestUpdateMetrics_SyncOff(t *testing.T) {
 	assert.True(t, os.IsNotExist(err), "file should not exist when sync is off")
 }
 
-// TestUpdateMetrics_SyncOn verifies that a batch is applied and persisted
+// TestUpdateMetricsSyncOn verifies that a batch is applied and persisted
 // to disk in a single save when sync-write is enabled.
-func TestUpdateMetrics_SyncOn(t *testing.T) {
+func TestUpdateMetricsSyncOn(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -501,9 +501,9 @@ func TestUpdateMetrics_SyncOn(t *testing.T) {
 	assert.Equal(t, int64(5), *metricMap["batch_counter"].Delta)
 }
 
-// TestUpdateMetrics_CounterAccumulates verifies that a batch update
+// TestUpdateMetricsCounterAccumulates verifies that a batch update
 // accumulates counter deltas on top of existing values.
-func TestUpdateMetrics_CounterAccumulates(t *testing.T) {
+func TestUpdateMetricsCounterAccumulates(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -525,8 +525,8 @@ func TestUpdateMetrics_CounterAccumulates(t *testing.T) {
 
 // ---------- PeriodicSave (smoke test) ----------
 
-// TestPeriodicSave_NoPanicOnStart verifies that the periodic saver starts and ticks without panicking.
-func TestPeriodicSave_NoPanicOnStart(t *testing.T) {
+// TestPeriodicSaveNoPanicOnStart verifies that the periodic saver starts and ticks without panicking.
+func TestPeriodicSaveNoPanicOnStart(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)

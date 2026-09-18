@@ -201,10 +201,10 @@ func TestUpdateMetrics(t *testing.T) {
 	assert.ErrorIs(t, err, model.ErrMetricNotFound, "unknown metric type must not create entries")
 }
 
-// TestUpdateMetrics_Concurrent verifies that concurrent batch and single
+// TestUpdateMetricsConcurrent verifies that concurrent batch and single
 // updates do not race and that all counter deltas are accounted for.
 // Run with -race to catch data races.
-func TestUpdateMetrics_Concurrent(t *testing.T) {
+func TestUpdateMetricsConcurrent(t *testing.T) {
 	t.Parallel()
 
 	ms := NewMemStorage()
