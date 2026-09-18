@@ -442,9 +442,9 @@ func TestJSONUpdates(t *testing.T) {
 	}
 }
 
-// TestJSONUpdates_PersistsBatch verifies that a valid batch is fully stored
+// TestJSONUpdatesPersistsBatch verifies that a valid batch is fully stored
 // and readable via POST /value.
-func TestJSONUpdates_PersistsBatch(t *testing.T) {
+func TestJSONUpdatesPersistsBatch(t *testing.T) {
 	ts := GetTestServer()
 	defer ts.Close()
 
@@ -481,9 +481,9 @@ func TestJSONUpdates_PersistsBatch(t *testing.T) {
 	}
 }
 
-// TestJSONUpdates_RejectsBatchAtomically verifies that a batch containing an
+// TestJSONUpdatesRejectsBatchAtomically verifies that a batch containing an
 // invalid metric is rejected entirely: no metric from the batch is stored.
-func TestJSONUpdates_RejectsBatchAtomically(t *testing.T) {
+func TestJSONUpdatesRejectsBatchAtomically(t *testing.T) {
 	ts := GetTestServer()
 	defer ts.Close()
 

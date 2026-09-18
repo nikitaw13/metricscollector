@@ -19,17 +19,18 @@ var _ HTTPClient = (*fakeHTTPClient)(nil)
 
 // fakeHTTPClient simulates a flaky HTTPClient: every queued error is
 // returned for the corresponding Do call, and once the queue is exhausted
-// it answers with a synthetic 200 OK response. It counts the total number
-// of Do calls.
+// it answers with a synthetic response carrying the configured status code
+// (200 by default). It counts the total number of Do calls.
 type fakeHTTPClient struct {
 	errors []error
+	status int
 
 	mu    sync.Mutex
 	calls int
 }
 
-// Do returns the next queued error, or a synthetic success response once
-// the error queue is exhausted.
+// Do returns the next queued error, or a synthetic response with the
+// configured status code (200 by default) once the error queue is exhausted.
 func (c *fakeHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	c.mu.Lock()
 	n := c.calls
@@ -39,7 +40,11 @@ func (c *fakeHTTPClient) Do(req *http.Request) (*http.Response, error) {
 	if n < len(c.errors) {
 		return nil, c.errors[n]
 	}
-	return &http.Response{StatusCode: http.StatusOK, Body: http.NoBody}, nil
+	status := c.status
+	if status == 0 {
+		status = http.StatusOK
+	}
+	return &http.Response{StatusCode: status, Body: http.NoBody}, nil
 }
 
 // newRetryRequest builds a POST request with a rewindable body, which the
@@ -70,9 +75,9 @@ func doRequest(t *testing.T, client HTTPClient, req *http.Request) (int, error) 
 	return resp.StatusCode, nil
 }
 
-// TestClientWithRetries_SucceedsAfterTwoFailures verifies that the wrapper
+// TestClientWithRetriesSucceedsAfterTwoFailures verifies that the wrapper
 // retries transport errors and returns the first successful response.
-func TestClientWithRetries_SucceedsAfterTwoFailures(t *testing.T) {
+func TestClientWithRetriesSucceedsAfterTwoFailures(t *testing.T) {
 	fake := &fakeHTTPClient{errors: []error{
 		errors.New("attempt 1: simulated connection reset"),
 		errors.New("attempt 2: simulated connection reset"),
@@ -89,9 +94,9 @@ func TestClientWithRetries_SucceedsAfterTwoFailures(t *testing.T) {
 	assert.Equal(t, 3, fake.calls, "two failed attempts plus one successful retry expected")
 }
 
-// TestClientWithRetries_RetriesExhausted verifies that the wrapper gives up
+// TestClientWithRetriesRetriesExhausted verifies that the wrapper gives up
 // after one retry per configured timeout and returns the last transport error.
-func TestClientWithRetries_RetriesExhausted(t *testing.T) {
+func TestClientWithRetriesRetriesExhausted(t *testing.T) {
 	errs := make([]error, 4)
 	for i := range errs {
 		errs[i] = fmt.Errorf("attempt %d: simulated connection reset", i+1)
@@ -109,9 +114,9 @@ func TestClientWithRetries_RetriesExhausted(t *testing.T) {
 	assert.Equal(t, 4, fake.calls, "initial attempt plus one retry per timeout expected")
 }
 
-// TestClientWithRetries_SucceedsOnFirstAttempt verifies that a successful
+// TestClientWithRetriesSucceedsOnFirstAttempt verifies that a successful
 // first call is returned as is, without triggering any retries.
-func TestClientWithRetries_SucceedsOnFirstAttempt(t *testing.T) {
+func TestClientWithRetriesSucceedsOnFirstAttempt(t *testing.T) {
 	fake := &fakeHTTPClient{}
 	client := NewClientWithRetries(
 		[]time.Duration{time.Millisecond, time.Millisecond, time.Millisecond},
@@ -125,10 +130,10 @@ func TestClientWithRetries_SucceedsOnFirstAttempt(t *testing.T) {
 	assert.Equal(t, 1, fake.calls, "a successful first attempt must not be retried")
 }
 
-// TestClientWithRetries_NoRetryOnNonRewindableBody verifies that a transport
+// TestClientWithRetriesNoRetryOnNonRewindableBody verifies that a transport
 // error on a request without a GetBody function is returned immediately
 // instead of panicking on the nil function call during a retry.
-func TestClientWithRetries_NoRetryOnNonRewindableBody(t *testing.T) {
+func TestClientWithRetriesNoRetryOnNonRewindableBody(t *testing.T) {
 	fake := &fakeHTTPClient{errors: []error{
 		errors.New("attempt 1: simulated connection reset"),
 	}}
@@ -150,4 +155,21 @@ func TestClientWithRetries_NoRetryOnNonRewindableBody(t *testing.T) {
 
 	require.Error(t, err)
 	assert.Equal(t, 1, fake.calls, "a request without a rewindable body must not be retried")
+}
+
+// TestClientWithRetriesNoRetryOnServerErrorResponse verifies that
+// HTTP-level error responses are returned as is: only transport failures
+// are retried.
+func TestClientWithRetriesNoRetryOnServerErrorResponse(t *testing.T) {
+	fake := &fakeHTTPClient{status: http.StatusInternalServerError}
+	client := NewClientWithRetries(
+		[]time.Duration{time.Millisecond, time.Millisecond, time.Millisecond},
+		fake,
+	)
+
+	statusCode, err := doRequest(t, client, newRetryRequest(t))
+
+	require.NoError(t, err, "an HTTP response, even a 5xx one, is not a transport error")
+	assert.Equal(t, http.StatusInternalServerError, statusCode)
+	assert.Equal(t, 1, fake.calls, "server error responses must not be retried")
 }

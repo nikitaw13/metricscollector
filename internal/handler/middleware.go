@@ -1,9 +1,14 @@
 package handler
 
 import (
+	"bytes"
 	"compress/flate"
 	"compress/gzip"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -124,7 +129,7 @@ func (c *compressWriter) Write(b []byte) (int, error) {
 // CompressMiddleware compresses response bodies for clients supporting
 // Accept-Encoding. Only application/json and text/html are compressed.
 // Gzip takes priority over deflate.
-func CompressMiddleware(h http.Handler) http.Handler {
+func compressMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Vary", "Accept-Encoding")
 		acceptEncoding := r.Header.Get("Accept-Encoding")
@@ -157,7 +162,7 @@ func CompressMiddleware(h http.Handler) http.Handler {
 
 // DecompressMiddleware decompresses gzip/deflate request bodies based on
 // Content-Encoding. Replaces r.Body and removes encoding/length headers.
-func DecompressMiddleware(h http.Handler) http.Handler {
+func decompressMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Header.Get("Content-Encoding") {
 		case "gzip":
@@ -182,5 +187,82 @@ func DecompressMiddleware(h http.Handler) http.Handler {
 		}
 
 		h.ServeHTTP(w, r)
+	})
+}
+
+// validateHashMiddleware rejects requests whose HashSHA256 header does not match the HMAC-SHA256 signature of the body computed with the configured key.
+func (h *MetricsHandler) validateHashMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hashHeader := []byte(r.Header.Get("HashSHA256"))
+		if len(hashHeader) == 0 {
+			Logger.Debug("no hash provided")
+			http.Error(w, "No hash provided", http.StatusBadRequest)
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			Logger.Error("error reading body", zap.Int("status", http.StatusInternalServerError), zap.Error(err))
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
+
+		hasher := hmac.New(sha256.New, []byte(h.hashKey))
+		hasher.Write(body)
+		calculatedHash := hasher.Sum(nil)
+		calculatedHashHex := hex.EncodeToString(calculatedHash)
+
+		if !hmac.Equal(hashHeader, []byte(calculatedHashHex)) {
+			Logger.Debug("wrong hash provided", zap.String("expectedHash", calculatedHashHex), zap.String("actualHash", fmt.Sprintf("%x", hashHeader)))
+			http.Error(w, "Wrong hash provided", http.StatusBadRequest)
+			return
+		}
+		newBodyReader := bytes.NewReader(body)
+		r.Body = io.NopCloser(newBodyReader)
+		next.ServeHTTP(w, r)
+	})
+}
+
+// hashBodyWriter buffers the response body and status so the signing middleware can compute the body hash after the handler runs.
+type hashBodyWriter struct {
+	http.ResponseWriter
+	body   *bytes.Buffer
+	status int
+}
+
+// Write buffers the body and defaults the status to 200 if no status was set.
+func (w *hashBodyWriter) Write(b []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	w.body.Write(b)
+	return len(b), nil
+}
+
+// WriteHeader records the response status code.
+func (w *hashBodyWriter) WriteHeader(statusCode int) {
+	w.status = statusCode
+}
+
+// writeHashHeaderMiddleware computes the HMAC-SHA256 hash of the response body and sends it in the HashSHA256 response header.
+func (h *MetricsHandler) writeHashHeaderMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		bw := &hashBodyWriter{
+			ResponseWriter: w,
+			body:           bytes.NewBuffer(nil),
+			status:         http.StatusOK,
+		}
+		next.ServeHTTP(bw, r)
+
+		body := bw.body.Bytes()
+
+		hasher := hmac.New(sha256.New, []byte(h.hashKey))
+		hasher.Write(body)
+		calculatedHash := hasher.Sum(nil)
+		calculatedHashHex := hex.EncodeToString(calculatedHash)
+
+		w.Header().Set("HashSHA256", calculatedHashHex)
+		w.WriteHeader(bw.status)
+		w.Write(body)
 	})
 }

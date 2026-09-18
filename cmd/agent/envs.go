@@ -33,4 +33,20 @@ func parseEnvs() {
 
 		flagPollInterval = intervalSec
 	}
+
+	envHashKey, found := os.LookupEnv("KEY")
+	if found {
+		flagHashKey = envHashKey
+	}
+
+	envRateLimit, found := os.LookupEnv("RATE_LIMIT")
+	if found {
+		rateLimit, err := strconv.Atoi(envRateLimit)
+
+		if err != nil {
+			log.Fatal("failed to parse RATE_LIMIT")
+		}
+
+		flagRateLimit = rateLimit
+	}
 }

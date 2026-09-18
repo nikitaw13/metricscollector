@@ -52,4 +52,9 @@ func parseEnvs() {
 	if found {
 		flagMigrationPath = envMigrationPath
 	}
+
+	envHashKey, found := os.LookupEnv("KEY")
+	if found {
+		flagHashKey = envHashKey
+	}
 }

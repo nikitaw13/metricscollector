@@ -25,6 +25,9 @@ var flagDatabaseDSN string
 // flagMigrationPath is the directory containing database migration files.
 var flagMigrationPath string
 
+// flagHashKey is the secret key used for HMAC-SHA256 request and response signing.
+var flagHashKey string
+
 // parseFlags registers and parses command-line flags.
 func parseFlags() {
 	flag.StringVar(&flagHTTPAddr, "a", "localhost:8080", "HTTP server endpoint address")
@@ -34,5 +37,6 @@ func parseFlags() {
 	flag.BoolVar(&flagRestore, "r", true, "load previously saved metric values from file on startup")
 	flag.StringVar(&flagDatabaseDSN, "d", "", "Database connection DSN")
 	flag.StringVar(&flagMigrationPath, "m", "migrations", "directory containing database migration files")
+	flag.StringVar(&flagHashKey, "k", "", "secret key for HMAC-SHA256 body signing")
 	flag.Parse()
 }

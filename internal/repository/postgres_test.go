@@ -44,8 +44,8 @@ func newMockStorage(t *testing.T) (*PostgresStorage, sqlmock.Sqlmock) {
 	return NewPostgresStorage(db, timeouts, zap.NewNop()), mock
 }
 
-// TestPostgresStorage_SetGauge verifies the gauge upsert and error wrapping on database failures.
-func TestPostgresStorage_SetGauge(t *testing.T) {
+// TestPostgresStorageSetGauge verifies the gauge upsert and error wrapping on database failures.
+func TestPostgresStorageSetGauge(t *testing.T) {
 	t.Parallel()
 
 	dbFailure := errors.New("connection refused")
@@ -82,8 +82,8 @@ func TestPostgresStorage_SetGauge(t *testing.T) {
 	}
 }
 
-// TestPostgresStorage_AddCounter verifies that the RETURNING delta is propagated and failures are wrapped.
-func TestPostgresStorage_AddCounter(t *testing.T) {
+// TestPostgresStorageAddCounter verifies that the RETURNING delta is propagated and failures are wrapped.
+func TestPostgresStorageAddCounter(t *testing.T) {
 	t.Parallel()
 
 	dbFailure := errors.New("connection refused")
@@ -124,8 +124,8 @@ func TestPostgresStorage_AddCounter(t *testing.T) {
 	}
 }
 
-// TestPostgresStorage_GetGauge verifies value lookup, the not-found mapping, and scan error wrapping.
-func TestPostgresStorage_GetGauge(t *testing.T) {
+// TestPostgresStorageGetGauge verifies value lookup, the not-found mapping, and scan error wrapping.
+func TestPostgresStorageGetGauge(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -177,8 +177,8 @@ func TestPostgresStorage_GetGauge(t *testing.T) {
 	}
 }
 
-// TestPostgresStorage_GetCounter verifies delta lookup, the not-found mapping, and scan error wrapping.
-func TestPostgresStorage_GetCounter(t *testing.T) {
+// TestPostgresStorageGetCounter verifies delta lookup, the not-found mapping, and scan error wrapping.
+func TestPostgresStorageGetCounter(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -230,8 +230,8 @@ func TestPostgresStorage_GetCounter(t *testing.T) {
 	}
 }
 
-// TestPostgresStorage_GetAllGauges verifies multi-row and empty-table result mapping.
-func TestPostgresStorage_GetAllGauges(t *testing.T) {
+// TestPostgresStorageGetAllGauges verifies multi-row and empty-table result mapping.
+func TestPostgresStorageGetAllGauges(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -267,8 +267,8 @@ func TestPostgresStorage_GetAllGauges(t *testing.T) {
 	}
 }
 
-// TestPostgresStorage_GetAllCounters verifies multi-row and empty-table result mapping.
-func TestPostgresStorage_GetAllCounters(t *testing.T) {
+// TestPostgresStorageGetAllCounters verifies multi-row and empty-table result mapping.
+func TestPostgresStorageGetAllCounters(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -304,8 +304,8 @@ func TestPostgresStorage_GetAllCounters(t *testing.T) {
 	}
 }
 
-// TestPostgresStorage_GetAllGauges_IterationError verifies that a row iteration failure is wrapped.
-func TestPostgresStorage_GetAllGauges_IterationError(t *testing.T) {
+// TestPostgresStorageGetAllGaugesIterationError verifies that a row iteration failure is wrapped.
+func TestPostgresStorageGetAllGaugesIterationError(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -323,8 +323,8 @@ func TestPostgresStorage_GetAllGauges_IterationError(t *testing.T) {
 	assert.ErrorContains(t, err, "error encountered during iteration")
 }
 
-// TestPostgresStorage_GetAllCounters_QueryError verifies that a query failure is wrapped.
-func TestPostgresStorage_GetAllCounters_QueryError(t *testing.T) {
+// TestPostgresStorageGetAllCountersQueryError verifies that a query failure is wrapped.
+func TestPostgresStorageGetAllCountersQueryError(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -337,8 +337,8 @@ func TestPostgresStorage_GetAllCounters_QueryError(t *testing.T) {
 	assert.ErrorContains(t, err, "error executing query")
 }
 
-// TestPostgresStorage_GetAllGauges_ScanError verifies that a scan failure is wrapped.
-func TestPostgresStorage_GetAllGauges_ScanError(t *testing.T) {
+// TestPostgresStorageGetAllGaugesScanError verifies that a scan failure is wrapped.
+func TestPostgresStorageGetAllGaugesScanError(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -352,8 +352,8 @@ func TestPostgresStorage_GetAllGauges_ScanError(t *testing.T) {
 	assert.ErrorContains(t, err, "error scanning row")
 }
 
-// TestPostgresStorage_GetAllCounters_ScanError verifies that a scan failure is wrapped.
-func TestPostgresStorage_GetAllCounters_ScanError(t *testing.T) {
+// TestPostgresStorageGetAllCountersScanError verifies that a scan failure is wrapped.
+func TestPostgresStorageGetAllCountersScanError(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -367,8 +367,8 @@ func TestPostgresStorage_GetAllCounters_ScanError(t *testing.T) {
 	assert.ErrorContains(t, err, "error scanning row")
 }
 
-// TestPostgresStorage_GetAllGauges_QueryError verifies that a query failure is wrapped.
-func TestPostgresStorage_GetAllGauges_QueryError(t *testing.T) {
+// TestPostgresStorageGetAllGaugesQueryError verifies that a query failure is wrapped.
+func TestPostgresStorageGetAllGaugesQueryError(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -381,8 +381,8 @@ func TestPostgresStorage_GetAllGauges_QueryError(t *testing.T) {
 	assert.ErrorContains(t, err, "error executing query")
 }
 
-// TestPostgresStorage_GetAllCounters_IterationError verifies that a row iteration failure is wrapped.
-func TestPostgresStorage_GetAllCounters_IterationError(t *testing.T) {
+// TestPostgresStorageGetAllCountersIterationError verifies that a row iteration failure is wrapped.
+func TestPostgresStorageGetAllCountersIterationError(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -402,9 +402,9 @@ func TestPostgresStorage_GetAllCounters_IterationError(t *testing.T) {
 
 // ---------- UpdateMetrics ----------
 
-// TestPostgresStorage_UpdateMetrics_Success verifies that a mixed batch of
+// TestPostgresStorageUpdateMetricsSuccess verifies that a mixed batch of
 // gauge and counter metrics is written inside a single transaction and committed.
-func TestPostgresStorage_UpdateMetrics_Success(t *testing.T) {
+func TestPostgresStorageUpdateMetricsSuccess(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -430,9 +430,9 @@ func TestPostgresStorage_UpdateMetrics_Success(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestPostgresStorage_UpdateMetrics_RollbackOnError verifies that a failed
+// TestPostgresStorageUpdateMetricsRollbackOnError verifies that a failed
 // statement inside the batch aborts the whole transaction with a rollback.
-func TestPostgresStorage_UpdateMetrics_RollbackOnError(t *testing.T) {
+func TestPostgresStorageUpdateMetricsRollbackOnError(t *testing.T) {
 	t.Parallel()
 
 	dbFailure := errors.New("connection refused")
@@ -481,9 +481,9 @@ func TestPostgresStorage_UpdateMetrics_RollbackOnError(t *testing.T) {
 	}
 }
 
-// TestPostgresStorage_UpdateMetrics_TxLifecycleErrors verifies wrapping of
+// TestPostgresStorageUpdateMetricsTxLifecycleErrors verifies wrapping of
 // Begin and Commit failures; a metric with an unknown type is skipped silently.
-func TestPostgresStorage_UpdateMetrics_TxLifecycleErrors(t *testing.T) {
+func TestPostgresStorageUpdateMetricsTxLifecycleErrors(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -532,9 +532,9 @@ func connErr() error {
 	return &pgconn.PgError{Code: pgerrcode.ConnectionException, Message: "connection terminated unexpectedly"}
 }
 
-// TestPostgresStorage_SetGauge_RetrySucceeds verifies that a Class 08 error on
+// TestPostgresStorageSetGaugeRetrySucceeds verifies that a Class 08 error on
 // the first attempt is retried and the operation eventually succeeds.
-func TestPostgresStorage_SetGauge_RetrySucceeds(t *testing.T) {
+func TestPostgresStorageSetGaugeRetrySucceeds(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -551,9 +551,9 @@ func TestPostgresStorage_SetGauge_RetrySucceeds(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestPostgresStorage_AddCounter_RetrySucceedsOnLastAttempt verifies that the
+// TestPostgresStorageAddCounterRetrySucceedsOnLastAttempt verifies that the
 // operation succeeds when only the final allowed retry returns a result.
-func TestPostgresStorage_AddCounter_RetrySucceedsOnLastAttempt(t *testing.T) {
+func TestPostgresStorageAddCounterRetrySucceedsOnLastAttempt(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -579,10 +579,10 @@ func TestPostgresStorage_AddCounter_RetrySucceedsOnLastAttempt(t *testing.T) {
 	assert.Equal(t, int64(10), newDelta, "RETURNING delta from the successful retry must be propagated")
 }
 
-// TestPostgresStorage_RetriesExhausted verifies that after exhausting all
+// TestPostgresStorageRetriesExhausted verifies that after exhausting all
 // retries (initial attempt plus one per timeout) the last error is wrapped
 // into an abort message.
-func TestPostgresStorage_RetriesExhausted(t *testing.T) {
+func TestPostgresStorageRetriesExhausted(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -601,10 +601,10 @@ func TestPostgresStorage_RetriesExhausted(t *testing.T) {
 	assert.ErrorContains(t, err, "operation aborted after 4 attempts")
 }
 
-// TestPostgresStorage_NoRetryOnNonRetriableError verifies that non-retriable
+// TestPostgresStorageNoRetryOnNonRetriableError verifies that non-retriable
 // PostgreSQL errors (e.g. unique violation) fail immediately: a single
 // expectation proves no second attempt is made.
-func TestPostgresStorage_NoRetryOnNonRetriableError(t *testing.T) {
+func TestPostgresStorageNoRetryOnNonRetriableError(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -620,10 +620,10 @@ func TestPostgresStorage_NoRetryOnNonRetriableError(t *testing.T) {
 	assert.ErrorContains(t, err, "error writing gauge")
 }
 
-// TestPostgresStorage_UpdateMetrics_RetryOnConnectionError verifies that a
+// TestPostgresStorageUpdateMetricsRetryOnConnectionError verifies that a
 // Class 08 error while beginning the transaction is retried and the batch is
 // then applied within a fresh transaction.
-func TestPostgresStorage_UpdateMetrics_RetryOnConnectionError(t *testing.T) {
+func TestPostgresStorageUpdateMetricsRetryOnConnectionError(t *testing.T) {
 	t.Parallel()
 
 	ps, mock := newMockStorage(t)
@@ -645,9 +645,9 @@ func TestPostgresStorage_UpdateMetrics_RetryOnConnectionError(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestPostgresStorage_AddCounter_Integration runs only when TEST_DATABASE_DSN is set
+// TestPostgresStorageAddCounterIntegration runs only when TEST_DATABASE_DSN is set
 // and verifies real upsert semantics (delta accumulation) that sqlmock cannot check.
-func TestPostgresStorage_AddCounter_Integration(t *testing.T) {
+func TestPostgresStorageAddCounterIntegration(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_DSN")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_DSN not set - skipping integration test")
@@ -674,10 +674,10 @@ func TestPostgresStorage_AddCounter_Integration(t *testing.T) {
 	assert.Equal(t, int64(10), delta, "counter must accumulate via ON CONFLICT upsert")
 }
 
-// TestPostgresStorage_UpdateMetrics_Integration runs only when TEST_DATABASE_DSN is set
+// TestPostgresStorageUpdateMetricsIntegration runs only when TEST_DATABASE_DSN is set
 // and verifies real batch upsert semantics (counter accumulation, gauge overwrite)
 // within a single transaction.
-func TestPostgresStorage_UpdateMetrics_Integration(t *testing.T) {
+func TestPostgresStorageUpdateMetricsIntegration(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_DSN")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_DSN not set - skipping integration test")

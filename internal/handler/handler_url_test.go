@@ -220,17 +220,17 @@ func runTableTests(t *testing.T, cases []testCase) {
 	}
 }
 
-// TestUpdate verifies that valid URL update requests return 200 and store the metric.
-func TestUpdate(t *testing.T) {
+// TestURLUpdate verifies that valid URL update requests return 200 and store the metric.
+func TestURLUpdate(t *testing.T) {
 	runTableTests(t, updateTests)
 }
 
-// TestRead verifies the metric list page and single metric value reads.
-func TestRead(t *testing.T) {
+// TestURLRead verifies the metric list page and single metric value reads.
+func TestURLRead(t *testing.T) {
 	runTableTests(t, readTests)
 }
 
-// TestValidate verifies that requests with an invalid type, name, or value are rejected with 4xx.
-func TestValidate(t *testing.T) {
+// TestURLValidate verifies that requests with an invalid type, name, or value are rejected with 4xx.
+func TestURLValidate(t *testing.T) {
 	runTableTests(t, validationTests)
 }

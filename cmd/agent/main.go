@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nikitaw13/metricscollector/internal/agent"
+	"github.com/nikitaw13/metricscollector/internal/model"
 )
 
 func main() {
@@ -14,28 +15,43 @@ func main() {
 	run()
 }
 
+// worker consumes metric batches from the jobs channel and sends them to the server, pacing deliveries with the report interval.
+func worker(sender *agent.Sender, jobs <-chan []model.Metric) {
+	for batch := range jobs {
+		sender.Run(batch)
+		time.Sleep(time.Duration(flagReportInterval) * time.Second)
+	}
+}
+
 func run() {
 	var (
 		baseURL     = fmt.Sprintf("http://%s", flagServerAddr)
 		timeouts    = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
 		httpClient  = &http.Client{Timeout: 5 * time.Second}
 		retryClient = agent.NewClientWithRetries(timeouts, httpClient)
-		storage     = agent.NewAgentStorage()
-		sender      = agent.NewSender(baseURL, storage, retryClient)
-		collector   = agent.NewCollector(storage)
+		sender      = agent.NewSender(baseURL, retryClient, flagHashKey)
 	)
 
-	// Collector runs in a separate goroutine since two independent intervals
-	// cannot be managed by Sleep in a single goroutine.
+	jobs := make(chan []model.Metric, flagRateLimit)
+
+	for w := 1; w <= flagRateLimit; w++ {
+		go worker(sender, jobs)
+	}
+
 	go func() {
 		for {
-			collector.Run()
+			jobs <- agent.CollectRuntimeMetrics()
 			time.Sleep(time.Duration(flagPollInterval) * time.Second)
 		}
 	}()
 
-	for {
-		sender.Run()
-		time.Sleep(time.Duration(flagReportInterval) * time.Second)
-	}
+	// gopsutil system metrics are collected in their own goroutine.
+	go func() {
+		for {
+			jobs <- agent.CollectSystemMetrics()
+			time.Sleep(time.Duration(flagPollInterval) * time.Second)
+		}
+	}()
+	// Block forever; collection and sending run in their own goroutines.
+	select {}
 }
