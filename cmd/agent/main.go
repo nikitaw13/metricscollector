@@ -40,7 +40,15 @@ func run() {
 
 	go func() {
 		for {
-			jobs <- agent.Collect()
+			jobs <- agent.CollectRuntimeMetrics()
+			time.Sleep(time.Duration(flagPollInterval) * time.Second)
+		}
+	}()
+
+	// gopsutil system metrics are collected in their own goroutine.
+	go func() {
+		for {
+			jobs <- agent.CollectSystemMetrics()
 			time.Sleep(time.Duration(flagPollInterval) * time.Second)
 		}
 	}()

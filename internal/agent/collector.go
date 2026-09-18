@@ -1,14 +1,19 @@
 package agent
 
 import (
+	"fmt"
+	"log"
 	"math/rand/v2"
 	"runtime"
+	"time"
 
 	"github.com/nikitaw13/metricscollector/internal/model"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
-// Collect gathers one snapshot of runtime memory statistics and custom metrics and returns them as a batch.
-func Collect() []model.Metric {
+// CollectRuntimeMetrics gathers one snapshot of runtime memory statistics and custom metrics and returns them as a batch.
+func CollectRuntimeMetrics() []model.Metric {
 	var storage = NewAgentStorage()
 	var metrics []model.Metric
 	var memStats runtime.MemStats
@@ -61,5 +66,39 @@ func Collect() []model.Metric {
 		metrics = append(metrics, metric)
 	}
 
+	return metrics
+}
+
+// CollectSystemMetrics gathers one snapshot of system metrics via gopsutil: total and free memory, plus per-core CPU utilization, and returns them as a batch.
+func CollectSystemMetrics() []model.Metric {
+	var storage = NewAgentStorage()
+	var metrics []model.Metric
+
+	memoryStat, err := mem.VirtualMemory()
+	if err != nil {
+		log.Println("error getting memory stats")
+		return nil
+	}
+
+	cpuUtilization, err := cpu.Percent(time.Second, true)
+	if err != nil {
+		log.Println("error getting CPU utilization")
+		return nil
+	}
+
+	storage.SetGauge("TotalMemory", float64(memoryStat.Total))
+	storage.SetGauge("FreeMemory", float64(memoryStat.Free))
+
+	for i, utilization := range cpuUtilization {
+		storage.SetGauge(fmt.Sprintf("CPUutilization%d", i+1), float64(utilization))
+	}
+
+	for key, value := range storage.GetAllGauges() {
+		var metric model.Metric
+		metric.ID = key
+		metric.Value = &value
+		metric.Type = model.Gauge
+		metrics = append(metrics, metric)
+	}
 	return metrics
 }

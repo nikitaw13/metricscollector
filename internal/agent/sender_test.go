@@ -33,7 +33,7 @@ const testHashKey = "TestKey"
 //   - the Content-Type header is "application/json; charset=utf-8".
 func TestSendMetrics(t *testing.T) {
 	t.Parallel()
-	batch := Collect()
+	batch := CollectRuntimeMetrics()
 
 	var mu sync.Mutex
 	received := map[string]bool{}
