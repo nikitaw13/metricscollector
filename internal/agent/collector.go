@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/rand/v2"
 	"runtime"
-	"time"
 
 	"github.com/nikitaw13/metricscollector/internal/model"
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -76,13 +75,13 @@ func CollectSystemMetrics() []model.Metric {
 
 	memoryStat, err := mem.VirtualMemory()
 	if err != nil {
-		log.Println("error getting memory stats")
+		log.Printf("error getting memory stats: %v", err)
 		return nil
 	}
 
-	cpuUtilization, err := cpu.Percent(time.Second, true)
+	cpuUtilization, err := cpu.Percent(0, true)
 	if err != nil {
-		log.Println("error getting CPU utilization")
+		log.Printf("error getting CPU utilization: %v", err)
 		return nil
 	}
 

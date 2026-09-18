@@ -33,6 +33,11 @@ func NewSender(baseURL string, client HTTPClient, hashKey string) *Sender {
 
 // Run sends the given metric batch to the server as a single HTTP POST request.
 func (s *Sender) Run(metrics []model.Metric) {
+	if len(metrics) == 0 {
+		log.Println("empty metrics batch, skipping send")
+		return
+	}
+
 	updatesURL := fmt.Sprintf("%s/updates", s.baseURL)
 
 	jsonBody, err := json.Marshal(&metrics)
