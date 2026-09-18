@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -252,4 +253,33 @@ func TestSendWithHash(t *testing.T) {
 	expected, err := json.Marshal(batch)
 	require.NoError(t, err)
 	assert.JSONEq(t, string(expected), string(plainBody), "request body must be the exact JSON encoding of the batch")
+}
+
+// TestRunSkipsEmptyBatch verifies that Run does not send any request when
+// the batch is nil or empty.
+func TestRunSkipsEmptyBatch(t *testing.T) {
+	t.Parallel()
+
+	var requestCount atomic.Int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestCount.Add(1)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+
+	retries := []time.Duration{1 * time.Millisecond, 3 * time.Millisecond, 5 * time.Millisecond}
+	client := NewClientWithRetries(
+		retries,
+		&http.Client{Timeout: 5 * time.Second},
+	)
+	sender := NewSender(
+		ts.URL,
+		client,
+		"",
+	)
+
+	sender.Run(nil)
+	sender.Run([]model.Metric{})
+
+	assert.Equal(t, int32(0), requestCount.Load(), "no requests expected for an empty batch")
 }

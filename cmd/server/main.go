@@ -110,11 +110,13 @@ func run() error {
 	case <-ctx.Done():
 	}
 
-	if persistentStorage, ok := storageToUse.(*repository.PersistentMemStorage); ok {
-		if err := persistentStorage.Save(); err != nil {
-			log.Printf("error saving metrics on shutdown: %v", err)
+	defer func() {
+		if persistentStorage, ok := storageToUse.(*repository.PersistentMemStorage); ok {
+			if err := persistentStorage.Save(); err != nil {
+				handler.Logger.Error("error saving metrics on shutdown", zap.Error(err))
+			}
 		}
-	}
+	}()
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
