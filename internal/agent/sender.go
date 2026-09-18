@@ -18,59 +18,22 @@ import (
 // as a single batched HTTP POST request.
 type Sender struct {
 	baseURL string
-	storage Storage
 	client  HTTPClient
 	hashKey string
 }
 
-// NewSender creates a Sender with the given base URL, storage, HTTP client, and signing key.
-func NewSender(baseURL string, storage Storage, client HTTPClient, hashKey string) *Sender {
+// NewSender creates a Sender with the given base URL, HTTP client, and signing key.
+func NewSender(baseURL string, client HTTPClient, hashKey string) *Sender {
 	return &Sender{
 		baseURL: baseURL,
-		storage: storage,
 		client:  client,
 		hashKey: hashKey,
 	}
 }
 
-// Run performs a one-shot send of all stored gauge and counter metrics to the server.
-// Counters are drained into the batch before sending; if delivery fails, their
-// drained values are merged back into storage for the next attempt.
-func (s *Sender) Run() {
+// Run sends the given metric batch to the server as a single HTTP POST request.
+func (s *Sender) Run(metrics []model.Metric) {
 	updatesURL := fmt.Sprintf("%s/updates", s.baseURL)
-	var metrics []model.Metric
-
-	for metricName, value := range s.storage.GetAllGauges() {
-		metric := model.Metric{
-			Type:  model.Gauge,
-			ID:    metricName,
-			Value: &value,
-		}
-		metrics = append(metrics, metric)
-	}
-
-	drained := s.storage.DrainCounters()
-	for metricName, value := range drained {
-		metric := model.Metric{
-			Type:  model.Counter,
-			ID:    metricName,
-			Delta: &value,
-		}
-		metrics = append(metrics, metric)
-	}
-
-	// If delivery fails, merge the drained counter values back into storage.
-	committed := false
-	defer func() {
-		if !committed {
-			restoreCounters(s.storage, drained)
-		}
-	}()
-
-	if len(metrics) == 0 {
-		log.Println("no metrics to send")
-		return
-	}
 
 	jsonBody, err := json.Marshal(&metrics)
 	if err != nil {
@@ -114,19 +77,6 @@ func (s *Sender) Run() {
 
 	logRequest(resp, updatesURL)
 	drainAndCloseResponse(resp)
-
-	if resp.StatusCode >= http.StatusMultipleChoices {
-		return
-	}
-	committed = true
-}
-
-// restoreCounters merges drained counter values back into storage after a
-// failed send; the additive merge preserves increments collected in flight.
-func restoreCounters(storage Storage, drained map[string]int64) {
-	for name, value := range drained {
-		storage.AddCounter(name, value)
-	}
 }
 
 // logRequest logs the outcome of sending a metrics batch.
