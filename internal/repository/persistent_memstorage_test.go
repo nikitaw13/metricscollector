@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -525,8 +526,9 @@ func TestUpdateMetricsCounterAccumulates(t *testing.T) {
 
 // ---------- PeriodicSave (smoke test) ----------
 
-// TestPeriodicSaveNoPanicOnStart verifies that the periodic saver starts and ticks without panicking.
-func TestPeriodicSaveNoPanicOnStart(t *testing.T) {
+// TestPeriodicSaveStopsOnCancel verifies that the periodic saver writes metrics
+// to disk on ticks and exits promptly once the context is canceled.
+func TestPeriodicSaveStopsOnCancel(t *testing.T) {
 	t.Parallel()
 
 	filePath := tempFilePath(t)
@@ -534,12 +536,24 @@ func TestPeriodicSaveNoPanicOnStart(t *testing.T) {
 
 	require.NoError(t, persistentStorage.SetGauge("cpu", 50.0))
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		persistentStorage.PeriodicSave(time.Second)
+		persistentStorage.PeriodicSave(ctx, 100*time.Millisecond)
 	}()
 
-	// PeriodicSave runs forever and cannot be stopped from outside, so just let it tick once and verify it does not panic; in production it should accept a context for cancellation.
-	_ = done
+	time.Sleep(300 * time.Millisecond)
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("PeriodicSave did not stop after context cancel")
+	}
+
+	metricsOnDisk := readMetricsFile(t, filePath)
+	require.Len(t, metricsOnDisk, 1)
+	assert.Equal(t, "cpu", metricsOnDisk[0].ID)
 }

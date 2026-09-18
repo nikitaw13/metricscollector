@@ -95,16 +95,20 @@ func (ps *PersistentMemStorage) Save() error {
 	return nil
 }
 
-// PeriodicSave saves metrics to disk at the given interval until the program exits.
-func (ps *PersistentMemStorage) PeriodicSave(interval time.Duration) {
+// PeriodicSave saves metrics to disk at the given interval until the context is canceled.
+func (ps *PersistentMemStorage) PeriodicSave(ctx context.Context, interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		err := ps.Save()
-		if err != nil {
-			log.Printf("error writing file: %v", err)
-			continue
+	for {
+		select {
+		case <-ticker.C:
+			err := ps.Save()
+			if err != nil {
+				log.Printf("error writing file: %v", err)
+			}
+		case <-ctx.Done():
+			return
 		}
 	}
 }
