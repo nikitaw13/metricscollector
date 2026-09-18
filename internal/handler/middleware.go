@@ -191,7 +191,7 @@ func decompressMiddleware(h http.Handler) http.Handler {
 }
 
 // validateHashMiddleware rejects requests whose HashSHA256 header does not match the HMAC-SHA256 signature of the body computed with the configured key.
-func (mh *MetricsHandler) validateHashMiddleware(h http.Handler) http.Handler {
+func (h *MetricsHandler) validateHashMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		hashHeader := []byte(r.Header.Get("HashSHA256"))
 		if len(hashHeader) == 0 {
@@ -207,7 +207,7 @@ func (mh *MetricsHandler) validateHashMiddleware(h http.Handler) http.Handler {
 			return
 		}
 
-		hasher := hmac.New(sha256.New, []byte(mh.hashKey))
+		hasher := hmac.New(sha256.New, []byte(h.hashKey))
 		hasher.Write(body)
 		calculatedHash := hasher.Sum(nil)
 		calculatedHashHex := hex.EncodeToString(calculatedHash)
@@ -219,7 +219,7 @@ func (mh *MetricsHandler) validateHashMiddleware(h http.Handler) http.Handler {
 		}
 		newBodyReader := bytes.NewReader(body)
 		r.Body = io.NopCloser(newBodyReader)
-		h.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -245,18 +245,18 @@ func (w *hashBodyWriter) WriteHeader(statusCode int) {
 }
 
 // writeHashHeaderMiddleware computes the HMAC-SHA256 hash of the response body and sends it in the HashSHA256 response header.
-func (mh *MetricsHandler) writeHashHeaderMiddleware(h http.Handler) http.Handler {
+func (h *MetricsHandler) writeHashHeaderMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		bw := &hashBodyWriter{
 			ResponseWriter: w,
 			body:           bytes.NewBuffer(nil),
 			status:         http.StatusOK,
 		}
-		h.ServeHTTP(bw, r)
+		next.ServeHTTP(bw, r)
 
 		body := bw.body.Bytes()
 
-		hasher := hmac.New(sha256.New, []byte(mh.hashKey))
+		hasher := hmac.New(sha256.New, []byte(h.hashKey))
 		hasher.Write(body)
 		calculatedHash := hasher.Sum(nil)
 		calculatedHashHex := hex.EncodeToString(calculatedHash)
