@@ -31,8 +31,8 @@ func NewSender(baseURL string, client HTTPClient, hashKey string) *Sender {
 	}
 }
 
-// Run sends the given metric batch to the server as a single HTTP POST request.
-func (s *Sender) Run(metrics []model.Metric) {
+// SendBatch sends the given metric batch to the server as a single HTTP POST request.
+func (s *Sender) SendBatch(metrics []model.Metric) {
 	if len(metrics) == 0 {
 		log.Println("empty metrics batch, skipping send")
 		return

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 )
 
 // flagServerAddr holds the HTTP address of the metrics server (-a).
@@ -27,4 +28,20 @@ func parseFlags() {
 	flag.StringVar(&flagHashKey, "k", "", "secret key for HMAC-SHA256 body signing")
 	flag.IntVar(&flagRateLimit, "l", 20, "maximum number of concurrent outgoing requests")
 	flag.Parse()
+}
+
+// validateFlags checks that the configured intervals and rate limit are positive.
+func validateFlags() error {
+	if flagReportInterval <= 0 {
+		return fmt.Errorf("metrics report interval in seconds must be positive: %d", flagReportInterval)
+	}
+
+	if flagPollInterval <= 0 {
+		return fmt.Errorf("metrics poll interval in seconds must be positive: %d", flagPollInterval)
+	}
+
+	if flagRateLimit <= 0 {
+		return fmt.Errorf("maximum number of concurrent outgoing requests must be positive: %d", flagRateLimit)
+	}
+	return nil
 }

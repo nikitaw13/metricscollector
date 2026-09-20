@@ -28,7 +28,7 @@ const testHashKey = "TestKey"
 
 // TestSendMetrics verifies that the sender reports all gauge and counter
 // metrics to the server in a single batched request. It checks:
-//   - exactly one request is made per Run(),
+//   - exactly one request is made per SendBatch(),
 //   - each metric was received by the server,
 //   - the HTTP method is POST,
 //   - the Content-Type header is "application/json; charset=utf-8".
@@ -88,9 +88,9 @@ func TestSendMetrics(t *testing.T) {
 		"",
 	)
 
-	sender.Run(batch)
+	sender.SendBatch(batch)
 
-	assert.Equal(t, 1, requestCount, "Run() must send exactly one batch request")
+	assert.Equal(t, 1, requestCount, "SendBatch() must send exactly one batch request")
 
 	for _, metricName := range GaugeMetrics {
 		t.Run(fmt.Sprintf("Received %v", metricName), func(t *testing.T) {
@@ -191,7 +191,7 @@ func TestRetrySucceedsAfterTransientFailures(t *testing.T) {
 		"",
 	)
 
-	sender.Run(batch)
+	sender.SendBatch(batch)
 
 	assert.Equal(t, 3, len(rt.attempts), "two failed attempts plus one successful retry expected")
 	assert.True(t, received["retry_gauge"], "gauge must be delivered after retries")
@@ -244,7 +244,7 @@ func TestSendWithHash(t *testing.T) {
 		testHashKey,
 	)
 
-	sender.Run(batch)
+	sender.SendBatch(batch)
 
 	hasher := hmac.New(sha256.New, []byte(testHashKey))
 	hasher.Write(plainBody)
@@ -255,9 +255,9 @@ func TestSendWithHash(t *testing.T) {
 	assert.JSONEq(t, string(expected), string(plainBody), "request body must be the exact JSON encoding of the batch")
 }
 
-// TestRunSkipsEmptyBatch verifies that Run does not send any request when
-// the batch is nil or empty.
-func TestRunSkipsEmptyBatch(t *testing.T) {
+// TestSendBatchSkipsEmptyBatch verifies that SendBatch does not send any request
+// when the batch is nil or empty.
+func TestSendBatchSkipsEmptyBatch(t *testing.T) {
 	t.Parallel()
 
 	var requestCount atomic.Int32
@@ -278,8 +278,8 @@ func TestRunSkipsEmptyBatch(t *testing.T) {
 		"",
 	)
 
-	sender.Run(nil)
-	sender.Run([]model.Metric{})
+	sender.SendBatch(nil)
+	sender.SendBatch([]model.Metric{})
 
 	assert.Equal(t, int32(0), requestCount.Load(), "no requests expected for an empty batch")
 }

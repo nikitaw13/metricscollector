@@ -19,6 +19,10 @@ func main() {
 	parseFlags()
 	parseEnvs()
 
+	if err := validateFlags(); err != nil {
+		log.Fatal(err)
+	}
+
 	if err := run(); err != nil {
 		log.Fatal(err)
 	}

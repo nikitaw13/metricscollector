@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,13 +18,16 @@ import (
 func main() {
 	parseFlags()
 	parseEnvs()
+	if err := validateFlags(); err != nil {
+		log.Fatal(err)
+	}
 	run()
 }
 
 // worker consumes metric batches from the jobs channel and sends them to the server.
 func worker(sender *agent.Sender, jobs <-chan []model.Metric) {
 	for batch := range jobs {
-		sender.Run(batch)
+		sender.SendBatch(batch)
 	}
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 )
 
 // flagHTTPAddr holds the HTTP listen address.
@@ -39,4 +40,12 @@ func parseFlags() {
 	flag.StringVar(&flagMigrationPath, "m", "migrations", "directory containing database migration files")
 	flag.StringVar(&flagHashKey, "k", "", "secret key for HMAC-SHA256 body signing")
 	flag.Parse()
+}
+
+// validateFlags checks that the configured store interval is not negative.
+func validateFlags() error {
+	if flagStoreInterval < 0 {
+		return fmt.Errorf("interval in seconds between periodic saves to disk must not be negative: %d", flagStoreInterval)
+	}
+	return nil
 }

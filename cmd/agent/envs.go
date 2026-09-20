@@ -18,7 +18,7 @@ func parseEnvs() {
 		intervalSec, err := strconv.Atoi(envReportInterval)
 
 		if err != nil {
-			log.Fatal("failed to parse REPORT_INTERVAL")
+			log.Fatalf("failed to parse REPORT_INTERVAL: %v", err)
 		}
 		flagReportInterval = intervalSec
 	}
@@ -28,7 +28,7 @@ func parseEnvs() {
 		intervalSec, err := strconv.Atoi(envPollInterval)
 
 		if err != nil {
-			log.Fatal("failed to parse POLL_INTERVAL")
+			log.Fatalf("failed to parse POLL_INTERVAL: %v", err)
 		}
 
 		flagPollInterval = intervalSec
@@ -44,7 +44,7 @@ func parseEnvs() {
 		rateLimit, err := strconv.Atoi(envRateLimit)
 
 		if err != nil {
-			log.Fatal("failed to parse RATE_LIMIT")
+			log.Fatalf("failed to parse RATE_LIMIT: %v", err)
 		}
 
 		flagRateLimit = rateLimit
