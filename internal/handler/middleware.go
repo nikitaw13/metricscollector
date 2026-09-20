@@ -5,8 +5,6 @@ import (
 	"compress/flate"
 	"compress/gzip"
 	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +15,7 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/nikitaw13/metricscollector/internal/model"
+	"github.com/nikitaw13/metricscollector/internal/sign"
 	"go.uber.org/zap"
 )
 
@@ -215,13 +214,10 @@ func (h *MetricsHandler) validateHashMiddleware(next http.Handler) http.Handler 
 			return
 		}
 
-		hasher := hmac.New(sha256.New, []byte(h.hashKey))
-		hasher.Write(body)
-		calculatedHash := hasher.Sum(nil)
-		calculatedHashHex := hex.EncodeToString(calculatedHash)
+		expectedHash := sign.HMAC(h.hashKey, body)
 
-		if !hmac.Equal(hashHeader, []byte(calculatedHashHex)) {
-			Logger.Debug("wrong hash provided", zap.String("expectedHash", calculatedHashHex), zap.String("actualHash", fmt.Sprintf("%x", hashHeader)))
+		if !hmac.Equal(hashHeader, []byte(expectedHash)) {
+			Logger.Debug("wrong hash provided", zap.String("expectedHash", expectedHash), zap.String("actualHash", fmt.Sprintf("%x", hashHeader)))
 			http.Error(w, "Wrong hash provided", http.StatusBadRequest)
 			return
 		}
@@ -272,12 +268,7 @@ func (h *MetricsHandler) writeHashHeaderMiddleware(next http.Handler) http.Handl
 
 		body := bw.body.Bytes()
 
-		hasher := hmac.New(sha256.New, []byte(h.hashKey))
-		hasher.Write(body)
-		calculatedHash := hasher.Sum(nil)
-		calculatedHashHex := hex.EncodeToString(calculatedHash)
-
-		w.Header().Set("HashSHA256", calculatedHashHex)
+		w.Header().Set("HashSHA256", sign.HMAC(h.hashKey, body))
 		w.WriteHeader(bw.status)
 		w.Write(body)
 	})

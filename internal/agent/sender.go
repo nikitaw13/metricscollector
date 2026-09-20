@@ -2,9 +2,6 @@ package agent
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/nikitaw13/metricscollector/internal/model"
+	"github.com/nikitaw13/metricscollector/internal/sign"
 )
 
 // Sender is responsible for sending collected metrics to the server
@@ -46,14 +44,6 @@ func (s *Sender) SendBatch(metrics []model.Metric) {
 		return
 	}
 
-	var calculatedHashHex string
-	if s.hashKey != "" {
-		hasher := hmac.New(sha256.New, []byte(s.hashKey))
-		hasher.Write(jsonBody)
-		calculatedHash := hasher.Sum(nil)
-		calculatedHashHex = hex.EncodeToString(calculatedHash)
-	}
-
 	compressedBody, err := Compress(jsonBody)
 	if err != nil {
 		log.Println(err)
@@ -70,7 +60,7 @@ func (s *Sender) SendBatch(metrics []model.Metric) {
 	}
 
 	if s.hashKey != "" {
-		req.Header.Set("HashSHA256", calculatedHashHex)
+		req.Header.Set("HashSHA256", sign.HMAC(s.hashKey, jsonBody))
 	}
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	req.Header.Set("Content-Encoding", "gzip")
