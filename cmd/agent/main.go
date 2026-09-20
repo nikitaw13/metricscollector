@@ -15,11 +15,10 @@ func main() {
 	run()
 }
 
-// worker consumes metric batches from the jobs channel and sends them to the server, pacing deliveries with the report interval.
+// worker consumes metric batches from the jobs channel and sends them to the server.
 func worker(sender *agent.Sender, jobs <-chan []model.Metric) {
 	for batch := range jobs {
 		sender.Run(batch)
-		time.Sleep(time.Duration(flagReportInterval) * time.Second)
 	}
 }
 
@@ -34,24 +33,42 @@ func run() {
 
 	jobs := make(chan []model.Metric, flagRateLimit)
 
-	for w := 1; w <= flagRateLimit; w++ {
+	for workerNum := 1; workerNum <= flagRateLimit; workerNum++ {
 		go worker(sender, jobs)
 	}
 
+	snapshot := make(chan []model.Metric, 1)
+
+	// The dispatch goroutine forwards the latest snapshot to the jobs channel once per report interval.
 	go func() {
-		for {
-			jobs <- agent.CollectRuntimeMetrics()
-			time.Sleep(time.Duration(flagPollInterval) * time.Second)
+		ticker := time.NewTicker(time.Duration(flagReportInterval) * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			select {
+			case batch := <-snapshot:
+				jobs <- batch
+			default:
+			}
 		}
 	}()
 
-	// gopsutil system metrics are collected in their own goroutine.
+	// The collector goroutine gathers one snapshot per poll interval, keeping only the latest one in the snapshot channel.
 	go func() {
-		for {
-			jobs <- agent.CollectSystemMetrics()
-			time.Sleep(time.Duration(flagPollInterval) * time.Second)
+		ticker := time.NewTicker(time.Duration(flagPollInterval) * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			batch := append(agent.CollectRuntimeMetrics(), agent.CollectSystemMetrics()...)
+			select {
+			// The snapshot channel has room: offer the freshly collected batch.
+			case snapshot <- batch:
+			// The channel still holds the previous snapshot: drop it and put in the fresh one.
+			default:
+				<-snapshot
+				snapshot <- batch
+			}
 		}
 	}()
+
 	// Block forever; collection and sending run in their own goroutines.
 	select {}
 }
