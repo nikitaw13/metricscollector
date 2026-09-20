@@ -17,7 +17,9 @@ import (
 
 func main() {
 	parseFlags()
-	parseEnvs()
+	if err := parseEnvs(); err != nil {
+		log.Fatal(err)
+	}
 
 	if err := validateFlags(); err != nil {
 		log.Fatal(err)

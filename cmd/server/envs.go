@@ -1,13 +1,14 @@
 package main
 
 import (
-	"log"
+	"fmt"
 	"os"
 	"strconv"
 )
 
 // parseEnvs overrides flag variables with values from environment variables.
-func parseEnvs() {
+// It returns an error if a variable value cannot be parsed.
+func parseEnvs() error {
 	envAddress, found := os.LookupEnv("ADDRESS")
 	if found {
 		flagHTTPAddr = envAddress
@@ -23,7 +24,7 @@ func parseEnvs() {
 		intervalSec, err := strconv.Atoi(envStoreInterval)
 
 		if err != nil {
-			log.Fatal("failed to parse STORE_INTERVAL")
+			return fmt.Errorf("failed to parse STORE_INTERVAL: %w", err)
 		}
 		flagStoreInterval = intervalSec
 	}
@@ -38,7 +39,7 @@ func parseEnvs() {
 		shouldRestore, err := strconv.ParseBool(envRestore)
 
 		if err != nil {
-			log.Fatal("failed to parse RESTORE")
+			return fmt.Errorf("failed to parse RESTORE: %w", err)
 		}
 		flagRestore = shouldRestore
 	}
@@ -57,4 +58,5 @@ func parseEnvs() {
 	if found {
 		flagHashKey = envHashKey
 	}
+	return nil
 }
