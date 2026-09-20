@@ -45,24 +45,16 @@ func CollectRuntimeMetrics() []model.Metric {
 	storage.SetGauge("StackSys", float64(memStats.StackSys))
 	storage.SetGauge("Sys", float64(memStats.Sys))
 	storage.SetGauge("TotalAlloc", float64(memStats.TotalAlloc))
-	// Custom Metrics
-	storage.AddCounter("PollCount", 1)                  // increments by 1 on each collection cycle
-	storage.SetGauge("RandomValue", rand.NormFloat64()) // random normally-distributed value
+	// Custom metrics.
+	storage.AddCounter("PollCount", 1)                  // increments by 1 on each collection cycle.
+	storage.SetGauge("RandomValue", rand.NormFloat64()) // random normally-distributed value.
 
 	for key, delta := range storage.DrainCounters() {
-		var metric model.Metric
-		metric.ID = key
-		metric.Delta = &delta
-		metric.Type = model.Counter
-		metrics = append(metrics, metric)
+		metrics = append(metrics, newCounterMetric(key, delta))
 	}
 
 	for key, value := range storage.GetAllGauges() {
-		var metric model.Metric
-		metric.ID = key
-		metric.Value = &value
-		metric.Type = model.Gauge
-		metrics = append(metrics, metric)
+		metrics = append(metrics, newGaugeMetric(key, value))
 	}
 
 	return metrics
@@ -70,9 +62,6 @@ func CollectRuntimeMetrics() []model.Metric {
 
 // CollectSystemMetrics gathers one snapshot of system metrics via gopsutil: total and free memory, plus per-core CPU utilization, and returns them as a batch.
 func CollectSystemMetrics() []model.Metric {
-	var storage = NewAgentStorage()
-	var metrics []model.Metric
-
 	memoryStat, err := mem.VirtualMemory()
 	if err != nil {
 		log.Printf("error getting memory stats: %v", err)
@@ -85,19 +74,30 @@ func CollectSystemMetrics() []model.Metric {
 		return nil
 	}
 
-	storage.SetGauge("TotalMemory", float64(memoryStat.Total))
-	storage.SetGauge("FreeMemory", float64(memoryStat.Free))
-
+	var batch []model.Metric
+	batch = append(batch, newGaugeMetric("TotalMemory", float64(memoryStat.Total)))
+	batch = append(batch, newGaugeMetric("FreeMemory", float64(memoryStat.Free)))
 	for i, utilization := range cpuUtilization {
-		storage.SetGauge(fmt.Sprintf("CPUutilization%d", i+1), float64(utilization))
+		metricName := fmt.Sprintf("CPUutilization%d", i+1)
+		batch = append(batch, newGaugeMetric(metricName, float64(utilization)))
 	}
+	return batch
+}
 
-	for key, value := range storage.GetAllGauges() {
-		var metric model.Metric
-		metric.ID = key
-		metric.Value = &value
-		metric.Type = model.Gauge
-		metrics = append(metrics, metric)
-	}
-	return metrics
+// newGaugeMetric builds a gauge metric with the given name and value.
+func newGaugeMetric(name string, value float64) model.Metric {
+	var metric model.Metric
+	metric.ID = name
+	metric.Value = &value
+	metric.Type = model.Gauge
+	return metric
+}
+
+// newCounterMetric builds a counter metric with the given name and delta.
+func newCounterMetric(name string, delta int64) model.Metric {
+	var metric model.Metric
+	metric.ID = name
+	metric.Delta = &delta
+	metric.Type = model.Counter
+	return metric
 }
