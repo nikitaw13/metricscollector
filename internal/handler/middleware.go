@@ -190,9 +190,17 @@ func decompressMiddleware(h http.Handler) http.Handler {
 	})
 }
 
-// validateHashMiddleware rejects requests whose HashSHA256 header does not match the HMAC-SHA256 signature of the body computed with the configured key.
+// validateHashMiddleware rejects requests whose HashSHA256 header does not match
+// the HMAC-SHA256 signature of the body computed with the configured key.
+// GET and HEAD requests are not validated.
 func (h *MetricsHandler) validateHashMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// GET and HEAD carry no body, so there is nothing to verify.
+		if r.Method == http.MethodGet || r.Method == http.MethodHead {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		hashHeader := []byte(r.Header.Get("HashSHA256"))
 		if len(hashHeader) == 0 {
 			Logger.Debug("no hash provided")
@@ -244,9 +252,17 @@ func (w *hashBodyWriter) WriteHeader(statusCode int) {
 	w.status = statusCode
 }
 
-// writeHashHeaderMiddleware computes the HMAC-SHA256 hash of the response body and sends it in the HashSHA256 response header.
+// writeHashHeaderMiddleware computes the HMAC-SHA256 hash of the response body
+// and sends it in the HashSHA256 response header. GET and HEAD responses are
+// not signed.
 func (h *MetricsHandler) writeHashHeaderMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// GET and HEAD carry no body, so there is nothing to sign.
+		if r.Method == http.MethodGet || r.Method == http.MethodHead {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		bw := &hashBodyWriter{
 			ResponseWriter: w,
 			body:           bytes.NewBuffer(nil),

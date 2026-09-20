@@ -254,11 +254,47 @@ func TestValidateHashEmptyHeader(t *testing.T) {
 	t.Parallel()
 	mh := &MetricsHandler{hashKey: testHashKey}
 	handler := mh.validateHashMiddleware(fixedResponseHandler("application/json; charset=utf-8", ""))
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.Header.Set("HashSHA256", "")
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	assert.Equal(t, http.StatusBadRequest, rec.Code)
+}
+
+// TestValidateHashGetHeadRequestSkipped verifies that GET and HEAD requests without HashSHA256 reach the handler (not 400) when the key is enabled.
+func TestValidateHashGetHeadRequestSkipped(t *testing.T) {
+	t.Parallel()
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		t.Run(method, func(t *testing.T) {
+			t.Parallel()
+			mh := &MetricsHandler{hashKey: testHashKey}
+			handler := mh.validateHashMiddleware(fixedResponseHandler("application/json; charset=utf-8", `{"status":"ok"}`))
+			req := httptest.NewRequest(method, "/", nil)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, `{"status":"ok"}`, rec.Body.String())
+		})
+	}
+}
+
+// TestWriteHashHeaderGetHeadResponseNotSigned verifies that GET and HEAD responses are delivered without the HashSHA256 header.
+func TestWriteHashHeaderGetHeadResponseNotSigned(t *testing.T) {
+	t.Parallel()
+	body := `{"id":"test","type":"gauge","value":1}`
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		t.Run(method, func(t *testing.T) {
+			t.Parallel()
+			mh := &MetricsHandler{hashKey: testHashKey}
+			handler := mh.writeHashHeaderMiddleware(fixedResponseHandler("application/json; charset=utf-8", body))
+			req := httptest.NewRequest(method, "/", nil)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, body, rec.Body.String())
+			assert.Empty(t, rec.Header().Get("HashSHA256"))
+		})
+	}
 }
 
 // TestValidateHashCorrectHeaderValue verifies that a valid hash lets the request through with its body intact.
