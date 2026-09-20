@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/nikitaw13/metricscollector/internal/agent"
@@ -22,7 +27,65 @@ func worker(sender *agent.Sender, jobs <-chan []model.Metric) {
 	}
 }
 
+// dispatchSnapshots forwards the latest snapshot to the jobs channel once per report interval until ctx is cancelled.
+func dispatchSnapshots(ctx context.Context, snapshot <-chan []model.Metric, jobs chan<- []model.Metric, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		// Wait for the next tick or cancellation.
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// Check whether a fresh snapshot is available.
+			select {
+			case batch := <-snapshot:
+				// Send the batch or bail out on cancellation.
+				select {
+				case jobs <- batch:
+				case <-ctx.Done():
+					return
+				}
+			default:
+			}
+		}
+	}
+}
+
+// collectMetrics gathers a fresh snapshot of metrics every poll interval,
+// keeping only the latest one in the snapshot channel until ctx is cancelled.
+func collectMetrics(ctx context.Context, snapshot chan []model.Metric, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		// Wait for the next tick or cancellation.
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			batch := append(agent.CollectRuntimeMetrics(), agent.CollectSystemMetrics()...)
+			select {
+			case snapshot <- batch: // The slot is free: offer the fresh batch.
+			default: // The slot is taken.
+				select {
+				case <-snapshot: // Dropped a stale batch.
+				default: // The dispatch goroutine just drained it: the slot is already empty.
+				}
+				snapshot <- batch // The slot is now free.
+			}
+		}
+	}
+}
+
+// run starts the metric pipeline and blocks until SIGINT or SIGTERM is received.
 func run() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	var producersWg, workersWg sync.WaitGroup
+
 	var (
 		baseURL     = fmt.Sprintf("http://%s", flagServerAddr)
 		timeouts    = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
@@ -34,41 +97,25 @@ func run() {
 	jobs := make(chan []model.Metric, flagRateLimit)
 
 	for workerNum := 1; workerNum <= flagRateLimit; workerNum++ {
-		go worker(sender, jobs)
+		workersWg.Go(func() {
+			worker(sender, jobs)
+		})
 	}
 
 	snapshot := make(chan []model.Metric, 1)
 
-	// The dispatch goroutine forwards the latest snapshot to the jobs channel once per report interval.
-	go func() {
-		ticker := time.NewTicker(time.Duration(flagReportInterval) * time.Second)
-		defer ticker.Stop()
-		for range ticker.C {
-			select {
-			case batch := <-snapshot:
-				jobs <- batch
-			default:
-			}
-		}
-	}()
+	producersWg.Go(func() {
+		dispatchSnapshots(ctx, snapshot, jobs, time.Duration(flagReportInterval)*time.Second)
+	})
 
-	// The collector goroutine gathers one snapshot per poll interval, keeping only the latest one in the snapshot channel.
-	go func() {
-		ticker := time.NewTicker(time.Duration(flagPollInterval) * time.Second)
-		defer ticker.Stop()
-		for range ticker.C {
-			batch := append(agent.CollectRuntimeMetrics(), agent.CollectSystemMetrics()...)
-			select {
-			// The snapshot channel has room: offer the freshly collected batch.
-			case snapshot <- batch:
-			// The channel still holds the previous snapshot: drop it and put in the fresh one.
-			default:
-				<-snapshot
-				snapshot <- batch
-			}
-		}
-	}()
+	producersWg.Go(func() {
+		collectMetrics(ctx, snapshot, time.Duration(flagPollInterval)*time.Second)
+	})
 
-	// Block forever; collection and sending run in their own goroutines.
-	select {}
+	<-ctx.Done()
+
+	// Wait for the producers, then close jobs so the workers drain the remaining batches and exit.
+	producersWg.Wait()
+	close(jobs)
+	workersWg.Wait()
 }
