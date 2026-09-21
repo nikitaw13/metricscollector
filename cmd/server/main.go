@@ -1,10 +1,13 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/nikitaw13/metricscollector/internal/handler"
@@ -14,7 +17,13 @@ import (
 
 func main() {
 	parseFlags()
-	parseEnvs()
+	if err := parseEnvs(); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := validateFlags(); err != nil {
+		log.Fatal(err)
+	}
 
 	if err := run(); err != nil {
 		log.Fatal(err)
@@ -22,11 +31,15 @@ func main() {
 }
 
 func run() error {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
 	if err := handler.InitLogger(flagLogLevel); err != nil {
 		return err
 	}
 
 	var storageToUse handler.Repository
+
 	var dbToUse handler.DBPinger
 	var timeouts = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
 
@@ -71,7 +84,7 @@ func run() error {
 		dbToUse = memStorage
 	}
 
-	metricsHandler := handler.NewMetricsHandler(storageToUse, dbToUse)
+	metricsHandler := handler.NewMetricsHandler(storageToUse, dbToUse, flagHashKey)
 
 	router := metricsHandler.NewRouter()
 
@@ -85,10 +98,33 @@ func run() error {
 
 	if persistentStorage, ok := storageToUse.(*repository.PersistentMemStorage); ok {
 		if !isSyncWrite {
-			go persistentStorage.PeriodicSave(time.Duration(flagStoreInterval) * time.Second)
+			go persistentStorage.PeriodicSave(ctx, time.Duration(flagStoreInterval)*time.Second)
 		}
 	}
 
-	handler.Logger.Info("server is running", zap.String("address", flagHTTPAddr), zap.String("log_level", flagLogLevel))
-	return srv.ListenAndServe()
+	serverErr := make(chan error, 1)
+	go func() {
+		handler.Logger.Info("server is running", zap.String("address", flagHTTPAddr), zap.String("log_level", flagLogLevel))
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
+	}()
+
+	select {
+	case err := <-serverErr:
+		return err
+	case <-ctx.Done():
+	}
+
+	defer func() {
+		if persistentStorage, ok := storageToUse.(*repository.PersistentMemStorage); ok {
+			if err := persistentStorage.Save(); err != nil {
+				handler.Logger.Error("error saving metrics on shutdown", zap.Error(err))
+			}
+		}
+	}()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return srv.Shutdown(shutdownCtx)
 }

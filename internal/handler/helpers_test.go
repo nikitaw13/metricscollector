@@ -30,7 +30,7 @@ func GetTestServer() (server *httptest.Server) {
 	storage := repository.NewMemStorage()
 	storage.SetGauge("___test___", defaultGaugeValue)
 	storage.AddCounter("___test___", defaultCounterValue)
-	metricsHandler := NewMetricsHandler(storage, storage)
+	metricsHandler := NewMetricsHandler(storage, storage, "")
 	router := metricsHandler.NewRouter()
 	server = httptest.NewServer(router)
 	return
@@ -40,7 +40,7 @@ func GetTestServer() (server *httptest.Server) {
 // and the provided Database for testing routes that require DB connectivity.
 func GetTestServerWithDatabase(db DBPinger) (server *httptest.Server) {
 	storage := repository.NewMemStorage()
-	metricsHandler := NewMetricsHandler(storage, db)
+	metricsHandler := NewMetricsHandler(storage, db, "")
 	router := metricsHandler.NewRouter()
 	server = httptest.NewServer(router)
 	return
@@ -55,5 +55,16 @@ var expectedHTMLResponse = `<html><body>
 // GetTestServerWithRepository returns an httptest.Server backed by the provided Repository for tests needing a custom storage.
 // The database pinger is a fresh in-memory storage, so /ping succeeds without external dependencies.
 func GetTestServerWithRepository(repo Repository) *httptest.Server {
-	return httptest.NewServer(NewMetricsHandler(repo, repository.NewMemStorage()).NewRouter())
+	return httptest.NewServer(NewMetricsHandler(repo, repository.NewMemStorage(), "").NewRouter())
+}
+
+// GetTestServerWithKey returns an httptest.Server pre-seeded like GetTestServer, with HMAC request signing and response hashing enabled for the given key.
+func GetTestServerWithKey(key string) (server *httptest.Server) {
+	storage := repository.NewMemStorage()
+	storage.SetGauge("___test___", defaultGaugeValue)
+	storage.AddCounter("___test___", defaultCounterValue)
+	metricsHandler := NewMetricsHandler(storage, storage, key)
+	router := metricsHandler.NewRouter()
+	server = httptest.NewServer(router)
+	return
 }
