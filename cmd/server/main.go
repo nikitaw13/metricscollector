@@ -16,25 +16,21 @@ import (
 )
 
 func main() {
-	parseFlags()
-	if err := parseEnvs(); err != nil {
+	cfg, err := LoadConfig()
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := validateFlags(); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := run(); err != nil {
+	if err := run(cfg); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run() error {
+func run(cfg Config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := handler.InitLogger(flagLogLevel); err != nil {
+	if err := handler.InitLogger(cfg.logLevel); err != nil {
 		return err
 	}
 
@@ -43,12 +39,12 @@ func run() error {
 	var dbToUse handler.DBPinger
 	var timeouts = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
 
-	isSyncWrite := flagStoreInterval == 0
+	isSyncWrite := cfg.storeInterval == 0
 
 	switch {
 	// Database storage
-	case flagDatabaseDSN != "":
-		ps, err := repository.NewPostgresStorageFromDSN(flagDatabaseDSN, flagMigrationPath, timeouts, handler.Logger)
+	case cfg.databaseDSN != "":
+		ps, err := repository.NewPostgresStorageFromDSN(cfg.databaseDSN, cfg.migrationPath, timeouts, handler.Logger)
 
 		if err != nil {
 			handler.Logger.Error("failed to initialize postgres storage", zap.Error(err))
@@ -60,11 +56,11 @@ func run() error {
 		dbToUse = ps
 
 	// Persistent storage
-	case flagFileStoragePath != "":
+	case cfg.fileStoragePath != "":
 		memStorage := repository.NewMemStorage()
-		persistentMemStorage := repository.NewPersistentMemStorage(memStorage, flagFileStoragePath, isSyncWrite)
+		persistentMemStorage := repository.NewPersistentMemStorage(memStorage, cfg.fileStoragePath, isSyncWrite)
 
-		if flagRestore {
+		if cfg.restore {
 			err := persistentMemStorage.Restore()
 
 			if errors.Is(err, os.ErrNotExist) {
@@ -84,12 +80,12 @@ func run() error {
 		dbToUse = memStorage
 	}
 
-	metricsHandler := handler.NewMetricsHandler(storageToUse, dbToUse, flagHashKey)
+	metricsHandler := handler.NewMetricsHandler(storageToUse, dbToUse, cfg.hashKey)
 
 	router := metricsHandler.NewRouter()
 
 	srv := &http.Server{
-		Addr:         flagHTTPAddr,
+		Addr:         cfg.serverHTTPAddr,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
@@ -98,13 +94,13 @@ func run() error {
 
 	if persistentStorage, ok := storageToUse.(*repository.PersistentMemStorage); ok {
 		if !isSyncWrite {
-			go persistentStorage.PeriodicSave(ctx, time.Duration(flagStoreInterval)*time.Second)
+			go persistentStorage.PeriodicSave(ctx, time.Duration(cfg.storeInterval)*time.Second)
 		}
 	}
 
 	serverErr := make(chan error, 1)
 	go func() {
-		handler.Logger.Info("server is running", zap.String("address", flagHTTPAddr), zap.String("log_level", flagLogLevel))
+		handler.Logger.Info("server is running", zap.String("address", cfg.serverHTTPAddr), zap.String("log_level", cfg.logLevel))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
