@@ -16,14 +16,12 @@ import (
 )
 
 func main() {
-	parseFlags()
-	if err := parseEnvs(); err != nil {
+	cfg, err := LoadConfig()
+	if err != nil {
 		log.Fatal(err)
 	}
-	if err := validateFlags(); err != nil {
-		log.Fatal(err)
-	}
-	run()
+
+	run(cfg)
 }
 
 // worker consumes metric batches from the jobs channel and sends them to the server.
@@ -86,23 +84,23 @@ func collectMetrics(ctx context.Context, snapshot chan []model.Metric, interval 
 }
 
 // run starts the metric pipeline and blocks until SIGINT or SIGTERM is received.
-func run() {
+func run(cfg Config) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	var producersWg, workersWg sync.WaitGroup
 
 	var (
-		baseURL     = fmt.Sprintf("http://%s", flagServerAddr)
+		baseURL     = fmt.Sprintf("http://%s", cfg.serverAddr)
 		timeouts    = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
 		httpClient  = &http.Client{Timeout: 5 * time.Second}
 		retryClient = agent.NewClientWithRetries(timeouts, httpClient)
-		sender      = agent.NewSender(baseURL, retryClient, flagHashKey)
+		sender      = agent.NewSender(baseURL, retryClient, cfg.hashKey)
 	)
 
-	jobs := make(chan []model.Metric, flagRateLimit)
+	jobs := make(chan []model.Metric, cfg.rateLimit)
 
-	for workerNum := 1; workerNum <= flagRateLimit; workerNum++ {
+	for workerNum := 1; workerNum <= cfg.rateLimit; workerNum++ {
 		workersWg.Go(func() {
 			worker(sender, jobs)
 		})
@@ -111,11 +109,11 @@ func run() {
 	snapshot := make(chan []model.Metric, 1)
 
 	producersWg.Go(func() {
-		dispatchSnapshots(ctx, snapshot, jobs, time.Duration(flagReportInterval)*time.Second)
+		dispatchSnapshots(ctx, snapshot, jobs, time.Duration(cfg.reportInterval)*time.Second)
 	})
 
 	producersWg.Go(func() {
-		collectMetrics(ctx, snapshot, time.Duration(flagPollInterval)*time.Second)
+		collectMetrics(ctx, snapshot, time.Duration(cfg.pollInterval)*time.Second)
 	})
 
 	<-ctx.Done()
