@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/nikitaw13/metricscollector/internal/model"
 	"github.com/nikitaw13/metricscollector/internal/sign"
+	"go.uber.org/zap"
 )
 
 // Sender is responsible for sending collected metrics to the server
@@ -18,21 +18,23 @@ type Sender struct {
 	baseURL string
 	client  HTTPClient
 	hashKey string
+	logger  *zap.Logger
 }
 
 // NewSender creates a Sender with the given base URL, HTTP client, and signing key.
-func NewSender(baseURL string, client HTTPClient, hashKey string) *Sender {
+func NewSender(baseURL string, client HTTPClient, hashKey string, logger *zap.Logger) *Sender {
 	return &Sender{
 		baseURL: baseURL,
 		client:  client,
 		hashKey: hashKey,
+		logger:  logger,
 	}
 }
 
 // SendBatch sends the given metric batch to the server as a single HTTP POST request.
 func (s *Sender) SendBatch(metrics []model.Metric) {
 	if len(metrics) == 0 {
-		log.Println("empty metrics batch, skipping send")
+		s.logger.Debug("empty metrics batch, skipping send")
 		return
 	}
 
@@ -40,13 +42,13 @@ func (s *Sender) SendBatch(metrics []model.Metric) {
 
 	jsonBody, err := json.Marshal(&metrics)
 	if err != nil {
-		log.Println(err)
+		s.logger.Debug("Failed to marshal a []model.Metric", zap.Error(err))
 		return
 	}
 
 	compressedBody, err := Compress(jsonBody)
 	if err != nil {
-		log.Println(err)
+		s.logger.Debug("Failed to compress a json body", zap.Error(err))
 		return
 	}
 	req, err := http.NewRequest(
@@ -55,7 +57,7 @@ func (s *Sender) SendBatch(metrics []model.Metric) {
 		bytes.NewReader(compressedBody),
 	)
 	if err != nil {
-		log.Println(err)
+		s.logger.Debug("Failed to prepare a HTTP request", zap.Error(err))
 		return
 	}
 
@@ -66,20 +68,20 @@ func (s *Sender) SendBatch(metrics []model.Metric) {
 	req.Header.Set("Content-Encoding", "gzip")
 	resp, err := s.client.Do(req)
 	if err != nil {
-		log.Println(err)
+		s.logger.Error("Failed to send a HTTP request", zap.Error(err))
 		return
 	}
 
-	logRequest(resp, updatesURL)
+	logRequest(s.logger, resp, updatesURL)
 	drainAndCloseResponse(resp)
 }
 
 // logRequest logs the outcome of sending a metrics batch.
-func logRequest(resp *http.Response, url string) {
+func logRequest(logger *zap.Logger, resp *http.Response, url string) {
 	if resp.StatusCode < 300 {
-		log.Printf("Metrics sent to %s", url)
+		logger.Debug("Metrics sent", zap.String("url", url))
 	} else {
-		log.Printf("Metrics failed to send to %s, status: %d", url, resp.StatusCode)
+		logger.Error("Metrics failed to send", zap.String("url", url), zap.Int("status", resp.StatusCode))
 	}
 }
 

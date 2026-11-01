@@ -18,21 +18,18 @@ import (
 	"github.com/nikitaw13/metricscollector/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
-// expectedContentType is the expected Content-Type header for all JSON requests from the agent.
-const expectedContentType = "application/json; charset=utf-8"
+const (
+	// expectedContentType is the expected Content-Type header for all JSON requests from the agent.
+	expectedContentType = "application/json; charset=utf-8"
 
-// testHashKey is the HMAC key used by sender signing tests.
-const testHashKey = "TestKey"
+	// testHashKey is the HMAC key used by sender signing tests.
+	testHashKey = "TestKey"
+)
 
-// TestSendMetrics verifies that the sender reports all gauge and counter
-// metrics to the server in a single batched request. It checks:
-//   - exactly one request is made per SendBatch(),
-//   - each metric was received by the server,
-//   - the HTTP method is POST,
-//   - the Content-Type header is "application/json; charset=utf-8".
-func TestSendMetrics(t *testing.T) {
+func TestSendBatchDeliversAllMetrics(t *testing.T) {
 	t.Parallel()
 	batch := CollectRuntimeMetrics()
 
@@ -86,13 +83,14 @@ func TestSendMetrics(t *testing.T) {
 		ts.URL,
 		client,
 		"",
+		zap.NewNop(),
 	)
 
 	sender.SendBatch(batch)
 
 	assert.Equal(t, 1, requestCount, "SendBatch() must send exactly one batch request")
 
-	for _, metricName := range GaugeMetrics {
+	for _, metricName := range gaugeMetricNames {
 		t.Run(fmt.Sprintf("Received %v", metricName), func(t *testing.T) {
 			assert.Equal(t, true, received[metricName])
 		})
@@ -103,7 +101,7 @@ func TestSendMetrics(t *testing.T) {
 			assert.Equal(t, expectedContentType, contentType[metricName])
 		})
 	}
-	for _, metricName := range CounterMetrics {
+	for _, metricName := range counterMetricNames {
 		t.Run(fmt.Sprintf("Received %v", metricName), func(t *testing.T) {
 			assert.Equal(t, true, received[metricName])
 		})
@@ -189,6 +187,7 @@ func TestRetrySucceedsAfterTransientFailures(t *testing.T) {
 		ts.URL,
 		client,
 		"",
+		zap.NewNop(),
 	)
 
 	sender.SendBatch(batch)
@@ -242,6 +241,7 @@ func TestSendWithHash(t *testing.T) {
 		ts.URL,
 		client,
 		testHashKey,
+		zap.NewNop(),
 	)
 
 	sender.SendBatch(batch)
@@ -276,6 +276,7 @@ func TestSendBatchSkipsEmptyBatch(t *testing.T) {
 		ts.URL,
 		client,
 		"",
+		zap.NewNop(),
 	)
 
 	sender.SendBatch(nil)

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/nikitaw13/metricscollector/internal/agent"
+	"github.com/nikitaw13/metricscollector/internal/logger"
 	"github.com/nikitaw13/metricscollector/internal/model"
 )
 
@@ -88,14 +89,19 @@ func run(cfg Config) {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	zapLogger, err := logger.NewLogger(cfg.logLevel)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	var producersWg, workersWg sync.WaitGroup
 
 	var (
 		baseURL     = fmt.Sprintf("http://%s", cfg.serverAddr)
-		timeouts    = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
+		retryDelays = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
 		httpClient  = &http.Client{Timeout: 5 * time.Second}
-		retryClient = agent.NewClientWithRetries(timeouts, httpClient)
-		sender      = agent.NewSender(baseURL, retryClient, cfg.hashKey)
+		retryClient = agent.NewClientWithRetries(retryDelays, httpClient)
+		sender      = agent.NewSender(baseURL, retryClient, cfg.hashKey, zapLogger)
 	)
 
 	jobs := make(chan []model.Metric, cfg.rateLimit)

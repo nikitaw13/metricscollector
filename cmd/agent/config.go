@@ -11,6 +11,9 @@ type Config struct {
 	// serverAddr holds the HTTP address of the metrics server (-a).
 	serverAddr string
 
+	// logLevel holds the agent log level.
+	logLevel string
+
 	// reportInterval holds the interval in seconds between metric reports (-r).
 	reportInterval int
 
@@ -27,6 +30,7 @@ type Config struct {
 func LoadConfig() (Config, error) {
 	cfg := Config{
 		serverAddr:     "localhost:8080",
+		logLevel:       "INFO",
 		reportInterval: 10,
 		pollInterval:   2,
 		hashKey:        "",
