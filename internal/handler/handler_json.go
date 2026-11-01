@@ -44,30 +44,37 @@ func writeJSON(w http.ResponseWriter, status int, payload any) error {
 	return nil
 }
 
-// writeJSONError logs the error and writes an apiError with the given HTTP status code: server errors (5xx) report only the generic status text so internal details are not leaked, client errors (4xx) keep the original message.
+// writeJSONError writes an apiError with the given HTTP status code: server errors (5xx)
+// report only the generic status text so internal details are not leaked, client errors
+// (4xx) keep the original message.
 func writeJSONError(w http.ResponseWriter, status int, err error) {
 	var message string
 	if status >= http.StatusInternalServerError {
-		Logger.Error("request error", zap.Int("status", status), zap.Error(err))
 		message = http.StatusText(status)
 	} else {
-		Logger.Debug("request error", zap.Int("status", status), zap.Error(err))
 		message = err.Error()
 	}
 
-	if writeErr := writeJSON(w, status, apiError{Code: status, Message: message}); writeErr != nil {
-		Logger.Error("failed to write json", zap.Error(writeErr))
+	_ = writeJSON(w, status, apiError{
+		Code:    status,
+		Message: message,
+	})
+}
+
+// logErrorByStatus logs err at Error level for 5xx statuses and Debug for 4xx.
+func logErrorByStatus(logger *zap.Logger, status int, err error) {
+	if status >= http.StatusInternalServerError {
+		logger.Error("server error", zap.Int("status", status), zap.Error(err))
+	} else {
+		logger.Debug("client error", zap.Int("status", status), zap.Error(err))
 	}
 }
 
 // decodeJSON unmarshals the request body into target and classifies decode errors.
 func decodeJSON(r *http.Request, target any) error {
-	var syntaxErr *json.SyntaxError
-	var unmarshalTypeErr *json.UnmarshalTypeError
-
 	err := json.NewDecoder(r.Body).Decode(target)
 
-	if errors.As(err, &syntaxErr) {
+	if syntaxErr, ok := errors.AsType[*json.SyntaxError](err); ok {
 		return &decodeError{
 			status:  http.StatusBadRequest,
 			message: fmt.Sprintf("invalid JSON syntax at offset %d", syntaxErr.Offset),
@@ -75,7 +82,7 @@ func decodeJSON(r *http.Request, target any) error {
 		}
 	}
 
-	if errors.As(err, &unmarshalTypeErr) {
+	if unmarshalTypeErr, ok := errors.AsType[*json.UnmarshalTypeError](err); ok {
 		return &decodeError{
 			status:  http.StatusBadRequest,
 			message: fmt.Sprintf("invalid type %q for field %q", unmarshalTypeErr.Value, unmarshalTypeErr.Field),
@@ -103,8 +110,7 @@ func decodeJSON(r *http.Request, target any) error {
 
 // decodeErrorStatus extracts the HTTP status code from a decodeError, defaulting to 500.
 func decodeErrorStatus(err error) int {
-	var decodeErr *decodeError
-	if errors.As(err, &decodeErr) {
+	if decodeErr, ok := errors.AsType[*decodeError](err); ok {
 		return decodeErr.status
 	}
 	return http.StatusInternalServerError
@@ -116,31 +122,40 @@ func (h *MetricsHandler) handleJSONUpdate(w http.ResponseWriter, r *http.Request
 	var metric model.Metric
 
 	if err := decodeJSON(r, &metric); err != nil {
-		writeJSONError(w, decodeErrorStatus(err), err)
+		status := decodeErrorStatus(err)
+		logErrorByStatus(h.logger, status, err)
+		writeJSONError(w, status, err)
 		return
 	}
 
 	if err := metric.ValidateForUpdate(); err != nil {
+		logErrorByStatus(h.logger, http.StatusBadRequest, err)
 		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
-
 	switch metric.Type {
 	case model.Gauge:
-		if err := h.storage.SetGauge(metric.ID, *metric.Value); err != nil {
+		if err := h.service.SetGauge(metric.ID, *metric.Value); err != nil {
+			logErrorByStatus(h.logger, http.StatusInternalServerError, err)
 			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
 	case model.Counter:
-		newDelta, err := h.storage.AddCounter(metric.ID, *metric.Delta)
+		newDelta, err := h.service.AddCounter(metric.ID, *metric.Delta)
 		if err != nil {
+			logErrorByStatus(h.logger, http.StatusInternalServerError, err)
 			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
 		metric.Delta = &newDelta
+	default:
+		logErrorByStatus(h.logger, http.StatusBadRequest, model.ErrInvalidType)
+		writeJSONError(w, http.StatusBadRequest, model.ErrInvalidType)
+		return
 	}
+
 	if err := writeJSON(w, http.StatusOK, metric); err != nil {
-		Logger.Error("failed to write json", zap.Error(err))
+		h.logger.Error("failed to write json", zap.Error(err))
 		return
 	}
 }
@@ -150,19 +165,23 @@ func (h *MetricsHandler) handleJSONUpdates(w http.ResponseWriter, r *http.Reques
 	var metrics []model.Metric
 
 	if err := decodeJSON(r, &metrics); err != nil {
-		writeJSONError(w, decodeErrorStatus(err), err)
+		status := decodeErrorStatus(err)
+		logErrorByStatus(h.logger, status, err)
+		writeJSONError(w, status, err)
 		return
 	}
 
 	for _, metric := range metrics {
 		if err := metric.ValidateForUpdate(); err != nil {
+			logErrorByStatus(h.logger, http.StatusBadRequest, err)
 			writeJSONError(w, http.StatusBadRequest, err)
 			return
 		}
 	}
 
-	err := h.storage.UpdateMetrics(r.Context(), metrics)
+	err := h.service.UpdateMetricsBatch(r.Context(), metrics)
 	if err != nil {
+		logErrorByStatus(h.logger, http.StatusInternalServerError, err)
 		writeJSONError(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -175,42 +194,53 @@ func (h *MetricsHandler) handleJSONRead(w http.ResponseWriter, r *http.Request) 
 	var metric model.Metric
 
 	if err := decodeJSON(r, &metric); err != nil {
-		writeJSONError(w, decodeErrorStatus(err), err)
+		status := decodeErrorStatus(err)
+		logErrorByStatus(h.logger, status, err)
+		writeJSONError(w, status, err)
 		return
 	}
 
 	if err := metric.ValidateForRead(); err != nil {
+		logErrorByStatus(h.logger, http.StatusBadRequest, err)
 		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 
 	switch metric.Type {
 	case model.Gauge:
-		value, err := h.storage.GetGauge(metric.ID)
+		value, err := h.service.GetGauge(metric.ID)
 		if errors.Is(err, model.ErrMetricNotFound) {
+			logErrorByStatus(h.logger, http.StatusNotFound, err)
 			writeJSONError(w, http.StatusNotFound, err)
 			return
 		}
 		if err != nil {
+			logErrorByStatus(h.logger, http.StatusInternalServerError, err)
 			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
 		metric.Value = &value
 
 	case model.Counter:
-		delta, err := h.storage.GetCounter(metric.ID)
+		delta, err := h.service.GetCounter(metric.ID)
 		if errors.Is(err, model.ErrMetricNotFound) {
+			logErrorByStatus(h.logger, http.StatusNotFound, err)
 			writeJSONError(w, http.StatusNotFound, err)
 			return
 		}
 		if err != nil {
+			logErrorByStatus(h.logger, http.StatusInternalServerError, err)
 			writeJSONError(w, http.StatusInternalServerError, err)
 			return
 		}
 		metric.Delta = &delta
+	default:
+		logErrorByStatus(h.logger, http.StatusBadRequest, model.ErrInvalidType)
+		writeJSONError(w, http.StatusBadRequest, model.ErrInvalidType)
+		return
 	}
 	if err := writeJSON(w, http.StatusOK, metric); err != nil {
-		Logger.Error("failed to write json", zap.Error(err))
+		h.logger.Error("failed to write json", zap.Error(err))
 		return
 	}
 }

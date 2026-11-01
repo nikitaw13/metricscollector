@@ -21,7 +21,7 @@ import (
 
 // requireJSONContent enforces application/json Content-Type and non-empty body
 // for endpoints that expect JSON payloads.
-func requireJSONContent(h http.Handler) http.Handler {
+func requireJSONContent(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil || mediaType != "application/json" {
@@ -32,14 +32,14 @@ func requireJSONContent(h http.Handler) http.Handler {
 			writeJSONError(w, http.StatusBadRequest, errors.New("request body is required"))
 			return
 		}
-		h.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
 	})
 }
 
 // requireMetricType rejects requests with an unknown metric type.
 func requireMetricType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		metricType := chi.URLParam(r, "TYPE")
+		metricType := chi.URLParam(r, "type")
 		if metricType != model.Gauge && metricType != model.Counter {
 			http.Error(w, "Invalid metric type", http.StatusBadRequest)
 			return
@@ -48,34 +48,66 @@ func requireMetricType(next http.Handler) http.Handler {
 	})
 }
 
-// loggerMiddleware logs incoming HTTP requests and their responses.
-func loggerMiddleware(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
+// responseInfo holds the HTTP status code and response body size.
+type responseInfo struct {
+	status int
+	size   int
+}
 
-		respInfo := &responseInfo{
-			status: 0,
-			size:   0,
-		}
+// loggingResponseWriter wraps http.ResponseWriter to capture status and size.
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	responseInfo *responseInfo
+}
 
-		loggingWriter := loggingResponseWriter{
-			ResponseWriter: w,
-			responseInfo:   respInfo,
-		}
+// Write records the response body size and defaults status to 200.
+func (w *loggingResponseWriter) Write(b []byte) (int, error) {
+	size, err := w.ResponseWriter.Write(b)
+	w.responseInfo.size += size
 
-		h.ServeHTTP(&loggingWriter, r)
+	if w.responseInfo.status == 0 {
+		w.responseInfo.status = http.StatusOK
+	}
 
-		Logger.Info("got incoming HTTP request",
-			zap.String("uri", r.RequestURI),
-			zap.String("method", r.Method),
-			zap.Duration("duration", time.Since(start)),
-		)
+	return size, err
+}
 
-		Logger.Info("response for incoming HTTP request",
-			zap.Int("status", respInfo.status),
-			zap.Int("size", respInfo.size),
-		)
-	})
+// WriteHeader records the HTTP status code.
+func (w *loggingResponseWriter) WriteHeader(statusCode int) {
+	w.ResponseWriter.WriteHeader(statusCode)
+	w.responseInfo.status = statusCode
+}
+
+// loggingMiddleware logs incoming HTTP requests and their responses.
+func loggingMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+
+			respInfo := &responseInfo{
+				status: 0,
+				size:   0,
+			}
+
+			loggingWriter := loggingResponseWriter{
+				ResponseWriter: w,
+				responseInfo:   respInfo,
+			}
+
+			next.ServeHTTP(&loggingWriter, r)
+
+			logger.Info("got incoming HTTP request",
+				zap.String("uri", r.RequestURI),
+				zap.String("method", r.Method),
+				zap.Duration("duration", time.Since(start)),
+			)
+
+			logger.Info("response for incoming HTTP request",
+				zap.Int("status", respInfo.status),
+				zap.Int("size", respInfo.size),
+			)
+		})
+	}
 }
 
 // compressibleTypes defines Content-Type values eligible for compression.
@@ -88,7 +120,7 @@ var compressibleTypes = map[string]bool{
 // Non-compressible content types bypass the encoder entirely.
 type compressWriter struct {
 	http.ResponseWriter
-	Writer   io.WriteCloser // encoder instance
+	writer   io.WriteCloser // encoder instance
 	encoding string         // "gzip" or "deflate"
 	bypassed bool           // set when bypassing; prevents encoder Close
 }
@@ -122,24 +154,24 @@ func (c *compressWriter) Write(b []byte) (int, error) {
 	if c.ResponseWriter.Header().Get("Content-Encoding") == "" {
 		c.ResponseWriter.Header().Set("Content-Encoding", c.encoding)
 	}
-	return c.Writer.Write(b)
+	return c.writer.Write(b)
 }
 
-// CompressMiddleware compresses response bodies for clients supporting
+// compressMiddleware compresses response bodies for clients supporting
 // Accept-Encoding. Only application/json and text/html are compressed.
 // Gzip takes priority over deflate.
-func compressMiddleware(h http.Handler) http.Handler {
+func compressMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Vary", "Accept-Encoding")
 		acceptEncoding := r.Header.Get("Accept-Encoding")
 
 		if strings.Contains(acceptEncoding, "gzip") {
 			// BestCompression is a package constant, so NewWriterLevel never errors here.
-			gz, _ := gzip.NewWriterLevel(w, gzip.BestCompression)
-			compressWriter := &compressWriter{ResponseWriter: w, Writer: gz, encoding: "gzip"}
-			h.ServeHTTP(compressWriter, r)
-			if !compressWriter.bypassed {
-				gz.Close()
+			gw, _ := gzip.NewWriterLevel(w, gzip.BestCompression)
+			cw := &compressWriter{ResponseWriter: w, writer: gw, encoding: "gzip"}
+			next.ServeHTTP(cw, r)
+			if !cw.bypassed {
+				gw.Close()
 			}
 			return
 		}
@@ -147,21 +179,21 @@ func compressMiddleware(h http.Handler) http.Handler {
 		if strings.Contains(acceptEncoding, "deflate") {
 			// BestCompression is a package constant, so NewWriter never errors here.
 			dw, _ := flate.NewWriter(w, flate.BestCompression)
-			compressWriter := &compressWriter{ResponseWriter: w, Writer: dw, encoding: "deflate"}
-			h.ServeHTTP(compressWriter, r)
-			if !compressWriter.bypassed {
+			cw := &compressWriter{ResponseWriter: w, writer: dw, encoding: "deflate"}
+			next.ServeHTTP(cw, r)
+			if !cw.bypassed {
 				dw.Close()
 			}
 			return
 		}
 
-		h.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
 	})
 }
 
-// DecompressMiddleware decompresses gzip/deflate request bodies based on
+// decompressMiddleware decompresses gzip/deflate request bodies based on
 // Content-Encoding. Replaces r.Body and removes encoding/length headers.
-func decompressMiddleware(h http.Handler) http.Handler {
+func decompressMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Header.Get("Content-Encoding") {
 		case "gzip":
@@ -185,7 +217,7 @@ func decompressMiddleware(h http.Handler) http.Handler {
 			r.Body = io.NopCloser(df)
 		}
 
-		h.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -200,29 +232,29 @@ func (h *MetricsHandler) validateHashMiddleware(next http.Handler) http.Handler 
 			return
 		}
 
-		hashHeader := []byte(r.Header.Get("HashSHA256"))
-		if len(hashHeader) == 0 {
-			Logger.Debug("no hash provided")
+		providedHash := []byte(r.Header.Get("HashSHA256"))
+		if len(providedHash) == 0 {
+			h.logger.Debug("no hash provided")
 			http.Error(w, "No hash provided", http.StatusBadRequest)
 			return
 		}
 
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			Logger.Error("error reading body", zap.Int("status", http.StatusInternalServerError), zap.Error(err))
+			h.logger.Error("error reading body", zap.Int("status", http.StatusInternalServerError), zap.Error(err))
 			http.Error(w, "Internal error", http.StatusInternalServerError)
 			return
 		}
 
 		expectedHash := sign.HMAC(h.hashKey, body)
 
-		if !hmac.Equal(hashHeader, []byte(expectedHash)) {
-			Logger.Debug("wrong hash provided", zap.String("expectedHash", expectedHash), zap.String("actualHash", fmt.Sprintf("%x", hashHeader)))
+		if !hmac.Equal(providedHash, []byte(expectedHash)) {
+			h.logger.Debug("wrong hash provided", zap.String("expectedHash", expectedHash), zap.String("actualHash", fmt.Sprintf("%x", providedHash)))
 			http.Error(w, "Wrong hash provided", http.StatusBadRequest)
 			return
 		}
-		newBodyReader := bytes.NewReader(body)
-		r.Body = io.NopCloser(newBodyReader)
+		bodyReader := bytes.NewReader(body)
+		r.Body = io.NopCloser(bodyReader)
 		next.ServeHTTP(w, r)
 	})
 }

@@ -131,15 +131,15 @@ func (mr *MockServiceMockRecorder) SetGauge(name, value any) *gomock.Call {
 }
 
 // UpdateMetricsBatch mocks base method.
-func (m *MockService) UpdateMetricsBatch(arg0 []model.Metric) error {
+func (m *MockService) UpdateMetricsBatch(ctx context.Context, metrics []model.Metric) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateMetricsBatch", arg0)
+	ret := m.ctrl.Call(m, "UpdateMetricsBatch", ctx, metrics)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateMetricsBatch indicates an expected call of UpdateMetricsBatch.
-func (mr *MockServiceMockRecorder) UpdateMetricsBatch(arg0 any) *gomock.Call {
+func (mr *MockServiceMockRecorder) UpdateMetricsBatch(ctx, metrics any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMetricsBatch", reflect.TypeOf((*MockService)(nil).UpdateMetricsBatch), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMetricsBatch", reflect.TypeOf((*MockService)(nil).UpdateMetricsBatch), ctx, metrics)
 }
