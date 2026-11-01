@@ -19,14 +19,14 @@ func TestURLValidate(t *testing.T) {
 		{
 			"Missing Content-Type header", http.MethodPost, "/update", expectedResponse{
 				http.StatusBadRequest,
-				"Type is required\n",
+				"metric type is required\n",
 				"text/plain; charset=utf-8",
 			},
 		},
 		{
 			"Invalid metric type", http.MethodPost, "/update/random/", expectedResponse{
 				http.StatusBadRequest,
-				"Invalid metric type\n",
+				"invalid metric type\n",
 				"text/plain; charset=utf-8",
 			},
 		},
@@ -35,14 +35,14 @@ func TestURLValidate(t *testing.T) {
 		{
 			"Missing gauge metric name", http.MethodPost, "/update/gauge", expectedResponse{
 				http.StatusNotFound,
-				"Metric ID is required\n",
+				"metric ID is required\n",
 				"text/plain; charset=utf-8",
 			},
 		},
 		{
 			"Missing counter metric name", http.MethodPost, "/update/counter", expectedResponse{
 				http.StatusNotFound,
-				"Metric ID is required\n",
+				"metric ID is required\n",
 				"text/plain; charset=utf-8",
 			},
 		},
@@ -65,42 +65,42 @@ func TestURLValidate(t *testing.T) {
 		{
 			"Missing gauge metric value", http.MethodPost, "/update/gauge/name", expectedResponse{
 				http.StatusBadRequest,
-				"Metric value is required\n",
+				"metric value is required\n",
 				"text/plain; charset=utf-8",
 			},
 		},
 		{
 			"Missing counter metric value", http.MethodPost, "/update/counter/name", expectedResponse{
 				http.StatusBadRequest,
-				"Metric value is required\n",
+				"metric value is required\n",
 				"text/plain; charset=utf-8",
 			},
 		},
 		{
 			"Gauge metric value is non-numeric", http.MethodPost, "/update/gauge/name/value", expectedResponse{
 				http.StatusBadRequest,
-				"Invalid metric value\n",
+				"invalid metric value\n",
 				"text/plain; charset=utf-8",
 			},
 		},
 		{
 			"Counter metric value is non-numeric", http.MethodPost, "/update/counter/name/value", expectedResponse{
 				http.StatusBadRequest,
-				"Invalid metric value\n",
+				"invalid metric value\n",
 				"text/plain; charset=utf-8",
 			},
 		},
 		{
 			"Counter metric value is positive float", http.MethodPost, "/update/counter/name/1000.00", expectedResponse{
 				http.StatusBadRequest,
-				"Invalid metric value\n",
+				"invalid metric value\n",
 				"text/plain; charset=utf-8",
 			},
 		},
 		{
 			"Counter metric value is negative float", http.MethodPost, "/update/counter/name/-1001,00", expectedResponse{
 				http.StatusBadRequest,
-				"Invalid metric value\n",
+				"invalid metric value\n",
 				"text/plain; charset=utf-8",
 			},
 		},

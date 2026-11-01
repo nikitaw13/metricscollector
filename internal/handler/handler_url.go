@@ -125,7 +125,7 @@ func (h *MetricsHandler) handleURLUpdate(w http.ResponseWriter, r *http.Request)
 	case model.Gauge:
 		parsedValue, err := strconv.ParseFloat(metricValue, 64)
 		if err != nil {
-			http.Error(w, "Invalid metric value", http.StatusBadRequest)
+			http.Error(w, model.ErrInvalidValue.Error(), http.StatusBadRequest)
 			return
 		}
 		if err := h.service.SetGauge(metricID, parsedValue); err != nil {
@@ -138,7 +138,7 @@ func (h *MetricsHandler) handleURLUpdate(w http.ResponseWriter, r *http.Request)
 		parsedValue, err := strconv.ParseInt(metricValue, 10, 64)
 		if err != nil {
 			h.logger.Debug("invalid metric value", zap.Error(err))
-			http.Error(w, "Invalid metric value", http.StatusBadRequest)
+			http.Error(w, model.ErrInvalidValue.Error(), http.StatusBadRequest)
 			return
 		}
 		if _, err := h.service.AddCounter(metricID, parsedValue); err != nil {

@@ -25,7 +25,7 @@ func requireJSONContent(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 		if err != nil || mediaType != "application/json" {
-			http.Error(w, "Type is required", http.StatusBadRequest)
+			http.Error(w, model.ErrMissingType.Error(), http.StatusBadRequest)
 			return
 		}
 		if r.ContentLength == 0 {
@@ -41,7 +41,7 @@ func requireMetricType(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		metricType := chi.URLParam(r, "type")
 		if metricType != model.Gauge && metricType != model.Counter {
-			http.Error(w, "Invalid metric type", http.StatusBadRequest)
+			http.Error(w, model.ErrInvalidType.Error(), http.StatusBadRequest)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -235,14 +235,14 @@ func (h *MetricsHandler) validateHashMiddleware(next http.Handler) http.Handler 
 		providedHash := []byte(r.Header.Get("HashSHA256"))
 		if len(providedHash) == 0 {
 			h.logger.Debug("no hash provided")
-			http.Error(w, "No hash provided", http.StatusBadRequest)
+			http.Error(w, "no hash provided", http.StatusBadRequest)
 			return
 		}
 
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			h.logger.Error("error reading body", zap.Int("status", http.StatusInternalServerError), zap.Error(err))
-			http.Error(w, "Internal error", http.StatusInternalServerError)
+			http.Error(w, internalErrorMessage, http.StatusInternalServerError)
 			return
 		}
 
@@ -250,7 +250,7 @@ func (h *MetricsHandler) validateHashMiddleware(next http.Handler) http.Handler 
 
 		if !hmac.Equal(providedHash, []byte(expectedHash)) {
 			h.logger.Debug("wrong hash provided", zap.String("expectedHash", expectedHash), zap.String("actualHash", fmt.Sprintf("%x", providedHash)))
-			http.Error(w, "Wrong hash provided", http.StatusBadRequest)
+			http.Error(w, "wrong hash provided", http.StatusBadRequest)
 			return
 		}
 		bodyReader := bytes.NewReader(body)

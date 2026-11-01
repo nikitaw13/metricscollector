@@ -18,31 +18,25 @@ import (
 )
 
 var (
-	errTestListAllMetrics = errors.New("failed to list all metrics")
-	errTestGetGauge       = errors.New("failed to get a gauge")
-	errTestGetCounter     = errors.New("failed to get a counter")
-	errTestUpdateGauge    = errors.New("failed to update a gauge")
-	errTestUpdateCounter  = errors.New("failed to update a counter")
-	errTestUpdateBatch    = errors.New("failed to update a batch of metrics")
-)
-
-var (
-	testMetricName   = "metric"
-	mockGaugeValue   = float64(1.00)
-	mockCounterValue = int64(1)
-	testBatchBody    = fmt.Sprintf(`[{"type":"%s","id":"%s","delta":%d}]`, "counter", testMetricName, mockCounterValue)
-	testBatchMetrics = []model.Metric{{ID: testMetricName, Type: "counter", Delta: &mockCounterValue}}
-)
-
-var (
+	errTestListAllMetrics       = errors.New("failed to list all metrics")
+	errTestGetGauge             = errors.New("failed to get a gauge")
+	errTestGetCounter           = errors.New("failed to get a counter")
+	errTestUpdateGauge          = errors.New("failed to update a gauge")
+	errTestUpdateCounter        = errors.New("failed to update a counter")
+	errTestUpdateBatch          = errors.New("failed to update a batch of metrics")
 	listAllMetricsEndpoint      = "/"
-	updateJSONEndpoint          = "/update"
-	readJSONEndpoint            = "/value"
+	updateMetricJSONEndpoint    = "/update"
+	readMetricJSONEndpoint      = "/value"
 	updateJSONBatchEndpoint     = "/updates"
-	readGaugeMetricEndpoint     = fmt.Sprintf("/value/gauge/%s", testMetricName)
-	readCounterMetricEndpoint   = fmt.Sprintf("/value/counter/%s", testMetricName)
-	updateGaugeMetricEndpoint   = fmt.Sprintf("/update/gauge/%s/%g", testMetricName, mockGaugeValue)
-	updateCounterMetricEndpoint = fmt.Sprintf("/update/counter/%s/%d", testMetricName, mockCounterValue)
+	testMetric                  = "metric"
+	testGaugeValue              = float64(1.00)
+	testCounterValue            = int64(1)
+	readGaugeMetricEndpoint     = fmt.Sprintf("/value/gauge/%s", testMetric)
+	readCounterMetricEndpoint   = fmt.Sprintf("/value/counter/%s", testMetric)
+	updateGaugeMetricEndpoint   = fmt.Sprintf("/update/gauge/%s/%g", testMetric, testGaugeValue)
+	updateCounterMetricEndpoint = fmt.Sprintf("/update/counter/%s/%d", testMetric, testCounterValue)
+	testBatchBody               = fmt.Sprintf(`[{"type":"%s","id":"%s","delta":%d}]`, "counter", testMetric, testCounterValue)
+	testBatchMetrics            = []model.Metric{{ID: testMetric, Type: "counter", Delta: &testCounterValue}}
 )
 
 func TestMetricsHandler_handleListMetricsError(t *testing.T) {
@@ -92,7 +86,7 @@ func TestMetricsHandler_handleURLReadError(t *testing.T) {
 		{
 			name: "gauge service error returns 500",
 			setup: func(svc *mocks.MockService) {
-				svc.EXPECT().GetGauge(testMetricName).Return(mockGaugeValue, errTestGetGauge)
+				svc.EXPECT().GetGauge(testMetric).Return(testGaugeValue, errTestGetGauge)
 			},
 			endpoint:    readGaugeMetricEndpoint,
 			wantStatus:  http.StatusInternalServerError,
@@ -101,7 +95,7 @@ func TestMetricsHandler_handleURLReadError(t *testing.T) {
 		{
 			name: "counter service error returns 500",
 			setup: func(svc *mocks.MockService) {
-				svc.EXPECT().GetCounter(testMetricName).Return(mockCounterValue, errTestGetCounter)
+				svc.EXPECT().GetCounter(testMetric).Return(testCounterValue, errTestGetCounter)
 			},
 			endpoint:    readCounterMetricEndpoint,
 			wantStatus:  http.StatusInternalServerError,
@@ -139,7 +133,7 @@ func TestMetricsHandler_handleURLUpdateError(t *testing.T) {
 		{
 			name: "gauge service error returns 500",
 			setup: func(svc *mocks.MockService) {
-				svc.EXPECT().SetGauge(testMetricName, mockGaugeValue).Return(errTestUpdateGauge)
+				svc.EXPECT().SetGauge(testMetric, testGaugeValue).Return(errTestUpdateGauge)
 			},
 			endpoint:    updateGaugeMetricEndpoint,
 			wantStatus:  http.StatusInternalServerError,
@@ -148,7 +142,7 @@ func TestMetricsHandler_handleURLUpdateError(t *testing.T) {
 		{
 			name: "counter service error returns 500",
 			setup: func(svc *mocks.MockService) {
-				svc.EXPECT().AddCounter(testMetricName, mockCounterValue).Return(mockCounterValue, errTestUpdateCounter)
+				svc.EXPECT().AddCounter(testMetric, testCounterValue).Return(testCounterValue, errTestUpdateCounter)
 			},
 			endpoint:    updateCounterMetricEndpoint,
 			wantStatus:  http.StatusInternalServerError,
@@ -186,18 +180,18 @@ func TestMetricsHandler_handleJSONUpdateError(t *testing.T) {
 		{
 			name: "gauge service error returns 500",
 			setup: func(svc *mocks.MockService) {
-				svc.EXPECT().SetGauge(testMetricName, mockGaugeValue).Return(errTestUpdateGauge)
+				svc.EXPECT().SetGauge(testMetric, testGaugeValue).Return(errTestUpdateGauge)
 			},
-			body:        fmt.Sprintf(`{"type":"%s","id":"%s","value":%g}`, "gauge", testMetricName, mockGaugeValue),
+			body:        fmt.Sprintf(`{"type":"%s","id":"%s","value":%g}`, "gauge", testMetric, testGaugeValue),
 			wantStatus:  http.StatusInternalServerError,
 			wantMessage: "{\"code\":500,\"message\":\"Internal Server Error\"}",
 		},
 		{
 			name: "counter service error returns 500",
 			setup: func(svc *mocks.MockService) {
-				svc.EXPECT().AddCounter(testMetricName, mockCounterValue).Return(mockCounterValue, errTestUpdateCounter)
+				svc.EXPECT().AddCounter(testMetric, testCounterValue).Return(testCounterValue, errTestUpdateCounter)
 			},
-			body:        fmt.Sprintf(`{"type":"%s","id":"%s","delta":%d}`, "counter", testMetricName, mockCounterValue),
+			body:        fmt.Sprintf(`{"type":"%s","id":"%s","delta":%d}`, "counter", testMetric, testCounterValue),
 			wantStatus:  http.StatusInternalServerError,
 			wantMessage: "{\"code\":500,\"message\":\"Internal Server Error\"}",
 		},
@@ -212,7 +206,7 @@ func TestMetricsHandler_handleJSONUpdateError(t *testing.T) {
 			h := NewMetricsHandler("", svc, zap.NewNop())
 
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, updateJSONEndpoint, strings.NewReader(tt.body))
+			r := httptest.NewRequest(http.MethodPost, updateMetricJSONEndpoint, strings.NewReader(tt.body))
 			r.Header.Set("Content-Type", "application/json")
 
 			h.Router().ServeHTTP(w, r)
@@ -234,18 +228,18 @@ func TestMetricsHandler_handleJSONReadError(t *testing.T) {
 		{
 			name: "gauge service error returns 500",
 			setup: func(svc *mocks.MockService) {
-				svc.EXPECT().GetGauge(testMetricName).Return(mockGaugeValue, errTestGetGauge)
+				svc.EXPECT().GetGauge(testMetric).Return(testGaugeValue, errTestGetGauge)
 			},
-			body:        fmt.Sprintf(`{"type":"%s","id":"%s"}`, "gauge", testMetricName),
+			body:        fmt.Sprintf(`{"type":"%s","id":"%s"}`, "gauge", testMetric),
 			wantStatus:  http.StatusInternalServerError,
 			wantMessage: "{\"code\":500,\"message\":\"Internal Server Error\"}",
 		},
 		{
 			name: "counter service error returns 500",
 			setup: func(svc *mocks.MockService) {
-				svc.EXPECT().GetCounter(testMetricName).Return(mockCounterValue, errTestGetCounter)
+				svc.EXPECT().GetCounter(testMetric).Return(testCounterValue, errTestGetCounter)
 			},
-			body:        fmt.Sprintf(`{"type":"%s","id":"%s"}`, "counter", testMetricName),
+			body:        fmt.Sprintf(`{"type":"%s","id":"%s"}`, "counter", testMetric),
 			wantStatus:  http.StatusInternalServerError,
 			wantMessage: "{\"code\":500,\"message\":\"Internal Server Error\"}",
 		},
@@ -260,7 +254,7 @@ func TestMetricsHandler_handleJSONReadError(t *testing.T) {
 			h := NewMetricsHandler("", svc, zap.NewNop())
 
 			w := httptest.NewRecorder()
-			r := httptest.NewRequest(http.MethodPost, readJSONEndpoint, strings.NewReader(tt.body))
+			r := httptest.NewRequest(http.MethodPost, readMetricJSONEndpoint, strings.NewReader(tt.body))
 			r.Header.Set("Content-Type", "application/json")
 
 			h.Router().ServeHTTP(w, r)
@@ -338,7 +332,7 @@ func TestJSONClientErrorMessages(t *testing.T) {
 			name:         "update missing type carries validation message",
 			path:         "/update",
 			body:         `{}`,
-			wantContains: "Metric type is required",
+			wantContains: "metric type is required",
 		},
 	}
 
