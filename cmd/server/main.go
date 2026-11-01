@@ -11,7 +11,9 @@ import (
 	"time"
 
 	"github.com/nikitaw13/metricscollector/internal/handler"
+	"github.com/nikitaw13/metricscollector/internal/logger"
 	"github.com/nikitaw13/metricscollector/internal/repository"
+	"github.com/nikitaw13/metricscollector/internal/service"
 	"go.uber.org/zap"
 )
 
@@ -30,59 +32,60 @@ func run(cfg Config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := handler.InitLogger(cfg.logLevel); err != nil {
+	zapLogger, err := logger.NewLogger(cfg.logLevel)
+	if err != nil {
 		return err
 	}
 
-	var storageToUse handler.Repository
-
-	var dbToUse handler.DBPinger
-	var timeouts = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
+	var storage service.Repository
+	var dbPinger service.DBPinger
+	var dbRetryDelays = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
 
 	isSyncWrite := cfg.storeInterval == 0
 
 	switch {
 	// Database storage
 	case cfg.databaseDSN != "":
-		ps, err := repository.NewPostgresStorageFromDSN(cfg.databaseDSN, cfg.migrationPath, timeouts, handler.Logger)
+		postgresStorage, err := repository.NewPostgresStorageFromDSN(cfg.databaseDSN, cfg.migrationPath, dbRetryDelays, zapLogger)
 
 		if err != nil {
-			handler.Logger.Error("failed to initialize postgres storage", zap.Error(err))
+			zapLogger.Error("failed to initialize postgres storage", zap.Error(err))
 			return err
 		}
-		defer ps.Close()
+		defer postgresStorage.Close()
 
-		storageToUse = ps
-		dbToUse = ps
+		storage = postgresStorage
+		dbPinger = postgresStorage
 
 	// Persistent storage
 	case cfg.fileStoragePath != "":
 		memStorage := repository.NewMemStorage()
-		persistentMemStorage := repository.NewPersistentMemStorage(memStorage, cfg.fileStoragePath, isSyncWrite)
+		persistentStorage := repository.NewPersistentMemStorage(memStorage, cfg.fileStoragePath, isSyncWrite)
 
 		if cfg.restore {
-			err := persistentMemStorage.Restore()
+			err := persistentStorage.Restore()
 
 			if errors.Is(err, os.ErrNotExist) {
-				handler.Logger.Warn("file does not exist", zap.Error(err))
+				zapLogger.Warn("file does not exist", zap.Error(err))
 			} else if err != nil {
-				handler.Logger.Error("failed to restore metrics from file", zap.Error(err))
+				zapLogger.Error("failed to restore metrics from file", zap.Error(err))
 			}
 		}
 
-		storageToUse = persistentMemStorage
-		dbToUse = persistentMemStorage
+		storage = persistentStorage
+		dbPinger = persistentStorage
 
 	// In-memory storage
 	default:
 		memStorage := repository.NewMemStorage()
-		storageToUse = memStorage
-		dbToUse = memStorage
+		storage = memStorage
+		dbPinger = memStorage
 	}
 
-	metricsHandler := handler.NewMetricsHandler(storageToUse, dbToUse, cfg.hashKey)
+	svc := service.New(storage, dbPinger, *zapLogger)
+	metricsHandler := handler.NewMetricsHandler(cfg.hashKey, svc, zapLogger)
 
-	router := metricsHandler.NewRouter()
+	router := metricsHandler.Router()
 
 	srv := &http.Server{
 		Addr:         cfg.serverHTTPAddr,
@@ -92,7 +95,7 @@ func run(cfg Config) error {
 		Handler:      router,
 	}
 
-	if persistentStorage, ok := storageToUse.(*repository.PersistentMemStorage); ok {
+	if persistentStorage, ok := storage.(*repository.PersistentMemStorage); ok {
 		if !isSyncWrite {
 			go persistentStorage.PeriodicSave(ctx, time.Duration(cfg.storeInterval)*time.Second)
 		}
@@ -100,7 +103,7 @@ func run(cfg Config) error {
 
 	serverErr := make(chan error, 1)
 	go func() {
-		handler.Logger.Info("server is running", zap.String("address", cfg.serverHTTPAddr), zap.String("log_level", cfg.logLevel))
+		zapLogger.Info("server is running", zap.String("address", cfg.serverHTTPAddr), zap.String("log_level", cfg.logLevel))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
@@ -113,9 +116,9 @@ func run(cfg Config) error {
 	}
 
 	defer func() {
-		if persistentStorage, ok := storageToUse.(*repository.PersistentMemStorage); ok {
+		if persistentStorage, ok := storage.(*repository.PersistentMemStorage); ok {
 			if err := persistentStorage.Save(); err != nil {
-				handler.Logger.Error("error saving metrics on shutdown", zap.Error(err))
+				zapLogger.Error("error saving metrics on shutdown", zap.Error(err))
 			}
 		}
 	}()
