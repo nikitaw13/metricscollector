@@ -10,101 +10,110 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nikitaw13/metricscollector/internal/audit"
 	"github.com/nikitaw13/metricscollector/internal/handler"
+	"github.com/nikitaw13/metricscollector/internal/logger"
 	"github.com/nikitaw13/metricscollector/internal/repository"
+	"github.com/nikitaw13/metricscollector/internal/retry"
+	"github.com/nikitaw13/metricscollector/internal/service"
 	"go.uber.org/zap"
 )
 
 func main() {
-	parseFlags()
-	if err := parseEnvs(); err != nil {
+	cfg, err := LoadConfig()
+	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := validateFlags(); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := run(); err != nil {
+	if err := run(cfg); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run() error {
+func run(cfg Config) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := handler.InitLogger(flagLogLevel); err != nil {
+	zapLogger, err := logger.NewLogger(cfg.logLevel)
+	if err != nil {
 		return err
 	}
 
-	var storageToUse handler.Repository
+	var storage service.Repository
+	var dbPinger service.DBPinger
+	var dbRetryDelays = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
 
-	var dbToUse handler.DBPinger
-	var timeouts = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
-
-	isSyncWrite := flagStoreInterval == 0
+	isSyncWrite := cfg.storeInterval == 0
 
 	switch {
 	// Database storage
-	case flagDatabaseDSN != "":
-		ps, err := repository.NewPostgresStorageFromDSN(flagDatabaseDSN, flagMigrationPath, timeouts, handler.Logger)
+	case cfg.databaseDSN != "":
+		postgresStorage, err := repository.NewPostgresStorageFromDSN(cfg.databaseDSN, cfg.migrationPath, dbRetryDelays, zapLogger)
 
 		if err != nil {
-			handler.Logger.Error("failed to initialize postgres storage", zap.Error(err))
+			zapLogger.Error("failed to initialize postgres storage", zap.Error(err))
 			return err
 		}
-		defer ps.Close()
+		defer postgresStorage.Close()
 
-		storageToUse = ps
-		dbToUse = ps
+		storage = postgresStorage
+		dbPinger = postgresStorage
 
 	// Persistent storage
-	case flagFileStoragePath != "":
+	case cfg.fileStoragePath != "":
 		memStorage := repository.NewMemStorage()
-		persistentMemStorage := repository.NewPersistentMemStorage(memStorage, flagFileStoragePath, isSyncWrite)
+		persistentStorage := repository.NewPersistentMemStorage(memStorage, cfg.fileStoragePath, isSyncWrite)
 
-		if flagRestore {
-			err := persistentMemStorage.Restore()
+		if cfg.restore {
+			err := persistentStorage.Restore()
 
 			if errors.Is(err, os.ErrNotExist) {
-				handler.Logger.Warn("file does not exist", zap.Error(err))
+				zapLogger.Warn("file does not exist", zap.Error(err))
 			} else if err != nil {
-				handler.Logger.Error("failed to restore metrics from file", zap.Error(err))
+				zapLogger.Error("failed to restore metrics from file", zap.Error(err))
 			}
 		}
 
-		storageToUse = persistentMemStorage
-		dbToUse = persistentMemStorage
+		storage = persistentStorage
+		dbPinger = persistentStorage
 
 	// In-memory storage
 	default:
 		memStorage := repository.NewMemStorage()
-		storageToUse = memStorage
-		dbToUse = memStorage
+		storage = memStorage
+		dbPinger = memStorage
 	}
 
-	metricsHandler := handler.NewMetricsHandler(storageToUse, dbToUse, flagHashKey)
+	var (
+		retryDelays    = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
+		httpClient     = &http.Client{Timeout: 5 * time.Second}
+		retryClient    = retry.New(retryDelays, httpClient, zapLogger)
+		svc            = service.New(storage, dbPinger, zapLogger)
+		auditor        = audit.New(cfg.auditFile, cfg.auditURL, retryClient)
+		metricsHandler = handler.NewMetricsHandler(cfg.hashKey, svc, zapLogger, auditor)
+	)
 
-	router := metricsHandler.NewRouter()
+	var (
+		router = metricsHandler.Router()
 
-	srv := &http.Server{
-		Addr:         flagHTTPAddr,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
-		Handler:      router,
-	}
+		srv = &http.Server{
+			Addr:         cfg.serverHTTPAddr,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  120 * time.Second,
+			Handler:      router,
+		}
+	)
 
-	if persistentStorage, ok := storageToUse.(*repository.PersistentMemStorage); ok {
+	if persistentStorage, ok := storage.(*repository.PersistentMemStorage); ok {
 		if !isSyncWrite {
-			go persistentStorage.PeriodicSave(ctx, time.Duration(flagStoreInterval)*time.Second)
+			go persistentStorage.PeriodicSave(ctx, time.Duration(cfg.storeInterval)*time.Second)
 		}
 	}
 
 	serverErr := make(chan error, 1)
 	go func() {
-		handler.Logger.Info("server is running", zap.String("address", flagHTTPAddr), zap.String("log_level", flagLogLevel))
+		zapLogger.Info("server is running", zap.String("address", cfg.serverHTTPAddr), zap.String("log_level", cfg.logLevel))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
@@ -117,9 +126,9 @@ func run() error {
 	}
 
 	defer func() {
-		if persistentStorage, ok := storageToUse.(*repository.PersistentMemStorage); ok {
+		if persistentStorage, ok := storage.(*repository.PersistentMemStorage); ok {
 			if err := persistentStorage.Save(); err != nil {
-				handler.Logger.Error("error saving metrics on shutdown", zap.Error(err))
+				zapLogger.Error("error saving metrics on shutdown", zap.Error(err))
 			}
 		}
 	}()
