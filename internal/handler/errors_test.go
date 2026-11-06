@@ -60,9 +60,10 @@ func TestMetricsHandler_handleListMetricsError(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			svc := mocks.NewMockService(ctrl)
+			auditor := mocks.NewMockAuditor(ctrl)
 			tt.setup(svc)
 
-			h := NewMetricsHandler("", svc, zap.NewNop())
+			h := NewMetricsHandler("", svc, zap.NewNop(), auditor)
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, listAllMetricsEndpoint, nil)
@@ -107,9 +108,10 @@ func TestMetricsHandler_handleURLReadError(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			svc := mocks.NewMockService(ctrl)
+			auditor := mocks.NewMockAuditor(ctrl)
 			tt.setup(svc)
 
-			h := NewMetricsHandler("", svc, zap.NewNop())
+			h := NewMetricsHandler("", svc, zap.NewNop(), auditor)
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, tt.endpoint, nil)
@@ -154,9 +156,10 @@ func TestMetricsHandler_handleURLUpdateError(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			svc := mocks.NewMockService(ctrl)
+			auditor := mocks.NewMockAuditor(ctrl)
 			tt.setup(svc)
 
-			h := NewMetricsHandler("", svc, zap.NewNop())
+			h := NewMetricsHandler("", svc, zap.NewNop(), auditor)
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, tt.endpoint, nil)
@@ -201,9 +204,10 @@ func TestMetricsHandler_handleJSONUpdateError(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			svc := mocks.NewMockService(ctrl)
+			auditor := mocks.NewMockAuditor(ctrl)
 			tt.setup(svc)
 
-			h := NewMetricsHandler("", svc, zap.NewNop())
+			h := NewMetricsHandler("", svc, zap.NewNop(), auditor)
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, updateMetricJSONEndpoint, strings.NewReader(tt.body))
@@ -249,9 +253,10 @@ func TestMetricsHandler_handleJSONReadError(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			svc := mocks.NewMockService(ctrl)
+			auditor := mocks.NewMockAuditor(ctrl)
 			tt.setup(svc)
 
-			h := NewMetricsHandler("", svc, zap.NewNop())
+			h := NewMetricsHandler("", svc, zap.NewNop(), auditor)
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, readMetricJSONEndpoint, strings.NewReader(tt.body))
@@ -288,9 +293,10 @@ func TestMetricsHandler_handleJSONUpdatesError(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			svc := mocks.NewMockService(ctrl)
+			auditor := mocks.NewMockAuditor(ctrl)
 			tt.setup(svc)
 
-			h := NewMetricsHandler("", svc, zap.NewNop())
+			h := NewMetricsHandler("", svc, zap.NewNop(), auditor)
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodPost, updateJSONBatchEndpoint, strings.NewReader(tt.body))

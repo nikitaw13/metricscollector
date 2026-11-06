@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nikitaw13/metricscollector/internal/audit"
 	"github.com/nikitaw13/metricscollector/internal/repository"
 	"github.com/nikitaw13/metricscollector/internal/service"
 	"github.com/stretchr/testify/require"
@@ -36,12 +37,13 @@ type testResponse struct {
 func newTestServer() (server *httptest.Server) {
 	storage := repository.NewMemStorage()
 	var dbPinger service.DBPinger
-	svc := service.New(storage, dbPinger, *zap.NewNop())
+	svc := service.New(storage, dbPinger, zap.NewNop())
 
 	storage.SetGauge("___test___", defaultGaugeValue)
 	storage.AddCounter("___test___", defaultCounterValue)
 
-	metricsHandler := NewMetricsHandler("", svc, zap.NewNop())
+	auditor := audit.New("", "", http.DefaultClient)
+	metricsHandler := NewMetricsHandler("", svc, zap.NewNop(), auditor)
 	router := metricsHandler.Router()
 	server = httptest.NewServer(router)
 	return
@@ -52,11 +54,13 @@ func newTestServer() (server *httptest.Server) {
 func newTestServerWithKey(key string) (server *httptest.Server) {
 	storage := repository.NewMemStorage()
 	var dbPinger service.DBPinger
-	svc := service.New(storage, dbPinger, *zap.NewNop())
+	svc := service.New(storage, dbPinger, zap.NewNop())
 
 	storage.SetGauge("___test___", defaultGaugeValue)
 	storage.AddCounter("___test___", defaultCounterValue)
-	metricsHandler := NewMetricsHandler(key, svc, zap.NewNop())
+
+	auditor := audit.New("", "", http.DefaultClient)
+	metricsHandler := NewMetricsHandler(key, svc, zap.NewNop(), auditor)
 	router := metricsHandler.Router()
 	server = httptest.NewServer(router)
 	return

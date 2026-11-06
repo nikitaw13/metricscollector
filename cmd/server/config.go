@@ -31,6 +31,12 @@ type Config struct {
 
 	// hashKey is the secret key used for HMAC-SHA256 request and response signing.
 	hashKey string
+
+	// auditFile is the path to the audit log file.
+	auditFile string
+
+	// auditURL is the endpoint that receives audit events.
+	auditURL string
 }
 
 func LoadConfig() (Config, error) {
@@ -43,6 +49,8 @@ func LoadConfig() (Config, error) {
 		databaseDSN:     "",
 		migrationPath:   "migrations",
 		hashKey:         "",
+		auditFile:       "",
+		auditURL:        "",
 	}
 
 	envAddress, found := os.LookupEnv("ADDRESS")
@@ -95,6 +103,16 @@ func LoadConfig() (Config, error) {
 		cfg.hashKey = envHashKey
 	}
 
+	envAuditFile, found := os.LookupEnv("AUDIT_FILE")
+	if found {
+		cfg.auditFile = envAuditFile
+	}
+
+	envAuditURL, found := os.LookupEnv("AUDIT_URL")
+	if found {
+		cfg.auditURL = envAuditURL
+	}
+
 	flag.StringVar(&cfg.serverHTTPAddr, "a", cfg.serverHTTPAddr, "HTTP server endpoint address")
 	flag.StringVar(&cfg.logLevel, "l", cfg.logLevel, "HTTP server log level")
 	flag.IntVar(&cfg.storeInterval, "i", cfg.storeInterval, "interval in seconds between periodic saves to disk; 0 makes writes synchronous")
@@ -103,6 +121,8 @@ func LoadConfig() (Config, error) {
 	flag.StringVar(&cfg.databaseDSN, "d", cfg.databaseDSN, "Database connection DSN")
 	flag.StringVar(&cfg.migrationPath, "m", cfg.migrationPath, "directory containing database migration files")
 	flag.StringVar(&cfg.hashKey, "k", cfg.hashKey, "secret key for HMAC-SHA256 body signing")
+	flag.StringVar(&cfg.auditFile, "audit-file", cfg.auditFile, "path to the audit log file")
+	flag.StringVar(&cfg.auditURL, "audit-url", cfg.auditURL, "endpoint that receives audit events")
 	flag.Parse()
 
 	err := cfg.Validate()

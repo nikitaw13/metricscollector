@@ -4,42 +4,30 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"html/template"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/nikitaw13/metricscollector/internal/model"
 	"go.uber.org/zap"
 )
 
-const tmplHTML = `<html><body>
-<h1>List of names and results of all currently known metrics</h1>
-{{- range $name, $value := .Counters}}
-<p><b>{{$name}}</b>: <code>{{$value}}</code></p>
-{{- end}}
-{{- range $name, $value := .Gauges}}
-<p><b>{{$name}}</b>: <code>{{$value}}</code></p>
-{{- end}}
-<hr></body></html>`
-
-const internalErrorMessage = "Internal Server Error"
-
-var tmpl = template.Must(template.New("metrics").Parse(tmplHTML))
-
 // MetricsHandler serves HTTP requests for reading and updating metrics.
 type MetricsHandler struct {
 	hashKey string
 	service Service
 	logger  *zap.Logger
+	auditor Auditor
 }
 
 // NewMetricsHandler creates a MetricsHandler with the provided signing key, service, and logger.
-func NewMetricsHandler(hashKey string, service Service, logger *zap.Logger) *MetricsHandler {
+func NewMetricsHandler(hashKey string, service Service, logger *zap.Logger, auditor Auditor) *MetricsHandler {
 	return &MetricsHandler{
 		hashKey: hashKey,
 		service: service,
 		logger:  logger,
+		auditor: auditor,
 	}
 }
 
@@ -120,6 +108,12 @@ func (h *MetricsHandler) handleURLUpdate(w http.ResponseWriter, r *http.Request)
 		metricType  = chi.URLParam(r, "type")
 		metricID    = chi.URLParam(r, "metric")
 		metricValue = chi.URLParam(r, "value")
+		metrics     = []model.Metric{
+			{
+				ID:   metricID,
+				Type: metricType,
+			},
+		}
 	)
 	switch metricType {
 	case model.Gauge:
@@ -133,6 +127,7 @@ func (h *MetricsHandler) handleURLUpdate(w http.ResponseWriter, r *http.Request)
 			http.Error(w, internalErrorMessage, http.StatusInternalServerError)
 			return
 		}
+		metrics[0].Value = &parsedValue
 
 	case model.Counter:
 		parsedValue, err := strconv.ParseInt(metricValue, 10, 64)
@@ -146,8 +141,14 @@ func (h *MetricsHandler) handleURLUpdate(w http.ResponseWriter, r *http.Request)
 			http.Error(w, internalErrorMessage, http.StatusInternalServerError)
 			return
 		}
-	}
+		metrics[0].Delta = &parsedValue
 
+	}
+	host := clientIP(r.RemoteAddr)
+	err := h.auditor.Notify(time.Now().Unix(), metrics, host)
+	if err != nil {
+		logErrorByStatus(h.logger, http.StatusInternalServerError, err)
+	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Metric '%s' updated\n", metricID)

@@ -10,9 +10,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nikitaw13/metricscollector/internal/audit"
 	"github.com/nikitaw13/metricscollector/internal/handler"
 	"github.com/nikitaw13/metricscollector/internal/logger"
 	"github.com/nikitaw13/metricscollector/internal/repository"
+	"github.com/nikitaw13/metricscollector/internal/retry"
 	"github.com/nikitaw13/metricscollector/internal/service"
 	"go.uber.org/zap"
 )
@@ -82,18 +84,26 @@ func run(cfg Config) error {
 		dbPinger = memStorage
 	}
 
-	svc := service.New(storage, dbPinger, *zapLogger)
-	metricsHandler := handler.NewMetricsHandler(cfg.hashKey, svc, zapLogger)
+	var (
+		retryDelays    = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
+		httpClient     = &http.Client{Timeout: 5 * time.Second}
+		retryClient    = retry.New(retryDelays, httpClient, zapLogger)
+		svc            = service.New(storage, dbPinger, zapLogger)
+		auditor        = audit.New(cfg.auditFile, cfg.auditURL, retryClient)
+		metricsHandler = handler.NewMetricsHandler(cfg.hashKey, svc, zapLogger, auditor)
+	)
 
-	router := metricsHandler.Router()
+	var (
+		router = metricsHandler.Router()
 
-	srv := &http.Server{
-		Addr:         cfg.serverHTTPAddr,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  120 * time.Second,
-		Handler:      router,
-	}
+		srv = &http.Server{
+			Addr:         cfg.serverHTTPAddr,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  120 * time.Second,
+			Handler:      router,
+		}
+	)
 
 	if persistentStorage, ok := storage.(*repository.PersistentMemStorage); ok {
 		if !isSyncWrite {

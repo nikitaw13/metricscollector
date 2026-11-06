@@ -43,9 +43,10 @@ func TestMetricsHandler_handleDatabasePing(t *testing.T) {
 			t.Parallel()
 			ctrl := gomock.NewController(t)
 			svc := mocks.NewMockService(ctrl)
+			auditor := mocks.NewMockAuditor(ctrl)
 			tt.setup(svc)
 
-			h := NewMetricsHandler("", svc, zap.NewNop())
+			h := NewMetricsHandler("", svc, zap.NewNop(), auditor)
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest(http.MethodGet, "/ping", nil)

@@ -17,30 +17,6 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockAuditor is a mock of Auditor interface.
-type MockAuditor struct {
-	ctrl     *gomock.Controller
-	recorder *MockAuditorMockRecorder
-	isgomock struct{}
-}
-
-// MockAuditorMockRecorder is the mock recorder for MockAuditor.
-type MockAuditorMockRecorder struct {
-	mock *MockAuditor
-}
-
-// NewMockAuditor creates a new mock instance.
-func NewMockAuditor(ctrl *gomock.Controller) *MockAuditor {
-	mock := &MockAuditor{ctrl: ctrl}
-	mock.recorder = &MockAuditorMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockAuditor) EXPECT() *MockAuditorMockRecorder {
-	return m.recorder
-}
-
 // MockStorageGetter is a mock of StorageGetter interface.
 type MockStorageGetter struct {
 	ctrl     *gomock.Controller

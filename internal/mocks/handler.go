@@ -71,33 +71,33 @@ func (mr *MockServiceMockRecorder) DatabasePing(ctx any) *gomock.Call {
 }
 
 // GetCounter mocks base method.
-func (m *MockService) GetCounter(metricName string) (int64, error) {
+func (m *MockService) GetCounter(name string) (int64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetCounter", metricName)
+	ret := m.ctrl.Call(m, "GetCounter", name)
 	ret0, _ := ret[0].(int64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetCounter indicates an expected call of GetCounter.
-func (mr *MockServiceMockRecorder) GetCounter(metricName any) *gomock.Call {
+func (mr *MockServiceMockRecorder) GetCounter(name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCounter", reflect.TypeOf((*MockService)(nil).GetCounter), metricName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCounter", reflect.TypeOf((*MockService)(nil).GetCounter), name)
 }
 
 // GetGauge mocks base method.
-func (m *MockService) GetGauge(metricName string) (float64, error) {
+func (m *MockService) GetGauge(name string) (float64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetGauge", metricName)
+	ret := m.ctrl.Call(m, "GetGauge", name)
 	ret0, _ := ret[0].(float64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetGauge indicates an expected call of GetGauge.
-func (mr *MockServiceMockRecorder) GetGauge(metricName any) *gomock.Call {
+func (mr *MockServiceMockRecorder) GetGauge(name any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGauge", reflect.TypeOf((*MockService)(nil).GetGauge), metricName)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGauge", reflect.TypeOf((*MockService)(nil).GetGauge), name)
 }
 
 // ListAllMetrics mocks base method.
@@ -142,4 +142,42 @@ func (m *MockService) UpdateMetricsBatch(ctx context.Context, metrics []model.Me
 func (mr *MockServiceMockRecorder) UpdateMetricsBatch(ctx, metrics any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateMetricsBatch", reflect.TypeOf((*MockService)(nil).UpdateMetricsBatch), ctx, metrics)
+}
+
+// MockAuditor is a mock of Auditor interface.
+type MockAuditor struct {
+	ctrl     *gomock.Controller
+	recorder *MockAuditorMockRecorder
+	isgomock struct{}
+}
+
+// MockAuditorMockRecorder is the mock recorder for MockAuditor.
+type MockAuditorMockRecorder struct {
+	mock *MockAuditor
+}
+
+// NewMockAuditor creates a new mock instance.
+func NewMockAuditor(ctrl *gomock.Controller) *MockAuditor {
+	mock := &MockAuditor{ctrl: ctrl}
+	mock.recorder = &MockAuditorMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockAuditor) EXPECT() *MockAuditorMockRecorder {
+	return m.recorder
+}
+
+// Notify mocks base method.
+func (m *MockAuditor) Notify(timestamp int64, metrics []model.Metric, ipAddress string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Notify", timestamp, metrics, ipAddress)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Notify indicates an expected call of Notify.
+func (mr *MockAuditorMockRecorder) Notify(timestamp, metrics, ipAddress any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Notify", reflect.TypeOf((*MockAuditor)(nil).Notify), timestamp, metrics, ipAddress)
 }

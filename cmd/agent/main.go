@@ -14,6 +14,7 @@ import (
 	"github.com/nikitaw13/metricscollector/internal/agent"
 	"github.com/nikitaw13/metricscollector/internal/logger"
 	"github.com/nikitaw13/metricscollector/internal/model"
+	"github.com/nikitaw13/metricscollector/internal/retry"
 )
 
 func main() {
@@ -100,7 +101,7 @@ func run(cfg Config) {
 		baseURL     = fmt.Sprintf("http://%s", cfg.serverAddr)
 		retryDelays = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
 		httpClient  = &http.Client{Timeout: 5 * time.Second}
-		retryClient = agent.NewClientWithRetries(retryDelays, httpClient)
+		retryClient = retry.New(retryDelays, httpClient, zapLogger)
 		sender      = agent.NewSender(baseURL, retryClient, cfg.hashKey, zapLogger)
 	)
 
