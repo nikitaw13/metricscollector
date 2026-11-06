@@ -21,7 +21,7 @@ func TestService_DatabasePing(t *testing.T) {
 
 		var nilRepository Repository
 		mockDB := mocks.NewMockDBPinger(ctrl)
-		svc := New(nilRepository, mockDB, *zap.NewNop())
+		svc := New(nilRepository, mockDB, zap.NewNop())
 
 		mockDB.EXPECT().PingContext(gomock.Any()).Return(nil)
 
@@ -36,7 +36,7 @@ func TestService_DatabasePing(t *testing.T) {
 
 		var nilRepository Repository
 		mockDB := mocks.NewMockDBPinger(ctrl)
-		svc := New(nilRepository, mockDB, *zap.NewNop())
+		svc := New(nilRepository, mockDB, zap.NewNop())
 
 		mockDB.EXPECT().PingContext(gomock.Any()).Return(errors.New("connection refused"))
 
@@ -51,7 +51,7 @@ func TestService_DatabasePing(t *testing.T) {
 
 		var nilRepository Repository
 		mockDB := mocks.NewMockDBPinger(ctrl)
-		svc := New(nilRepository, mockDB, *zap.NewNop())
+		svc := New(nilRepository, mockDB, zap.NewNop())
 
 		mockDB.EXPECT().PingContext(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
 			_, ok := ctx.Deadline()
@@ -73,7 +73,7 @@ func TestService_DatabasePing(t *testing.T) {
 
 		var nilRepository Repository
 		mockDB := mocks.NewMockDBPinger(ctrl)
-		svc := New(nilRepository, mockDB, *zap.NewNop())
+		svc := New(nilRepository, mockDB, zap.NewNop())
 
 		mockDB.EXPECT().PingContext(gomock.Any()).DoAndReturn(func(ctx context.Context) error {
 			_, ok := ctx.Deadline()

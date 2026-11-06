@@ -12,17 +12,21 @@ import (
 	"go.uber.org/zap"
 )
 
+type httpClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
 // Sender is responsible for sending collected metrics to the server
 // as a single batched HTTP POST request.
 type Sender struct {
 	baseURL string
-	client  HTTPClient
+	client  httpClient
 	hashKey string
 	logger  *zap.Logger
 }
 
 // NewSender creates a Sender with the given base URL, HTTP client, and signing key.
-func NewSender(baseURL string, client HTTPClient, hashKey string, logger *zap.Logger) *Sender {
+func NewSender(baseURL string, client httpClient, hashKey string, logger *zap.Logger) *Sender {
 	return &Sender{
 		baseURL: baseURL,
 		client:  client,

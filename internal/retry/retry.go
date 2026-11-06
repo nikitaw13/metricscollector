@@ -1,10 +1,11 @@
-package agent
+package retry
 
 import (
-	"log"
 	"net/http"
 	"slices"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // HTTPClient abstracts a single-request HTTP client; *http.Client implements it.
@@ -18,13 +19,15 @@ var _ HTTPClient = (*ClientWithRetries)(nil)
 type ClientWithRetries struct {
 	retryDelays []time.Duration
 	client      HTTPClient
+	logger      *zap.Logger
 }
 
-// NewClientWithRetries wraps client with the given retryDelays between attempts.
-func NewClientWithRetries(retryDelays []time.Duration, client HTTPClient) *ClientWithRetries {
+// New wraps client with the given retryDelays between attempts.
+func New(retryDelays []time.Duration, client HTTPClient, logger *zap.Logger) *ClientWithRetries {
 	return &ClientWithRetries{
 		client:      client,
 		retryDelays: slices.Clone(retryDelays),
+		logger:      logger,
 	}
 }
 
@@ -37,7 +40,7 @@ func (c *ClientWithRetries) Do(req *http.Request) (*http.Response, error) {
 			return nil, err
 		}
 
-		log.Println(err)
+		c.logger.Debug("sending failed", zap.Error(err))
 
 		for i := 0; i < len(c.retryDelays); i++ {
 			time.Sleep(c.retryDelays[i])
@@ -49,7 +52,7 @@ func (c *ClientWithRetries) Do(req *http.Request) (*http.Response, error) {
 			}
 			resp, err = c.client.Do(req)
 			if err != nil {
-				log.Printf("retry %d/%d failed: %v", i+1, len(c.retryDelays), err)
+				c.logger.Debug("retry failed", zap.Int("attempt", i+1), zap.Int("totalAttempts", len(c.retryDelays)), zap.Error(err))
 				continue
 			}
 			break

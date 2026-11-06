@@ -12,10 +12,10 @@ import (
 type Service struct {
 	storage  Repository
 	database DBPinger
-	logger   zap.Logger
+	logger   *zap.Logger
 }
 
-func New(storage Repository, database DBPinger, logger zap.Logger) *Service {
+func New(storage Repository, database DBPinger, logger *zap.Logger) *Service {
 	return &Service{
 		storage:  storage,
 		database: database,

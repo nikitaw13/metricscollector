@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/nikitaw13/metricscollector/internal/model"
+	"github.com/nikitaw13/metricscollector/internal/retry"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
@@ -74,9 +75,10 @@ func TestSendBatchDeliversAllMetrics(t *testing.T) {
 	defer ts.Close()
 
 	retries := []time.Duration{1 * time.Millisecond, 3 * time.Millisecond, 5 * time.Millisecond}
-	client := NewClientWithRetries(
+	client := retry.New(
 		retries,
 		&http.Client{Timeout: 5 * time.Second},
+		zap.NewNop(),
 	)
 
 	sender := NewSender(
@@ -179,9 +181,10 @@ func TestRetrySucceedsAfterTransientFailures(t *testing.T) {
 
 	retries := []time.Duration{1 * time.Millisecond, 3 * time.Millisecond, 5 * time.Millisecond}
 	rt := &retryTransport{failures: 2, base: http.DefaultTransport}
-	client := NewClientWithRetries(
+	client := retry.New(
 		retries,
 		&http.Client{Timeout: 5 * time.Second, Transport: rt},
+		zap.NewNop(),
 	)
 	sender := NewSender(
 		ts.URL,
@@ -232,9 +235,10 @@ func TestSendWithHash(t *testing.T) {
 	defer ts.Close()
 
 	retries := []time.Duration{1 * time.Millisecond, 3 * time.Millisecond, 5 * time.Millisecond}
-	client := NewClientWithRetries(
+	client := retry.New(
 		retries,
 		&http.Client{Timeout: 5 * time.Second},
+		zap.NewNop(),
 	)
 
 	sender := NewSender(
@@ -268,9 +272,10 @@ func TestSendBatchSkipsEmptyBatch(t *testing.T) {
 	defer ts.Close()
 
 	retries := []time.Duration{1 * time.Millisecond, 3 * time.Millisecond, 5 * time.Millisecond}
-	client := NewClientWithRetries(
+	client := retry.New(
 		retries,
 		&http.Client{Timeout: 5 * time.Second},
+		zap.NewNop(),
 	)
 	sender := NewSender(
 		ts.URL,

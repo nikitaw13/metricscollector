@@ -92,7 +92,7 @@ func TestService_ListAllMetrics(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			repo := mocks.NewMockRepository(ctrl)
 
-			svc := New(repo, dbPinger, *zap.NewNop())
+			svc := New(repo, dbPinger, zap.NewNop())
 			tt.setup(repo)
 
 			gotGauges, gotCounters, err := svc.ListAllMetrics()
@@ -155,7 +155,7 @@ func TestService_GetCounter(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			repo := mocks.NewMockRepository(ctrl)
 
-			svc := New(repo, dbPinger, *zap.NewNop())
+			svc := New(repo, dbPinger, zap.NewNop())
 			tt.setup(repo)
 
 			got, err := svc.GetCounter(tt.metricName)
@@ -214,7 +214,7 @@ func TestService_GetGauge(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			repo := mocks.NewMockRepository(ctrl)
 
-			svc := New(repo, dbPinger, *zap.NewNop())
+			svc := New(repo, dbPinger, zap.NewNop())
 			tt.setup(repo)
 
 			got, err := svc.GetGauge(tt.metricName)
@@ -273,7 +273,7 @@ func TestService_SetGauge(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			repo := mocks.NewMockRepository(ctrl)
 
-			svc := New(repo, dbPinger, *zap.NewNop())
+			svc := New(repo, dbPinger, zap.NewNop())
 			tt.setup(repo)
 
 			err := svc.SetGauge(tt.metricName, tt.value)
@@ -333,7 +333,7 @@ func TestService_AddCounter(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			repo := mocks.NewMockRepository(ctrl)
 
-			svc := New(repo, dbPinger, *zap.NewNop())
+			svc := New(repo, dbPinger, zap.NewNop())
 			tt.setup(repo)
 
 			got, err := svc.AddCounter(tt.metricName, tt.delta)
@@ -380,7 +380,7 @@ func TestService_UpdateMetricsBatch(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			repo := mocks.NewMockRepository(ctrl)
 
-			svc := New(repo, dbPinger, *zap.NewNop())
+			svc := New(repo, dbPinger, zap.NewNop())
 			tt.setup(repo)
 
 			err := svc.UpdateMetricsBatch(t.Context(), tt.metrics)
@@ -419,7 +419,7 @@ func TestService_UpdateMetricsBatchCancelled(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			repo := mocks.NewMockRepository(ctrl)
 
-			svc := New(repo, dbPinger, *zap.NewNop())
+			svc := New(repo, dbPinger, zap.NewNop())
 			tt.setup(repo)
 
 			ctx, cancel := context.WithCancel(t.Context())
