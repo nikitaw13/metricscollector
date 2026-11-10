@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/nikitaw13/metricscollector/internal/audit"
 	"github.com/nikitaw13/metricscollector/internal/handler"
 	"github.com/nikitaw13/metricscollector/internal/logger"
@@ -117,6 +119,10 @@ func run(cfg Config) error {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
+	}()
+
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
 	}()
 
 	select {

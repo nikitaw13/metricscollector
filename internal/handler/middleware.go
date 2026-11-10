@@ -11,12 +11,19 @@ import (
 	"mime"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi"
 	"github.com/nikitaw13/metricscollector/internal/model"
 	"github.com/nikitaw13/metricscollector/internal/sign"
 	"go.uber.org/zap"
+)
+
+var (
+	gzReaderPool = sync.Pool{
+		New: func() any { return new(gzip.Reader) },
+	}
 )
 
 // requireJSONContent enforces application/json Content-Type and non-empty body
@@ -197,13 +204,18 @@ func decompressMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Header.Get("Content-Encoding") {
 		case "gzip":
-			gz, err := gzip.NewReader(r.Body)
+			gz := gzReaderPool.Get().(*gzip.Reader)
+			err := gz.Reset(r.Body)
 			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				gzReaderPool.Put(gz)
+				writeJSONError(w, http.StatusBadRequest, err)
 				return
 			}
+			defer func() {
+				gz.Close()
+				gzReaderPool.Put(gz)
+			}()
 
-			defer gz.Close()
 			r.Header.Del("Content-Encoding")
 			r.Header.Del("Content-Length")
 			r.ContentLength = -1

@@ -213,5 +213,5 @@ func TestDecompressMiddlewareInvalidGzipBody(t *testing.T) {
 
 	handler.ServeHTTP(rec, req)
 
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
 }

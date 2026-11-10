@@ -16,11 +16,6 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-const (
-	gaugeTableName   = "gauges"
-	counterTableName = "counters"
-)
-
 type gaugeRow struct {
 	name  string
 	value float64
@@ -42,39 +37,6 @@ type PostgresStorage struct {
 func (ps *PostgresStorage) Close() error {
 	return ps.db.Close()
 }
-
-var (
-	addCounterExec = fmt.Sprintf(`
-    INSERT INTO %s (name, delta)
-    VALUES ($1, $2)
-    ON CONFLICT (name) DO UPDATE
-    SET delta = %s.delta + EXCLUDED.delta
-	RETURNING delta;`, counterTableName, counterTableName)
-
-	setGaugeExec = fmt.Sprintf(`
-	INSERT INTO %s (name, value) 
-	VALUES ($1, $2) 
-	ON CONFLICT (name) DO UPDATE 
-	SET value = $2;`, gaugeTableName)
-
-	getCounterQuery = fmt.Sprintf(`
-	SELECT delta 
-	FROM %s
-	WHERE NAME = $1;`, counterTableName)
-
-	getGaugeQuery = fmt.Sprintf(`
-	SELECT value 
-	FROM %s
-	WHERE NAME = $1;`, gaugeTableName)
-
-	getAllCountersQuery = fmt.Sprintf(`
-	SELECT name, delta 
-	FROM %s;`, counterTableName)
-
-	getAllGaugesQuery = fmt.Sprintf(`
-	SELECT name, value 
-	FROM %s;`, gaugeTableName)
-)
 
 // NewPostgresStorage creates a PostgresStorage backed by db, with retry backoff timeouts and the provided logger.
 func NewPostgresStorage(db *sql.DB, timeouts []time.Duration, logger *zap.Logger) *PostgresStorage {
