@@ -1,7 +1,7 @@
 package agent
 
-// GaugeMetrics lists all gauge metric names expected from the collector.
-var GaugeMetrics = [28]string{
+// gaugeMetricNames lists all gauge metric names expected from the collector.
+var gaugeMetricNames = [28]string{
 	"Alloc",
 	"BuckHashSys",
 	"Frees",
@@ -32,7 +32,7 @@ var GaugeMetrics = [28]string{
 	"RandomValue",
 }
 
-// CounterMetrics lists all counter metric names expected from the collector.
-var CounterMetrics = [1]string{
+// counterMetricNames lists all counter metric names expected from the collector.
+var counterMetricNames = [1]string{
 	"PollCount",
 }

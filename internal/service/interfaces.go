@@ -1,4 +1,4 @@
-package handler
+package service
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/nikitaw13/metricscollector/internal/model"
 )
 
-// StorageGetter defines read-only operations for metric storage used by the handler.
+// StorageGetter defines read-only operations for metric storage used by the service.
 type StorageGetter interface {
 	GetGauge(name string) (float64, error)
 	GetCounter(name string) (int64, error)
@@ -14,7 +14,7 @@ type StorageGetter interface {
 	GetAllCounters() (map[string]int64, error)
 }
 
-// StorageSetter defines write operations for metric storage used by the handler.
+// StorageSetter defines write operations for metric storage used by the service.
 type StorageSetter interface {
 	SetGauge(name string, value float64) error
 	AddCounter(name string, delta int64) (int64, error)
@@ -25,4 +25,9 @@ type StorageSetter interface {
 type Repository interface {
 	StorageGetter
 	StorageSetter
+}
+
+// DBPinger defines the ping method required to check database connectivity from handlers.
+type DBPinger interface {
+	PingContext(ctx context.Context) error
 }

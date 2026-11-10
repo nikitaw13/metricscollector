@@ -1,10 +1,11 @@
-package agent
+package retry
 
 import (
-	"log"
 	"net/http"
 	"slices"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 // HTTPClient abstracts a single-request HTTP client; *http.Client implements it.
@@ -16,15 +17,17 @@ var _ HTTPClient = (*ClientWithRetries)(nil)
 
 // ClientWithRetries wraps an HTTPClient and retries transport failures with the configured backoff.
 type ClientWithRetries struct {
-	timeouts []time.Duration
-	client   HTTPClient
+	retryDelays []time.Duration
+	client      HTTPClient
+	logger      *zap.Logger
 }
 
-// NewClientWithRetries wraps client with the given retry backoff timeouts.
-func NewClientWithRetries(timeouts []time.Duration, client HTTPClient) *ClientWithRetries {
+// New wraps client with the given retryDelays between attempts.
+func New(retryDelays []time.Duration, client HTTPClient, logger *zap.Logger) *ClientWithRetries {
 	return &ClientWithRetries{
-		client:   client,
-		timeouts: slices.Clone(timeouts),
+		client:      client,
+		retryDelays: slices.Clone(retryDelays),
+		logger:      logger,
 	}
 }
 
@@ -37,10 +40,10 @@ func (c *ClientWithRetries) Do(req *http.Request) (*http.Response, error) {
 			return nil, err
 		}
 
-		log.Println(err)
+		c.logger.Debug("sending failed", zap.Error(err))
 
-		for i := 0; i < len(c.timeouts); i++ {
-			time.Sleep(c.timeouts[i])
+		for i := 0; i < len(c.retryDelays); i++ {
+			time.Sleep(c.retryDelays[i])
 
 			req.Body, err = req.GetBody()
 
@@ -49,7 +52,7 @@ func (c *ClientWithRetries) Do(req *http.Request) (*http.Response, error) {
 			}
 			resp, err = c.client.Do(req)
 			if err != nil {
-				log.Printf("retry %d/%d failed: %v", i+1, len(c.timeouts), err)
+				c.logger.Debug("retry failed", zap.Int("attempt", i+1), zap.Int("totalAttempts", len(c.retryDelays)), zap.Error(err))
 				continue
 			}
 			break
