@@ -9,12 +9,14 @@ import (
 	"go.uber.org/zap"
 )
 
+// Service provides metric read, write and batch-update operations on top of the underlying storage.
 type Service struct {
 	storage  Repository
 	database DBPinger
 	logger   *zap.Logger
 }
 
+// New creates a Service that stores metrics in storage, checks database availability via database and logs to logger.
 func New(storage Repository, database DBPinger, logger *zap.Logger) *Service {
 	return &Service{
 		storage:  storage,
@@ -23,6 +25,7 @@ func New(storage Repository, database DBPinger, logger *zap.Logger) *Service {
 	}
 }
 
+// ListAllMetrics returns all stored gauges and counters, keyed by metric name.
 func (s *Service) ListAllMetrics() (map[string]float64, map[string]int64, error) {
 	counters, err := s.storage.GetAllCounters()
 	if err != nil {
@@ -35,6 +38,7 @@ func (s *Service) ListAllMetrics() (map[string]float64, map[string]int64, error)
 	return gauges, counters, nil
 }
 
+// GetCounter returns the current value of the named counter, or model.ErrMetricNotFound if it does not exist.
 func (s *Service) GetCounter(metricName string) (int64, error) {
 	value, err := s.storage.GetCounter(metricName)
 	if errors.Is(err, model.ErrMetricNotFound) {
@@ -47,6 +51,7 @@ func (s *Service) GetCounter(metricName string) (int64, error) {
 
 }
 
+// GetGauge returns the current value of the named gauge, or model.ErrMetricNotFound if it does not exist.
 func (s *Service) GetGauge(metricName string) (float64, error) {
 	value, err := s.storage.GetGauge(metricName)
 	if errors.Is(err, model.ErrMetricNotFound) {
@@ -58,6 +63,7 @@ func (s *Service) GetGauge(metricName string) (float64, error) {
 	return value, nil
 }
 
+// SetGauge stores the given absolute value of a gauge metric.
 func (s *Service) SetGauge(name string, value float64) error {
 	err := s.storage.SetGauge(name, value)
 	if err != nil {
@@ -66,6 +72,7 @@ func (s *Service) SetGauge(name string, value float64) error {
 	return nil
 }
 
+// AddCounter adds delta to the named counter and returns its new value.
 func (s *Service) AddCounter(name string, delta int64) (int64, error) {
 	newValue, err := s.storage.AddCounter(name, delta)
 	if err != nil {
@@ -74,6 +81,7 @@ func (s *Service) AddCounter(name string, delta int64) (int64, error) {
 	return newValue, nil
 }
 
+// UpdateMetricsBatch applies a batch of metric updates, forwarding ctx to the storage layer.
 func (s *Service) UpdateMetricsBatch(ctx context.Context, metrics []model.Metric) error {
 	err := s.storage.UpdateMetrics(ctx, metrics)
 	if err != nil {

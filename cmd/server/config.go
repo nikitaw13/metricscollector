@@ -7,6 +7,7 @@ import (
 	"strconv"
 )
 
+// Config holds the metrics server settings sourced from environment variables and command-line flags.
 type Config struct {
 	// serverHTTPAddr holds the HTTP listen address.
 	serverHTTPAddr string
@@ -39,6 +40,7 @@ type Config struct {
 	auditURL string
 }
 
+// LoadConfig loads server settings: defaults first, then environment variables, then flags; the result is validated before returning.
 func LoadConfig() (Config, error) {
 	cfg := Config{
 		serverHTTPAddr:  "localhost:8080",
@@ -125,7 +127,7 @@ func LoadConfig() (Config, error) {
 	flag.StringVar(&cfg.auditURL, "audit-url", cfg.auditURL, "endpoint that receives audit events")
 	flag.Parse()
 
-	err := cfg.Validate()
+	err := cfg.validateConfig()
 	if err != nil {
 		return cfg, fmt.Errorf("validate config values: %w", err)
 	}
@@ -133,7 +135,8 @@ func LoadConfig() (Config, error) {
 	return cfg, nil
 }
 
-func (cfg Config) Validate() error {
+// validateConfig reports invalid settings, such as a negative store interval.
+func (cfg Config) validateConfig() error {
 	if cfg.storeInterval < 0 {
 		return fmt.Errorf("interval in seconds between periodic saves to disk must not be negative: %d", cfg.storeInterval)
 	}

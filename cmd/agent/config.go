@@ -7,6 +7,7 @@ import (
 	"strconv"
 )
 
+// Config holds the metrics agent settings sourced from environment variables and command-line flags.
 type Config struct {
 	// serverAddr holds the HTTP address of the metrics server (-a).
 	serverAddr string
@@ -27,6 +28,7 @@ type Config struct {
 	rateLimit int
 }
 
+// LoadConfig loads agent settings: defaults first, then environment variables, then flags; the result is validated before returning.
 func LoadConfig() (Config, error) {
 	cfg := Config{
 		serverAddr:     "localhost:8080",
