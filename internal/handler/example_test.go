@@ -3,6 +3,7 @@ package handler_test
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -19,7 +20,11 @@ import (
 func newExampleServer() *httptest.Server {
 	storage := repository.NewMemStorage()
 	svc := service.New(storage, nil, zap.NewNop())
-	h := handler.NewMetricsHandler("", svc, zap.NewNop(), audit.New("", "", http.DefaultClient))
+	auditor, err := audit.New("", "", http.DefaultClient)
+	if err != nil {
+		log.Fatal(err)
+	}
+	h := handler.NewMetricsHandler("", svc, zap.NewNop(), auditor)
 	return httptest.NewServer(h.Router())
 }
 

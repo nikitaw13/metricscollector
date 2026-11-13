@@ -38,6 +38,9 @@ type Config struct {
 
 	// auditURL is the endpoint that receives audit events.
 	auditURL string
+
+	// pprofHTTPAddr holds the HTTP listen address for profiling data at endpoints under /debug/pprof. An empty address disables the profiling server.
+	pprofHTTPAddr string
 }
 
 // LoadConfig loads server settings: defaults first, then environment variables, then flags; the result is validated before returning.
@@ -53,6 +56,7 @@ func LoadConfig() (Config, error) {
 		hashKey:         "",
 		auditFile:       "",
 		auditURL:        "",
+		pprofHTTPAddr:   "localhost:6060",
 	}
 
 	envAddress, found := os.LookupEnv("ADDRESS")
@@ -115,6 +119,11 @@ func LoadConfig() (Config, error) {
 		cfg.auditURL = envAuditURL
 	}
 
+	envProfilerAddr, found := os.LookupEnv("PROFILER_ADDR")
+	if found {
+		cfg.pprofHTTPAddr = envProfilerAddr
+	}
+
 	flag.StringVar(&cfg.serverHTTPAddr, "a", cfg.serverHTTPAddr, "HTTP server endpoint address")
 	flag.StringVar(&cfg.logLevel, "l", cfg.logLevel, "HTTP server log level")
 	flag.IntVar(&cfg.storeInterval, "i", cfg.storeInterval, "interval in seconds between periodic saves to disk; 0 makes writes synchronous")
@@ -125,6 +134,7 @@ func LoadConfig() (Config, error) {
 	flag.StringVar(&cfg.hashKey, "k", cfg.hashKey, "secret key for HMAC-SHA256 body signing")
 	flag.StringVar(&cfg.auditFile, "audit-file", cfg.auditFile, "path to the audit log file")
 	flag.StringVar(&cfg.auditURL, "audit-url", cfg.auditURL, "endpoint that receives audit events")
+	flag.StringVar(&cfg.pprofHTTPAddr, "profiler-addr", cfg.pprofHTTPAddr, "HTTP listen address for pprof endpoints (/debug/pprof)")
 	flag.Parse()
 
 	err := cfg.validateConfig()

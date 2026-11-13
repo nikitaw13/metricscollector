@@ -2,6 +2,7 @@ package handler
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -42,7 +43,11 @@ func newTestServer() (server *httptest.Server) {
 	storage.SetGauge("___test___", defaultGaugeValue)
 	storage.AddCounter("___test___", defaultCounterValue)
 
-	auditor := audit.New("", "", http.DefaultClient)
+	auditor, err := audit.New("", "", http.DefaultClient)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	metricsHandler := NewMetricsHandler("", svc, zap.NewNop(), auditor)
 	router := metricsHandler.Router()
 	server = httptest.NewServer(router)
@@ -59,7 +64,10 @@ func newTestServerWithKey(key string) (server *httptest.Server) {
 	storage.SetGauge("___test___", defaultGaugeValue)
 	storage.AddCounter("___test___", defaultCounterValue)
 
-	auditor := audit.New("", "", http.DefaultClient)
+	auditor, err := audit.New("", "", http.DefaultClient)
+	if err != nil {
+		log.Fatal(err)
+	}
 	metricsHandler := NewMetricsHandler(key, svc, zap.NewNop(), auditor)
 	router := metricsHandler.Router()
 	server = httptest.NewServer(router)

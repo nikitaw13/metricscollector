@@ -7,6 +7,7 @@ import "net/http"
 // subscriber consumes serialized audit events.
 type subscriber interface {
 	send(event []byte) error
+	close() error
 }
 
 // httpClient abstracts a single-request HTTP client; *http.Client implements it.

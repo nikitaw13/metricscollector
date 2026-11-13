@@ -87,13 +87,19 @@ func run(cfg Config) error {
 	}
 
 	var (
-		retryDelays    = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
-		httpClient     = &http.Client{Timeout: 5 * time.Second}
-		retryClient    = retry.New(retryDelays, httpClient, zapLogger)
-		svc            = service.New(storage, dbPinger, zapLogger)
-		auditor        = audit.New(cfg.auditFile, cfg.auditURL, retryClient)
-		metricsHandler = handler.NewMetricsHandler(cfg.hashKey, svc, zapLogger, auditor)
+		retryDelays = []time.Duration{1 * time.Second, 3 * time.Second, 5 * time.Second}
+		httpClient  = &http.Client{Timeout: 5 * time.Second}
+		retryClient = retry.New(retryDelays, httpClient, zapLogger)
+		svc         = service.New(storage, dbPinger, zapLogger)
 	)
+
+	auditor, err := audit.New(cfg.auditFile, cfg.auditURL, retryClient)
+	if err != nil {
+		zapLogger.Error("failed to initialize auditor", zap.Error(err))
+		return err
+	}
+
+	metricsHandler := handler.NewMetricsHandler(cfg.hashKey, svc, zapLogger, auditor)
 
 	var (
 		router = metricsHandler.Router()
@@ -121,9 +127,13 @@ func run(cfg Config) error {
 		}
 	}()
 
-	go func() {
-		http.ListenAndServe("localhost:6060", nil)
-	}()
+	if cfg.pprofHTTPAddr != "" {
+		go func() {
+			if err := http.ListenAndServe(cfg.pprofHTTPAddr, nil); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				zapLogger.Warn("failed to start pprof server", zap.Error(err))
+			}
+		}()
+	}
 
 	select {
 	case err := <-serverErr:
@@ -136,6 +146,12 @@ func run(cfg Config) error {
 			if err := persistentStorage.Save(); err != nil {
 				zapLogger.Error("error saving metrics on shutdown", zap.Error(err))
 			}
+		}
+	}()
+
+	defer func() {
+		if err := auditor.Close(); err != nil {
+			zapLogger.Error("error closing auditor on shutdown", zap.Error(err))
 		}
 	}()
 
