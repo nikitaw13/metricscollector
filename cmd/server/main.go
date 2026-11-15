@@ -98,6 +98,11 @@ func run(cfg Config) error {
 		zapLogger.Error("failed to initialize auditor", zap.Error(err))
 		return err
 	}
+	defer func() {
+		if err := auditor.Close(); err != nil {
+			zapLogger.Error("error closing auditor on shutdown", zap.Error(err))
+		}
+	}()
 
 	metricsHandler := handler.NewMetricsHandler(cfg.hashKey, svc, zapLogger, auditor)
 
@@ -146,12 +151,6 @@ func run(cfg Config) error {
 			if err := persistentStorage.Save(); err != nil {
 				zapLogger.Error("error saving metrics on shutdown", zap.Error(err))
 			}
-		}
-	}()
-
-	defer func() {
-		if err := auditor.Close(); err != nil {
-			zapLogger.Error("error closing auditor on shutdown", zap.Error(err))
 		}
 	}()
 

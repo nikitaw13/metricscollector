@@ -123,19 +123,19 @@ func TestNew(t *testing.T) {
 			require.ErrorIs(t, err, tt.wantErr)
 			if err == nil {
 				defer got.Close()
-			}
 
-			var files, urls int
-			for _, receiver := range got.receivers {
-				switch receiver.(type) {
-				case *fileWriter:
-					files++
-				case *urlSender:
-					urls++
+				var files, urls int
+				for _, receiver := range got.receivers {
+					switch receiver.(type) {
+					case *fileWriter:
+						files++
+					case *urlSender:
+						urls++
+					}
 				}
+				assert.Equal(t, tt.wantFiles, files)
+				assert.Equal(t, tt.wantURLs, urls)
 			}
-			assert.Equal(t, tt.wantFiles, files)
-			assert.Equal(t, tt.wantURLs, urls)
 		})
 	}
 }

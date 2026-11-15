@@ -48,7 +48,7 @@ func New(fileName, url string, client httpClient) (*Auditor, error) {
 	if fileName != "" {
 		newFile, err := openAuditFile(fileName)
 		if err != nil {
-			return a, err
+			return nil, err
 		}
 		a.subscribe(newFileWriter(newFile))
 	}
@@ -74,10 +74,8 @@ func (a *Auditor) Notify(timestamp int64, metrics []model.Metric, ipAddress stri
 	}
 
 	sendErrs := a.notify(jsonEvent)
-	for _, err := range sendErrs {
-		if err != nil {
-			return fmt.Errorf("failed to send an event: %w", errors.Join(sendErrs...))
-		}
+	if err := errors.Join(sendErrs...); err != nil {
+		return fmt.Errorf("failed to send an event: %w", err)
 	}
 	return nil
 }
