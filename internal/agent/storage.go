@@ -8,33 +8,12 @@ import (
 	"github.com/nikitaw13/metricscollector/internal/model"
 )
 
-// MetricReader defines read-only operations for retrieving metrics.
-type MetricReader interface {
-	GetAllGauges() map[string]float64
-	DrainCounters() map[string]int64
-}
-
-// MetricWriter defines write operations for updating metrics.
-type MetricWriter interface {
-	SetGauge(name string, value float64)
-	AddCounter(name string, value int64)
-}
-
-// Storage combines read and write operations for the agent's metric store.
-type Storage interface {
-	MetricReader
-	MetricWriter
-}
-
-// AgentStorage is an in-memory implementation of Storage that holds agent metrics.
+// AgentStorage holds agent metrics in memory.
 type AgentStorage struct {
 	mu      sync.Mutex
 	gauge   map[string]float64
 	counter map[string]int64
 }
-
-// Compile-time check that AgentStorage implements Storage.
-var _ Storage = (*AgentStorage)(nil)
 
 // NewAgentStorage creates and returns a new AgentStorage with initialized maps.
 func NewAgentStorage() *AgentStorage {
@@ -45,67 +24,67 @@ func NewAgentStorage() *AgentStorage {
 }
 
 // SetGauge sets the gauge metric with the given name to the specified value.
-func (ms *AgentStorage) SetGauge(name string, value float64) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
+func (s *AgentStorage) SetGauge(name string, value float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	ms.gauge[name] = value
+	s.gauge[name] = value
 }
 
 // AddCounter increments the counter metric with the given name by the specified value.
-func (ms *AgentStorage) AddCounter(name string, value int64) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
+func (s *AgentStorage) AddCounter(name string, value int64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	ms.counter[name] += value
+	s.counter[name] += value
 }
 
 // GetGauge returns the value of the gauge metric by name.
 // Returns an error if the metric does not exist.
-func (ms *AgentStorage) GetGauge(name string) (float64, error) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
+func (s *AgentStorage) GetGauge(name string) (float64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	if _, ok := ms.gauge[name]; ok {
-		return ms.gauge[name], nil
+	if _, ok := s.gauge[name]; ok {
+		return s.gauge[name], nil
 	}
 	return 0, fmt.Errorf("gauge %s %w", name, model.ErrMetricNotFound)
 }
 
 // GetCounter returns the value of the counter metric by name.
 // Returns an error if the metric does not exist.
-func (ms *AgentStorage) GetCounter(name string) (int64, error) {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
+func (s *AgentStorage) GetCounter(name string) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	if _, ok := ms.counter[name]; ok {
-		return ms.counter[name], nil
+	if _, ok := s.counter[name]; ok {
+		return s.counter[name], nil
 	}
 	return 0, fmt.Errorf("counter %s %w", name, model.ErrMetricNotFound)
 }
 
 // GetAllGauges returns a copy of all gauge metrics to prevent external mutation.
-func (ms *AgentStorage) GetAllGauges() map[string]float64 {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
+func (s *AgentStorage) GetAllGauges() map[string]float64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	return maps.Clone(ms.gauge)
+	return maps.Clone(s.gauge)
 }
 
 // GetAllCounters returns a copy of all counter metrics to prevent external mutation.
-func (ms *AgentStorage) GetAllCounters() map[string]int64 {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
+func (s *AgentStorage) GetAllCounters() map[string]int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	return maps.Clone(ms.counter)
+	return maps.Clone(s.counter)
 }
 
 // DrainCounters atomically returns current counter values and resets them to zero.
-func (ms *AgentStorage) DrainCounters() map[string]int64 {
-	ms.mu.Lock()
-	defer ms.mu.Unlock()
+func (s *AgentStorage) DrainCounters() map[string]int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	snapshot := maps.Clone(ms.counter)
-	clear(ms.counter)
+	snapshot := maps.Clone(s.counter)
+	clear(s.counter)
 	return snapshot
 }

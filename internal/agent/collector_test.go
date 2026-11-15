@@ -13,16 +13,16 @@ func TestRuntimeMetricsExist(t *testing.T) {
 	metrics := CollectRuntimeMetrics()
 
 	found := make(map[string]bool)
-	for _, m := range metrics {
-		found[m.ID] = true
+	for _, metric := range metrics {
+		found[metric.ID] = true
 	}
 
-	for _, name := range GaugeMetrics {
+	for _, name := range gaugeMetricNames {
 		if !found[name] {
 			t.Errorf("gauge metric %q not found", name)
 		}
 	}
-	for _, name := range CounterMetrics {
+	for _, name := range counterMetricNames {
 		if !found[name] {
 			t.Errorf("counter metric %q not found", name)
 		}
@@ -33,13 +33,13 @@ func TestRuntimeMetricsExist(t *testing.T) {
 func TestPollCountPerSnapshot(t *testing.T) {
 	metrics := CollectRuntimeMetrics()
 
-	for _, m := range metrics {
-		if m.ID == "PollCount" {
-			if m.Delta == nil {
+	for _, metric := range metrics {
+		if metric.ID == "PollCount" {
+			if metric.Delta == nil {
 				t.Fatal("PollCount delta is nil")
 			}
-			if *m.Delta != 1 {
-				t.Errorf("PollCount delta = %d, want 1", *m.Delta)
+			if *metric.Delta != 1 {
+				t.Errorf("PollCount delta = %d, want 1", *metric.Delta)
 			}
 			return
 		}
@@ -54,14 +54,14 @@ func TestSystemMetricsExist(t *testing.T) {
 	metrics := CollectSystemMetrics()
 
 	found := make(map[string]bool)
-	for _, m := range metrics {
-		if m.Type != model.Gauge {
-			t.Errorf("metric %q has type %q, want gauge", m.ID, m.Type)
+	for _, metric := range metrics {
+		if metric.Type != model.Gauge {
+			t.Errorf("metric %q has type %q, want gauge", metric.ID, metric.Type)
 		}
-		if m.Value == nil {
-			t.Errorf("gauge metric %q has nil value", m.ID)
+		if metric.Value == nil {
+			t.Errorf("gauge metric %q has nil value", metric.ID)
 		}
-		found[m.ID] = true
+		found[metric.ID] = true
 	}
 
 	expected := []string{"TotalMemory", "FreeMemory"}
