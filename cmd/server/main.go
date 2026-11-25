@@ -22,6 +22,7 @@ import (
 )
 
 func main() {
+	printBuildInfo()
 	cfg, err := LoadConfig()
 	if err != nil {
 		log.Fatal(err)
@@ -50,11 +51,11 @@ func run(cfg Config) error {
 	switch {
 	// Database storage
 	case cfg.databaseDSN != "":
-		postgresStorage, err := repository.NewPostgresStorageFromDSN(cfg.databaseDSN, cfg.migrationPath, dbRetryDelays, zapLogger)
+		postgresStorage, pgErr := repository.NewPostgresStorageFromDSN(cfg.databaseDSN, cfg.migrationPath, dbRetryDelays, zapLogger)
 
-		if err != nil {
-			zapLogger.Error("failed to initialize postgres storage", zap.Error(err))
-			return err
+		if pgErr != nil {
+			zapLogger.Error("failed to initialize postgres storage", zap.Error(pgErr))
+			return pgErr
 		}
 		defer postgresStorage.Close()
 
@@ -67,12 +68,12 @@ func run(cfg Config) error {
 		persistentStorage := repository.NewPersistentMemStorage(memStorage, cfg.fileStoragePath, isSyncWrite)
 
 		if cfg.restore {
-			err := persistentStorage.Restore()
+			restoreErr := persistentStorage.Restore()
 
-			if errors.Is(err, os.ErrNotExist) {
-				zapLogger.Warn("file does not exist", zap.Error(err))
-			} else if err != nil {
-				zapLogger.Error("failed to restore metrics from file", zap.Error(err))
+			if errors.Is(restoreErr, os.ErrNotExist) {
+				zapLogger.Warn("file does not exist", zap.Error(restoreErr))
+			} else if restoreErr != nil {
+				zapLogger.Error("failed to restore metrics from file", zap.Error(restoreErr))
 			}
 		}
 

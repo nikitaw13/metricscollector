@@ -18,7 +18,9 @@ import (
 )
 
 func main() {
+	printBuildInfo()
 	cfg, err := LoadConfig()
+
 	if err != nil {
 		log.Fatal(err)
 	}
