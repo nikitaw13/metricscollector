@@ -26,3 +26,7 @@ vendor/
 
 
 storage.json
+
+# iter21
+*reset.gen.go
+*test_struct.go
